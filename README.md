@@ -4,4 +4,4 @@
 
 کد وب سرویس [نسک‌بان](https://naskban.ir)، در اصل انشعابی از کد [وب‌سرویس گنجور](https://github.com/ganjoor/GanjoorService)
 
-[فهرست توابع در دسترس] (https://svc.ravaal.ir)
+[فهرست توابع در دسترس] (https://api.naskban.ir)
