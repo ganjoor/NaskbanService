@@ -309,6 +309,12 @@ namespace RMuseum
             //Queued FTP Upload Service
             services.AddTransient<IQueuedFTPUploadService, QueuedFTPUploadService>();
 
+            //workspace service
+            services.AddTransient<IWorkspaceService, WorkspaceService>();
+
+            //workspace role service
+            services.AddTransient<IWorkspaceRolesService, WorkspaceRolesServiceBase>();
+
             //upload limit for IIS
             services.Configure<IISServerOptions>(options =>
             {
