@@ -57,7 +57,7 @@ namespace RMuseum.Controllers
             }
 
             // Paging Header
-            HttpContext.Response.Headers.Add("paging-headers", JsonConvert.SerializeObject(pdfBooksInfo.Result.PagingMeta));
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(pdfBooksInfo.Result.PagingMeta));
 
             return Ok(pdfBooksInfo.Result.Books);
         }
@@ -108,7 +108,7 @@ namespace RMuseum.Controllers
             }
 
             // Paging Header
-            HttpContext.Response.Headers.Add("paging-headers", JsonConvert.SerializeObject(itemsInfo.Result.PagingMeta));
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(itemsInfo.Result.PagingMeta));
 
             return Ok(itemsInfo.Result.Books);
         }
@@ -180,6 +180,7 @@ namespace RMuseum.Controllers
                     (
                         loggedOnUserId,
                         sessionId,
+                        User.Claims.Any(c => c.Type == "Language") ? User.Claims.First(c => c.Type == "Language").Value : "fa-IR",
                         RMuseumSecurableItem.PDFLibraryEntityShortName,
                         RMuseumSecurableItem.ViewDraftOperationShortName
                         );
@@ -335,6 +336,7 @@ namespace RMuseum.Controllers
                     (
                         loggedOnUserId,
                         sessionId,
+                        User.Claims.Any(c => c.Type == "Language") ? User.Claims.First(c => c.Type == "Language").Value : "fa-IR",
                         RMuseumSecurableItem.PDFLibraryEntityShortName,
                         RMuseumSecurableItem.ToAwaitingStatusOperationShortName
                         );
@@ -347,6 +349,7 @@ namespace RMuseum.Controllers
                     (
                         loggedOnUserId,
                         sessionId,
+                        User.Claims.Any(c => c.Type == "Language") ? User.Claims.First(c => c.Type == "Language").Value : "fa-IR",
                         RMuseumSecurableItem.PDFLibraryEntityShortName,
                         RMuseumSecurableItem.PublishOperationShortName
                         );
@@ -544,7 +547,7 @@ namespace RMuseum.Controllers
             }
 
             // Paging Header
-            HttpContext.Response.Headers.Add("paging-headers", JsonConvert.SerializeObject(authorsRes.Result.PagingMeta));
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(authorsRes.Result.PagingMeta));
 
             return Ok(authorsRes.Result.Authors);
         }
@@ -695,7 +698,7 @@ namespace RMuseum.Controllers
             }
 
             // Paging Header
-            HttpContext.Response.Headers.Add("paging-headers", JsonConvert.SerializeObject(pdfBooksInfo.Result.PagingMeta));
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(pdfBooksInfo.Result.PagingMeta));
 
             return Ok(pdfBooksInfo.Result.Books);
         }
@@ -754,7 +757,7 @@ namespace RMuseum.Controllers
             }
 
             // Paging Header
-            HttpContext.Response.Headers.Add("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
 
             return Ok(res.Result.Books);
         }
@@ -904,7 +907,7 @@ namespace RMuseum.Controllers
             }
 
             // Paging Header
-            HttpContext.Response.Headers.Add("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
 
             return Ok(res.Result.Books);
         }
@@ -964,7 +967,7 @@ namespace RMuseum.Controllers
             }
 
             // Paging Header
-            HttpContext.Response.Headers.Add("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
 
             return Ok(res.Result.Books);
         }
@@ -1191,7 +1194,7 @@ namespace RMuseum.Controllers
             }
 
             // Paging Header
-            HttpContext.Response.Headers.Add("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
 
             return Ok(res.Result.Books);
         }
@@ -1215,7 +1218,7 @@ namespace RMuseum.Controllers
                 return BadRequest(pagedResult.ExceptionString);
 
             // Paging Header
-            HttpContext.Response.Headers.Add("paging-headers", JsonConvert.SerializeObject(pagedResult.Result.PagingMeta));
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(pagedResult.Result.PagingMeta));
 
             return Ok(pagedResult.Result.Items);
         }
@@ -1240,7 +1243,7 @@ namespace RMuseum.Controllers
                 return BadRequest(pagedResult.ExceptionString);
 
             // Paging Header
-            HttpContext.Response.Headers.Add("paging-headers", JsonConvert.SerializeObject(pagedResult.Result.PagingMeta));
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(pagedResult.Result.PagingMeta));
 
             return Ok(pagedResult.Result.Items);
         }
@@ -1264,7 +1267,7 @@ namespace RMuseum.Controllers
                 return BadRequest(pagedResult.ExceptionString);
 
             // Paging Header
-            HttpContext.Response.Headers.Add("paging-headers", JsonConvert.SerializeObject(pagedResult.Result.PagingMeta));
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(pagedResult.Result.PagingMeta));
 
             return Ok(pagedResult.Result.Books);
         }
@@ -1310,7 +1313,7 @@ namespace RMuseum.Controllers
                 return BadRequest(resCount.ExceptionString);
 
             // Paging Header
-            HttpContext.Response.Headers.Add("paging-headers",
+            HttpContext.Response.Headers.Append("paging-headers",
                 JsonConvert.SerializeObject(
                     new PaginationMetadata()
                     {
@@ -1510,7 +1513,7 @@ namespace RMuseum.Controllers
 
 
             // Paging Header
-            HttpContext.Response.Headers.Add("paging-headers", JsonConvert.SerializeObject(pdfBooksInfo.Result.PagingMeta));
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(pdfBooksInfo.Result.PagingMeta));
 
             return Ok(pdfBooksInfo.Result.Books);
         }
