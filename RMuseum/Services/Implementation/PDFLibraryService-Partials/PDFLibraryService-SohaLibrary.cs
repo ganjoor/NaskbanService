@@ -367,14 +367,17 @@ namespace RMuseum.Services.Implementation
                         model.Language = tagValueCleaned;
                         tagName = "Language";
 
-                        if (!tagValueCleaned.Contains("فارسی"))
+                        if(bool.Parse(Configuration.GetSection("PDFImportService")["CheckLanguage"]))
                         {
-                            job.EndTime = DateTime.Now;
-                            job.Status = ImportJobStatus.Failed;
-                            job.Exception = "Language is not فارسی";
-                            context.Update(job);
-                            await context.SaveChangesAsync();
-                            return new RServiceResult<int>(0, job.Exception);
+                            if (!tagValueCleaned.Contains("فارسی"))
+                            {
+                                job.EndTime = DateTime.Now;
+                                job.Status = ImportJobStatus.Failed;
+                                job.Exception = "Language is not فارسی";
+                                context.Update(job);
+                                await context.SaveChangesAsync();
+                                return new RServiceResult<int>(0, job.Exception);
+                            }
                         }
                     }
                     if (tagName == "شماره جلد")
