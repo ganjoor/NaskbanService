@@ -367,7 +367,7 @@ namespace RMuseum.Services.Implementation
                         model.Language = tagValueCleaned;
                         tagName = "Language";
 
-                        if(bool.Parse(Configuration.GetSection("PDFImportService")["CheckLanguage"]))
+                        if(!finalizeDownload && bool.Parse(Configuration.GetSection("PDFImportService")["CheckLanguage"]))
                         {
                             if (!tagValueCleaned.Contains("فارسی"))
                             {
@@ -441,6 +441,30 @@ namespace RMuseum.Services.Implementation
 
                 bookTitle = bookTitle.ToPersianNumbers().ApplyCorrectYeKe().Trim();
                 model.Title = model.Title.ToPersianNumbers().ApplyCorrectYeKe().Trim();
+
+                if (!finalizeDownload && bookTitle.Contains(" ال"))
+                {
+                    int alIndex = bookTitle.IndexOf(" ال");
+                    if (bookTitle.IndexOf(" ال", alIndex + 1) != -1)
+                    {
+                        job.EndTime = DateTime.Now;
+                        job.Status = ImportJobStatus.Failed;
+                        job.Exception = "Multiple الs";
+                        context.Update(job);
+                        await context.SaveChangesAsync();
+                        return new RServiceResult<int>(0, job.Exception);
+                    }
+                }
+
+                if(!finalizeDownload && bookTitle.IndexOfAny(LanguageUtils.PersianAlphabet.ToCharArray()) == -1)
+                {
+                    job.EndTime = DateTime.Now;
+                    job.Status = ImportJobStatus.Failed;
+                    job.Exception = "Book title does not have Persian letters in it.";
+                    context.Update(job);
+                    await context.SaveChangesAsync();
+                    return new RServiceResult<int>(0, job.Exception);
+                }
 
                 var book = await context.Books.AsNoTracking().Where(b => b.Name == bookTitle).FirstOrDefaultAsync();
                 if (book != null)
