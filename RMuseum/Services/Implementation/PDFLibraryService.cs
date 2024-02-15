@@ -253,14 +253,50 @@ namespace RMuseum.Services.Implementation
                 _context.PDFBooks.AsNoTracking()
                 .Include(a => a.CoverImage)
                 .Where(a => statusArray.Contains(a.Status))
+                .Select(b => new PDFBook()
+                {
+                    Id = b.Id,
+                    BookId = b.BookId, 
+                    Status = b.Status,
+                    Title = b.Title,
+                    SubTitle = b.SubTitle,
+                    AuthorsLine = b.AuthorsLine,
+                    ISBN = b.ISBN,
+                    Description = b.Description,
+                    Language = b.Language,
+                    IsTranslation = b.IsTranslation,
+                    TranslatorsLine = b.TranslatorsLine,
+                    TitleInOriginalLanguage = b.TitleInOriginalLanguage,
+                    PublisherLine = b.PublisherLine,
+                    PublishingDate = b.PublishingDate,
+                    PublishingLocation = b.PublishingLocation,
+                    PublishingNumber = b.PublishingNumber,
+                    ClaimedPageCount = b.ClaimedPageCount,
+                    MultiVolumePDFCollectionId = b.MultiVolumePDFCollectionId,
+                    VolumeOrder = b.VolumeOrder,
+                    DateTime = b.DateTime,
+                    LastModified = b.LastModified,
+                    ExternalPDFFileUrl = b.ExternalPDFFileUrl,
+                    CoverImage = b.CoverImage,
+                    CoverImageId = b.CoverImageId,
+                    ExtenalCoverImageUrl = b.ExtenalCoverImageUrl,
+                    OriginalSourceName = b.OriginalSourceName,
+                    OriginalSourceUrl = b.OriginalSourceUrl,
+                    OriginalFileUrl = b.OriginalFileUrl,
+                    PageCount = b.PageCount,
+                    FileMD5CheckSum = b.FileMD5CheckSum,
+                    OriginalFileName = b.OriginalFileName,
+                    StorageFolderName = b.StorageFolderName,
+                    BookScriptType = b.BookScriptType,
+                    PDFSourceId = b.PDFSourceId,
+                    OCRed = b.OCRed,
+                    OCRTime = b.OCRTime,
+                    BookText = "",
+                })
                .OrderByDescending(t => t.DateTime)
                .AsQueryable();
                 (PaginationMetadata PagingMeta, PDFBook[] Books) paginatedResult =
                     await QueryablePaginator<PDFBook>.Paginate(source, paging);
-                foreach (var book in paginatedResult.Books)
-                {
-                    book.BookText = "";
-                }
                 return new RServiceResult<(PaginationMetadata PagingMeta, PDFBook[] Books)>(paginatedResult);
             }
             catch (Exception exp)
