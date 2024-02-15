@@ -466,6 +466,16 @@ namespace RMuseum.Services.Implementation
                     return new RServiceResult<int>(0, job.Exception);
                 }
 
+                if (!finalizeDownload && (bookTitle.Contains("موسوع") || bookTitle.Contains("مخطوطات")))
+                {
+                    job.EndTime = DateTime.Now;
+                    job.Status = ImportJobStatus.Failed;
+                    job.Exception = "موسوع or مخطوطات in book title.";
+                    context.Update(job);
+                    await context.SaveChangesAsync();
+                    return new RServiceResult<int>(0, job.Exception);
+                }
+
                 var book = await context.Books.AsNoTracking().Where(b => b.Name == bookTitle).FirstOrDefaultAsync();
                 if (book != null)
                 {
