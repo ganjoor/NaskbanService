@@ -18,7 +18,6 @@ using RMuseum.DbContext;
 using RMuseum.Models.Auth.Memory;
 using RMuseum.Services;
 using RMuseum.Services.Implementation;
-using RMuseum.Services.Implementationa;
 using RSecurityBackend.Authorization;
 using RSecurityBackend.DbContext;
 using RSecurityBackend.Models.Auth.Db;
@@ -261,47 +260,11 @@ namespace RMuseum
             //messaging service
             services.AddTransient<IRNotificationService, RNotificationService>();
 
-            //artifact service
-            services.AddTransient<IArtifactService, ArtifactService>();
-
-            //audio service
-            services.AddTransient<IRecitationService, RecitationService>();
-
-            //ganjoor service
-            services.AddTransient<IGanjoorService, GanjoorService>();
-
-            //music catalogue service
-            services.AddTransient<IMusicCatalogueService, MusicCatalogueService>();
-
             //long running job service
             services.AddTransient<ILongRunningJobProgressService, LongRunningJobProgressServiceEF>();
 
             //generic options service
             services.AddTransient<IRGenericOptionsService, RGenericOptionsServiceEF>();
-
-            //site banner service
-            services.AddTransient<ISiteBannersService, SiteBannersService>();
-
-            //donation service
-            services.AddTransient<IDonationService, DonationService>();
-
-            //translation service
-            services.AddTransient<IGanjoorTranslationService, GanjoorTranslationService>();
-
-            //numbering service
-            services.AddTransient<IGanjoorNumberingService, GanjoorNumberingService>();
-
-            //geo location service
-            services.AddTransient<IGeoLocationService, GeoLocationService>();
-
-            //tracking service
-            services.AddTransient<IUserVisitsTrackingService, UserVisitsTrackingService>();
-
-            //poet photo suggestion service
-            services.AddTransient<IPoetPhotoSuggestionService, PoetPhotoSuggestionService>();
-
-            //faq service
-            services.AddTransient<IFAQService, FAQService>();
 
             //PDF library service
             services.AddTransient<IPDFLibraryService, PDFLibraryService>();

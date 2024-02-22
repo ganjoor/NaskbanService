@@ -45,10 +45,6 @@ namespace RMuseum.Services.Implementation
         /// </summary>
         protected readonly IMemoryCache _memoryCache;
 
-        /// <summary>
-        /// Ganjoor Service
-        /// </summary>
-        protected IGanjoorService _ganjoorService { get; set; }
 
 
         /// <summary>

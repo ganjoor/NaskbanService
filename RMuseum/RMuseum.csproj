@@ -14,10 +14,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Services\Implementation\GanjoorService-Partials\GanjoorService-ModerateSectionCorrection.cs~RF19e20e05.TMP" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="DNTPersianUtils.Core" Version="5.8.1" />
     <PackageReference Include="FluentFTP" Version="48.0.3" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
