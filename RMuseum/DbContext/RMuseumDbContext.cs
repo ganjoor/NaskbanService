@@ -558,5 +558,10 @@ namespace RMuseum.DbContext
         /// </summary>
         public DbSet<QueuedPDFBook> QueuedPDFBooks { get; set; }
 
+        /// <summary>
+        /// User Bookmarks
+        /// </summary>
+        public DbSet<PDFUserBookmark> PDFUserBookmarks { get; set; }
+
     }
 }

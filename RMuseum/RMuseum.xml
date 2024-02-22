@@ -3792,6 +3792,11 @@
             PDF Download Queue
             </summary>
         </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.PDFUserBookmarks">
+            <summary>
+            User Bookmarks
+            </summary>
+        </member>
         <member name="T:RMuseum.Migrations.PictureFileExtUrl">
             <inheritdoc />
         </member>
