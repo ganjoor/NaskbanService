@@ -604,6 +604,23 @@
             <param name="count"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.SwitchBookmarkAsync(System.Int32,System.Nullable{System.Int32})">
+            <summary>
+            switch book mark
+            </summary>
+            <param name="pdfBookId"></param>
+            <param name="pageId">send 0 for the whole book</param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetBookmarksAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.Nullable{System.Int32},System.Nullable{System.Int32})">
+            <summary>
+            get user bookmarks
+            </summary>
+            <param name="paging"></param>
+            <param name="pdfBookId"></param>
+            <param name="pageId"></param>
+            <returns></returns>
+        </member>
         <member name="F:RMuseum.Controllers.PDFLibraryController._pdfService">
             <summary>
             PDF Service
@@ -614,12 +631,18 @@
             IUserPermissionChecker instance
             </summary>
         </member>
-        <member name="M:RMuseum.Controllers.PDFLibraryController.#ctor(RMuseum.Services.IPDFLibraryService,RSecurityBackend.Services.IUserPermissionChecker)">
+        <member name="F:RMuseum.Controllers.PDFLibraryController._bookmarkingService">
+            <summary>
+            bookmarking service
+            </summary>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.#ctor(RMuseum.Services.IPDFLibraryService,RSecurityBackend.Services.IUserPermissionChecker,RMuseum.Services.IPDFBookmarkService)">
             <summary>
             constructor
             </summary>
             <param name="pdfService"></param>
             <param name="userPermissionChecker"></param>
+            <param name="bookmarkingService"></param>
         </member>
         <member name="T:RMuseum.Controllers.RGenericOptionsController">
             <summary>

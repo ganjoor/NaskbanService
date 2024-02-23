@@ -1552,7 +1552,6 @@ namespace RMuseum.Controllers
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         public async Task<IActionResult> MixQueuedPDFBooksAsync(int step = 10)
         {
-
             var res = await _pdfService.MixQueuedPDFBooksAsync(step);
             if (!string.IsNullOrEmpty(res.ExceptionString))
             {
@@ -1579,6 +1578,57 @@ namespace RMuseum.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// switch book mark
+        /// </summary>
+        /// <param name="pdfBookId"></param>
+        /// <param name="pageId">send 0 for the whole book</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("bookmark/{pdfBookId}/{pageId}")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(PDFUserBookmark))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        public async Task<IActionResult> SwitchBookmarkAsync(int pdfBookId, int? pageId)
+        {
+            Guid loggedOnUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _bookmarkingService.SwitchBookmarkAsync(pdfBookId, loggedOnUserId, pageId);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+            {
+                return BadRequest(res.ExceptionString);
+            }
+            return Ok(res);
+        }
+
+        /// <summary>
+        /// get user bookmarks
+        /// </summary>
+        /// <param name="paging"></param>
+        /// <param name="pdfBookId"></param>
+        /// <param name="pageId"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("bookmark/{pdfBookId}/{pageId}")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFUserBookmarkViewModel>))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+
+        public async Task<IActionResult> GetBookmarksAsync([FromQuery] PagingParameterModel paging, int? pdfBookId, int? pageId)
+        {
+            Guid loggedOnUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _bookmarkingService.GetBookmarksAsync(paging, loggedOnUserId, pdfBookId, pageId);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+            {
+                return BadRequest(res.ExceptionString);
+            }
+
+            // Paging Header
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
+
+            return Ok(res.Result.Bookmarks);
+        }
+
 
         /// <summary>
         /// PDF Service
@@ -1591,14 +1641,21 @@ namespace RMuseum.Controllers
         protected IUserPermissionChecker _userPermissionChecker;
 
         /// <summary>
+        /// bookmarking service
+        /// </summary>
+        protected readonly IPDFBookmarkService _bookmarkingService;
+
+        /// <summary>
         /// constructor
         /// </summary>
         /// <param name="pdfService"></param>
         /// <param name="userPermissionChecker"></param>
-        public PDFLibraryController(IPDFLibraryService pdfService, IUserPermissionChecker userPermissionChecker)
+        /// <param name="bookmarkingService"></param>
+        public PDFLibraryController(IPDFLibraryService pdfService, IUserPermissionChecker userPermissionChecker, IPDFBookmarkService bookmarkingService)
         {
             _pdfService = pdfService;
             _userPermissionChecker = userPermissionChecker;
+            _bookmarkingService = bookmarkingService;
         }
     }
 }
