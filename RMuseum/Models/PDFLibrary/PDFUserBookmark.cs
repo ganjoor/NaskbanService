@@ -1,6 +1,4 @@
-﻿using RMuseum.Models.Artifact;
-using RMuseum.Models.Bookmark;
-using RSecurityBackend.Models.Auth.Db;
+﻿using RSecurityBackend.Models.Auth.Db;
 using System;
 
 namespace RMuseum.Models.PDFLibrary
@@ -26,16 +24,6 @@ namespace RMuseum.Models.PDFLibrary
         public RAppUser RAppUser { get; set; }
 
         /// <summary>
-        /// private
-        /// </summary>
-        public bool IsPrivate { get; set; }
-
-        /// <summary>
-        /// Type
-        /// </summary>
-        public RBookmarkType RBookmarkType { get; set; }
-
-        /// <summary>
         /// PDF Book Id
         /// </summary>
         public int? PDFBookId { get; set; }
@@ -46,48 +34,23 @@ namespace RMuseum.Models.PDFLibrary
         public virtual PDFBook PDFBook { get; set; }
 
         /// <summary>
-        /// PDF Page Id
+        /// page id
         /// </summary>
-        public int? PDFPageId { get; set; }
+        public int? PageId { get; set; }
 
         /// <summary>
-        /// pdf page
+        /// page
         /// </summary>
-        public virtual PDFPage PDFPage { get; set; }
+        public virtual PDFPage  Page { get; set; }
 
         /// <summary>
         /// note
         /// </summary>
-        public string HtmlContent { get; set; }
+        public string Note { get; set; }
 
         /// <summary>
         /// DateTime
         /// </summary>
         public DateTime DateTime { get; set; }
-
-        /// <summary>
-        /// Is Updated by User
-        /// </summary>
-        public bool Modified { get; set; }
-
-        /// <summary>
-        /// Last Modified
-        /// </summary>
-        public DateTime LastModified { get; set; }
-
-        /// <summary>
-        /// Reference Note Id
-        /// </summary>
-        public Guid? ReferenceNoteId { get; set; }
-
-        /// <summary>
-        /// In Reply to Other Note
-        /// </summary>
-        public virtual PDFUserBookmark ReferenceNote { get; set; }
-
-        /// <summary>
-        /// Status
-        /// </summary>
-        public PublishStatus Status { get; set; }
     }
 }
