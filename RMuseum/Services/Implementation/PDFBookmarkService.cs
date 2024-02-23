@@ -20,7 +20,7 @@ namespace RMuseum.Services.Implementation
         /// <returns></returns>
         public async Task<RServiceResult<PDFUserBookmark>> SwitchBookmarkAsync(int pdfBookId, Guid userId, int? pageId)
         {
-            var alreadyBookmarked = await _context.PDFUserBookmarks.Where(b => b.RAppUserId == userId && b.PDFBookId == pdfBookId && b.PageId == pageId).SingleOrDefaultAsync();
+            var alreadyBookmarked = await _context.PDFUserBookmarks.Where(b => b.RAppUserId == userId && b.PDFBookId == pdfBookId && b.PageId == pageId).FirstOrDefaultAsync();
             if (alreadyBookmarked != null)
             {
                 _context.Remove(alreadyBookmarked);
@@ -54,7 +54,7 @@ namespace RMuseum.Services.Implementation
                  _context.PDFUserBookmarks
                  .Include(b => b.PDFBook)
                  .Include(b => b.Page)
-                 .Where(b => b.RAppUserId == userId && (pdfBookId == null || (b.PDFBookId == pdfBookId && (pageId == null || b.PageId == pageId))))
+                 .Where(b => b.RAppUserId == userId && (pdfBookId == null || (b.PDFBookId == pdfBookId)) && (pageId == null || b.PageId == pageId))
                 .OrderByDescending(b => b.DateTime)
                 .Select(b => new PDFUserBookmarkViewModel()
                 {

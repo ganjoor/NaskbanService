@@ -10296,16 +10296,6 @@
             User
             </summary>
         </member>
-        <member name="P:RMuseum.Models.PDFLibrary.PDFUserBookmark.IsPrivate">
-            <summary>
-            private
-            </summary>
-        </member>
-        <member name="P:RMuseum.Models.PDFLibrary.PDFUserBookmark.RBookmarkType">
-            <summary>
-            Type
-            </summary>
-        </member>
         <member name="P:RMuseum.Models.PDFLibrary.PDFUserBookmark.PDFBookId">
             <summary>
             PDF Book Id
@@ -10316,17 +10306,17 @@
             PDF Book
             </summary>
         </member>
-        <member name="P:RMuseum.Models.PDFLibrary.PDFUserBookmark.PDFPageId">
+        <member name="P:RMuseum.Models.PDFLibrary.PDFUserBookmark.PageId">
             <summary>
-            PDF Page Id
+            page id
             </summary>
         </member>
-        <member name="P:RMuseum.Models.PDFLibrary.PDFUserBookmark.PDFPage">
+        <member name="P:RMuseum.Models.PDFLibrary.PDFUserBookmark.Page">
             <summary>
-            pdf page
+            page
             </summary>
         </member>
-        <member name="P:RMuseum.Models.PDFLibrary.PDFUserBookmark.HtmlContent">
+        <member name="P:RMuseum.Models.PDFLibrary.PDFUserBookmark.Note">
             <summary>
             note
             </summary>
@@ -10334,31 +10324,6 @@
         <member name="P:RMuseum.Models.PDFLibrary.PDFUserBookmark.DateTime">
             <summary>
             DateTime
-            </summary>
-        </member>
-        <member name="P:RMuseum.Models.PDFLibrary.PDFUserBookmark.Modified">
-            <summary>
-            Is Updated by User
-            </summary>
-        </member>
-        <member name="P:RMuseum.Models.PDFLibrary.PDFUserBookmark.LastModified">
-            <summary>
-            Last Modified
-            </summary>
-        </member>
-        <member name="P:RMuseum.Models.PDFLibrary.PDFUserBookmark.ReferenceNoteId">
-            <summary>
-            Reference Note Id
-            </summary>
-        </member>
-        <member name="P:RMuseum.Models.PDFLibrary.PDFUserBookmark.ReferenceNote">
-            <summary>
-            In Reply to Other Note
-            </summary>
-        </member>
-        <member name="P:RMuseum.Models.PDFLibrary.PDFUserBookmark.Status">
-            <summary>
-            Status
             </summary>
         </member>
         <member name="T:RMuseum.Models.PDFLibrary.QueuedPDFBook">
@@ -10711,6 +10676,36 @@
             page text
             </summary>
         </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFUserBookmarkViewModel.Id">
+            <summary>
+            Id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFUserBookmarkViewModel.BookTitle">
+            <summary>
+            book title
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFUserBookmarkViewModel.PageNumber">
+            <summary>
+            PDF Page Id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFUserBookmarkViewModel.Note">
+            <summary>
+            note
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFUserBookmarkViewModel.ExtenalImageUrl">
+            <summary>
+            external image url
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFUserBookmarkViewModel.DateTime">
+            <summary>
+            DateTime
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.UploadSession.UploadSession">
             <summary>
             Upload Session
@@ -11052,6 +11047,36 @@
             </summary>
             <param name="dateTime"></param>
             <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFBookmarkService.SwitchBookmarkAsync(System.Int32,System.Guid,System.Nullable{System.Int32})">
+            <summary>
+            Bookmark PDF Book (or one of its pages)
+            </summary>
+            <param name="pdfBookId"></param>
+            <param name="userId"></param>
+            <param name="pageId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFBookmarkService.GetBookmarksAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.Guid,System.Nullable{System.Int32},System.Nullable{System.Int32})">
+            <summary>
+            get user bookmarks
+            </summary>
+            <param name="paging"></param>
+            <param name="userId"></param>
+            <param name="pageId"></param>
+            <param name="pdfBookId"></param>
+            <returns></returns>
+        </member>
+        <member name="F:RMuseum.Services.Implementation.PDFBookmarkService._context">
+            <summary>
+            Database Contetxt
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFBookmarkService.#ctor(RMuseum.DbContext.RMuseumDbContext)">
+            <summary>
+            constructor
+            </summary>
+            <param name="context"></param>
         </member>
         <member name="T:RMuseum.Services.Implementation.PDFLibraryService">
             <summary>
