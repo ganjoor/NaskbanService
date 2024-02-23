@@ -112,7 +112,7 @@ namespace RMuseum.Services.Implementation
                         {
                             job.EndTime = DateTime.Now;
                             job.Status = ImportJobStatus.Failed;
-                            job.Exception = $"Http result is not ok ({result.StatusCode}) for {srcUrl}";
+                            job.Exception = $"Http result is not ok ({result.StatusCode})";
                             context.Update(job);
                             await context.SaveChangesAsync();
                             return new RServiceResult<int>(0, job.Exception);
@@ -367,7 +367,7 @@ namespace RMuseum.Services.Implementation
                         model.Language = tagValueCleaned;
                         tagName = "Language";
 
-                        if(!finalizeDownload && bool.Parse(Configuration.GetSection("PDFImportService")["CheckLanguage"]))
+                        if(bool.Parse(Configuration.GetSection("PDFImportService")["CheckLanguage"]))
                         {
                             if (!tagValueCleaned.Contains("فارسی"))
                             {
