@@ -9,7 +9,7 @@ using RMuseum.Models.PDFLibrary;
 using RMuseum.Models.PDFLibrary.ViewModels;
 namespace RMuseum.Services.Implementation
 {
-    public class PDFBookmarkService
+    public class PDFBookmarkService : IPDFBookmarkService
     {
         /// <summary>
         /// Bookmark PDF Book (or one of its pages)

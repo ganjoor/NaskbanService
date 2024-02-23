@@ -11807,6 +11807,25 @@
             </summary>
             <param name="roleManager"></param>       
         </member>
+        <member name="M:RMuseum.Services.IPDFBookmarkService.SwitchBookmarkAsync(System.Int32,System.Guid,System.Nullable{System.Int32})">
+            <summary>
+            Bookmark PDF Book (or one of its pages)
+            </summary>
+            <param name="pdfBookId"></param>
+            <param name="userId"></param>
+            <param name="pageId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFBookmarkService.GetBookmarksAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.Guid,System.Nullable{System.Int32},System.Nullable{System.Int32})">
+            <summary>
+            get user bookmarks
+            </summary>
+            <param name="paging"></param>
+            <param name="userId"></param>
+            <param name="pageId"></param>
+            <param name="pdfBookId"></param>
+            <returns></returns>
+        </member>
         <member name="T:RMuseum.Services.IPDFLibraryService">
             <summary>
             PDF Library Services

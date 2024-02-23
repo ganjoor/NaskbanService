@@ -266,9 +266,6 @@ namespace RMuseum
             //generic options service
             services.AddTransient<IRGenericOptionsService, RGenericOptionsServiceEF>();
 
-            //PDF library service
-            services.AddTransient<IPDFLibraryService, PDFLibraryService>();
-
             //Queued FTP Upload Service
             services.AddTransient<IQueuedFTPUploadService, QueuedFTPUploadService>();
 
@@ -277,6 +274,12 @@ namespace RMuseum
 
             //workspace role service
             services.AddTransient<IWorkspaceRolesService, WorkspaceRolesServiceBase>();
+
+            //PDF library service
+            services.AddTransient<IPDFLibraryService, PDFLibraryService>();
+
+            //PDF bookmarking service
+            services.AddTransient<IPDFBookmarkService, PDFBookmarkService>();
 
             //upload limit for IIS
             services.Configure<IISServerOptions>(options =>
