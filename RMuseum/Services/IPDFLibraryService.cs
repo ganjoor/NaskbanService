@@ -1,6 +1,7 @@
 ﻿using RMuseum.Models.Artifact;
 using RMuseum.Models.GanjoorIntegration;
 using RMuseum.Models.GanjoorIntegration.ViewModels;
+using RMuseum.Models.ImportJob;
 using RMuseum.Models.PDFLibrary;
 using RMuseum.Models.PDFLibrary.ViewModels;
 using RSecurityBackend.Models.Generic;
@@ -344,6 +345,13 @@ namespace RMuseum.Services
         /// <param name="ajaxPageIndexEnd"></param>
         /// <param name="finalizeDownload"></param>
         void BatchImportELiteratureBookLibraryAsync(int ajaxPageIndexStart, int ajaxPageIndexEnd, bool finalizeDownload);
+
+        /// <summary>
+        /// import jobs
+        /// </summary>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        Task<RServiceResult<(PaginationMetadata PagingMeta, ImportJob[] Jobs)>> GetImportJobs(PagingParameterModel paging);
 
         /// <summary>
         /// search pdf books

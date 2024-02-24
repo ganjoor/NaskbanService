@@ -208,6 +208,13 @@
             <param name="finalizeDownload"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetImportJobs(RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            view import jobs status
+            </summary>
+            <param name="paging"></param>
+            <returns></returns>
+        </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.PutPDFBookAsync(RMuseum.Models.PDFLibrary.PDFBook)">
             <summary>
             edit pdf book master record (user should have additional permissions pdf:awaiting and pdf:publish to change status of pdf book)
@@ -11170,6 +11177,13 @@
             </summary>
             <param name="count"></param>
         </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetImportJobs(RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+             import jobs
+            </summary>
+            <param name="paging"></param>
+            <returns></returns>
+        </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.BatchImportSohaLibraryAsync(System.Int32,System.Int32,System.Boolean)">
             <summary>
             batch import soha library
@@ -12194,6 +12208,13 @@
             <param name="ajaxPageIndexStart">from 0</param>
             <param name="ajaxPageIndexEnd"></param>
             <param name="finalizeDownload"></param>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetImportJobs(RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            import jobs
+            </summary>
+            <param name="paging"></param>
+            <returns></returns>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.SearchPDFBooksAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.String)">
             <summary>

@@ -17,6 +17,7 @@ using Newtonsoft.Json;
 using RMuseum.Models.Artifact;
 using RMuseum.Models.GanjoorIntegration.ViewModels;
 using RMuseum.Models.GanjoorIntegration;
+using RMuseum.Models.ImportJob;
 
 namespace RMuseum.Controllers
 {
@@ -309,6 +310,29 @@ namespace RMuseum.Controllers
         {
             _pdfService.BatchImportELiteratureBookLibraryAsync(ajaxPageIndexStart, ajaxPageIndexEnd, finalizeDownload);
             return Ok();
+        }
+
+        /// <summary>
+        /// view import jobs status
+        /// </summary>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("jobs")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.AddOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<ImportJob>))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetImportJobs([FromQuery] PagingParameterModel paging)
+        {
+            RServiceResult<(PaginationMetadata PagingMeta, ImportJob[] Items)> itemsInfo = await _pdfService.GetImportJobs(paging);
+            if (!string.IsNullOrEmpty(itemsInfo.ExceptionString))
+            {
+                return BadRequest(itemsInfo.ExceptionString);
+            }
+            // Paging Header
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(itemsInfo.Result.PagingMeta));
+
+            return Ok(itemsInfo.Result.Items);
         }
 
 

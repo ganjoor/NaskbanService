@@ -7,6 +7,7 @@ using RMuseum.Models.ImportJob;
 using RMuseum.Models.PDFLibrary;
 using RMuseum.Models.PDFLibrary.ViewModels;
 using RSecurityBackend.Models.Generic;
+using RSecurityBackend.Services.Implementation;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -49,6 +50,24 @@ namespace RMuseum.Services.Implementation
             {
                 return new RServiceResult<int>(0, exp.ToString());
             }
+        }
+
+        /// <summary>
+        ///  import jobs
+        /// </summary>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        public async Task<RServiceResult<(PaginationMetadata PagingMeta, ImportJob[] Jobs)>> GetImportJobs(PagingParameterModel paging)
+        {
+            var source =
+                 _context.ImportJobs
+                 .Select(j => new ImportJob() { Id = j.Id, Artifact = j.Artifact, ArtifactId = j.ArtifactId, EndTime = j.EndTime, Exception = j.Exception, ProgressPercent = j.ProgressPercent, QueueTime = j.QueueTime, FriendlyUrl = j.FriendlyUrl, JobType = j.JobType, ResourceNumber = j.ResourceNumber, SrcContent = "--omitted--", SrcUrl = j.SrcUrl, StartTime = j.StartTime, Status = j.Status })
+                .OrderByDescending(t => t.QueueTime)
+                .AsQueryable();
+            (PaginationMetadata PagingMeta, ImportJob[] Items) paginatedResult =
+                await QueryablePaginator<ImportJob>.Paginate(source, paging);
+
+            return new RServiceResult<(PaginationMetadata PagingMeta, ImportJob[] Items)>(paginatedResult);
         }
 
         private async Task<RServiceResult<int>> ImportSohaLibraryUrlAsync(string srcUrl, RMuseumDbContext context, bool finalizeDownload)
