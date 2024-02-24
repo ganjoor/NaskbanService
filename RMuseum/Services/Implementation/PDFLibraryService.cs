@@ -2095,9 +2095,17 @@ namespace RMuseum.Services.Implementation
         protected readonly IQueuedFTPUploadService _ftpService;
 
         /// <summary>
+        /// options service
+        /// </summary>
+
+        protected readonly IRGenericOptionsService _optionsService;
+
+        /// <summary>
         /// Configuration
         /// </summary>
         protected IConfiguration Configuration { get; }
+
+
         /// <summary>
         /// constructor
         /// </summary>
@@ -2106,13 +2114,15 @@ namespace RMuseum.Services.Implementation
         /// <param name="imageFileService"></param>
         /// <param name="configuration"></param>
         /// <param name="ftpService"></param>
-        public PDFLibraryService(RMuseumDbContext context, IBackgroundTaskQueue backgroundTaskQueue, IImageFileService imageFileService, IConfiguration configuration, IQueuedFTPUploadService ftpService)
+        /// <param name="optionsService"></param>
+        public PDFLibraryService(RMuseumDbContext context, IBackgroundTaskQueue backgroundTaskQueue, IImageFileService imageFileService, IConfiguration configuration, IQueuedFTPUploadService ftpService, IRGenericOptionsService optionsService)
         {
             _context = context;
             _backgroundTaskQueue = backgroundTaskQueue;
             _imageFileService = imageFileService;
             Configuration = configuration;
             _ftpService = ftpService;
+            _optionsService = optionsService;
         }
     }
 }

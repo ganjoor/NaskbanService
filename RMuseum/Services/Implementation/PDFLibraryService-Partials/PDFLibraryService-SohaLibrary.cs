@@ -1,12 +1,14 @@
 ﻿using DNTPersianUtils.Core;
 using ganjoor;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.VisualBasic.ApplicationServices;
 using RMuseum.DbContext;
 using RMuseum.Models.Artifact;
 using RMuseum.Models.ImportJob;
 using RMuseum.Models.PDFLibrary;
 using RMuseum.Models.PDFLibrary.ViewModels;
 using RSecurityBackend.Models.Generic;
+using RSecurityBackend.Models.Generic.Db;
 using RSecurityBackend.Services.Implementation;
 using System;
 using System.Collections.Generic;
@@ -77,6 +79,29 @@ namespace RMuseum.Services.Implementation
             context.RemoveRange(oldJobs);
             await context.SaveChangesAsync();
             */
+
+            if(!finalizeDownload)
+            {
+                RGenericOption existing = await context.Options.Where((RGenericOption o) => o.Name == "LastExaminedSohaUrl" && o.RAppUserId == null).SingleOrDefaultAsync();
+                if (existing != null)
+                {
+                    existing.Value = srcUrl;
+                    context.Options.Update(existing);
+                    await context.SaveChangesAsync();
+                }
+                else
+                {
+                    RGenericOption option = new RGenericOption
+                    {
+                        Name = "LastExaminedSohaUrl",
+                        Value = srcUrl,
+                        RAppUserId = null
+                    };
+                    context.Options.Add(option);
+                    await context.SaveChangesAsync();
+                }
+
+            }
 
             ImportJob job = new ImportJob()
             {
