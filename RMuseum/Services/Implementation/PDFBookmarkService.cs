@@ -64,6 +64,7 @@ namespace RMuseum.Services.Implementation
                 {
                     Id = b.Id,
                     BookTitle = b.PDFBook.Title,
+                    BookId = b.PDFBook.Id,
                     PageNumber = b.Page == null ? 0 : b.Page.PageNumber,
                     Note = b.Note,
                     DateTime = b.DateTime,

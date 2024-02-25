@@ -15,6 +15,11 @@ namespace RMuseum.Models.PDFLibrary.ViewModels
         public  string BookTitle { get; set; }
 
         /// <summary>
+        /// book id
+        /// </summary>
+        public int BookId { get; set; }
+
+        /// <summary>
         /// PDF Page Id
         /// </summary>
         public int PageNumber { get; set; }

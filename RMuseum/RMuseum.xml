@@ -10728,6 +10728,11 @@
             book title
             </summary>
         </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFUserBookmarkViewModel.BookId">
+            <summary>
+            book id
+            </summary>
+        </member>
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFUserBookmarkViewModel.PageNumber">
             <summary>
             PDF Page Id
