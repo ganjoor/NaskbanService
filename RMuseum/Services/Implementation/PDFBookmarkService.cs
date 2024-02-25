@@ -7,6 +7,7 @@ using RMuseum.DbContext;
 using Microsoft.EntityFrameworkCore;
 using RMuseum.Models.PDFLibrary;
 using RMuseum.Models.PDFLibrary.ViewModels;
+using Microsoft.Extensions.Configuration;
 namespace RMuseum.Services.Implementation
 {
     public class PDFBookmarkService : IPDFBookmarkService
@@ -20,6 +21,9 @@ namespace RMuseum.Services.Implementation
         /// <returns></returns>
         public async Task<RServiceResult<PDFUserBookmark>> SwitchBookmarkAsync(int pdfBookId, Guid userId, int? pageId)
         {
+            if (ReadOnlyMode)
+                return new RServiceResult<PDFUserBookmark>(null, "سایت به دلایل فنی مثل انتقال سرور موقتاً در حالت فقط خواندنی قرار دارد. لطفاً ساعاتی دیگر مجدداً تلاش کنید.");
+
             var alreadyBookmarked = await _context.PDFUserBookmarks.Where(b => b.RAppUserId == userId && b.PDFBookId == pdfBookId && b.PageId == pageId).FirstOrDefaultAsync();
             if (alreadyBookmarked != null)
             {
@@ -69,16 +73,40 @@ namespace RMuseum.Services.Implementation
             return new RServiceResult<(PaginationMetadata PagingMeta, PDFUserBookmarkViewModel[] Bookmarks)>(await QueryablePaginator<PDFUserBookmarkViewModel>.Paginate(source, paging));
         }
         /// <summary>
+        /// readonly mode
+        /// </summary>
+        public bool ReadOnlyMode
+        {
+            get
+            {
+                try
+                {
+                    return bool.Parse(Configuration["ReadOnlyMode"]);
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
+        /// <summary>
         /// Database Contetxt
         /// </summary>
         protected readonly RMuseumDbContext _context;
+        
+        /// <summary>
+        /// Configuration
+        /// </summary>
+        protected IConfiguration Configuration { get; }
         /// <summary>
         /// constructor
         /// </summary>
         /// <param name="context"></param>
-        public PDFBookmarkService(RMuseumDbContext context)
+        /// <param name="configuration"></param>
+        public PDFBookmarkService(RMuseumDbContext context, IConfiguration configuration)
         {
             _context = context;
+            Configuration = configuration;
         }
     }
 }

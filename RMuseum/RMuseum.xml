@@ -11109,16 +11109,27 @@
             <param name="pdfBookId"></param>
             <returns></returns>
         </member>
+        <member name="P:RMuseum.Services.Implementation.PDFBookmarkService.ReadOnlyMode">
+            <summary>
+            readonly mode
+            </summary>
+        </member>
         <member name="F:RMuseum.Services.Implementation.PDFBookmarkService._context">
             <summary>
             Database Contetxt
             </summary>
         </member>
-        <member name="M:RMuseum.Services.Implementation.PDFBookmarkService.#ctor(RMuseum.DbContext.RMuseumDbContext)">
+        <member name="P:RMuseum.Services.Implementation.PDFBookmarkService.Configuration">
+            <summary>
+            Configuration
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFBookmarkService.#ctor(RMuseum.DbContext.RMuseumDbContext,Microsoft.Extensions.Configuration.IConfiguration)">
             <summary>
             constructor
             </summary>
             <param name="context"></param>
+            <param name="configuration"></param>
         </member>
         <member name="T:RMuseum.Services.Implementation.PDFLibraryService">
             <summary>
