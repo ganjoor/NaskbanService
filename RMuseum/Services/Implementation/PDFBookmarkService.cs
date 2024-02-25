@@ -54,7 +54,7 @@ namespace RMuseum.Services.Implementation
                  _context.PDFUserBookmarks
                  .Include(b => b.PDFBook)
                  .Include(b => b.Page)
-                 .Where(b => b.RAppUserId == userId && (pdfBookId == null || (b.PDFBookId == pdfBookId)) && (pageId == null || b.PageId == pageId))
+                 .Where(b => b.RAppUserId == userId && (pdfBookId == null || (b.PDFBookId == pdfBookId)) && ((pageId == 0 && b.PageId == null) || pageId == null || b.PageId == pageId))
                 .OrderByDescending(b => b.DateTime)
                 .Select(b => new PDFUserBookmarkViewModel()
                 {
