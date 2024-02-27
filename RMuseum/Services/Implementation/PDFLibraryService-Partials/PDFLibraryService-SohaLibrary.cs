@@ -486,7 +486,7 @@ namespace RMuseum.Services.Implementation
                 bookTitle = bookTitle.ToPersianNumbers().ApplyCorrectYeKe().Trim();
                 model.Title = model.Title.ToPersianNumbers().ApplyCorrectYeKe().Trim();
 
-                if (!finalizeDownload && bookTitle.Contains(" ال"))
+                if (bool.Parse(Configuration.GetSection("PDFImportService")["SkipMultipleAlInTitle"]) && !finalizeDownload && bookTitle.Contains(" ال"))
                 {
                     int alIndex = bookTitle.IndexOf(" ال");
                     if (bookTitle.IndexOf(" ال", alIndex + 1) != -1)
@@ -500,7 +500,7 @@ namespace RMuseum.Services.Implementation
                     }
                 }
 
-                if(!finalizeDownload && bookTitle.IndexOfAny(LanguageUtils.PersianAlphabet.ToCharArray()) == -1)
+                if(bool.Parse(Configuration.GetSection("PDFImportService")["SkipLatinTitle"]) && !finalizeDownload && bookTitle.IndexOfAny(LanguageUtils.PersianAlphabet.ToCharArray()) == -1)
                 {
                     job.EndTime = DateTime.Now;
                     job.Status = ImportJobStatus.Failed;
