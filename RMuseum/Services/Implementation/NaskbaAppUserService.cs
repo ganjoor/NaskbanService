@@ -3,17 +3,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using RMuseum.DbContext;
-using RMuseum.Models.Ganjoor;
 using RMuseum.Models.Ganjoor.ViewModels;
-using RMuseum.Models.GanjoorAudio;
-using RMuseum.Models.GanjoorAudio.ViewModels;
 using RSecurityBackend.Models.Auth.Db;
 using RSecurityBackend.Models.Auth.ViewModels;
 using RSecurityBackend.Models.Generic;
 using RSecurityBackend.Services;
 using RSecurityBackend.Services.Implementation;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -290,6 +286,7 @@ namespace RMuseum.Services.Implementation
         {
             RMuseumDbContext context = _context as RMuseumDbContext;
 
+            
             string systemEmail = $"{Configuration.GetSection("Ganjoor")["SystemEmail"]}";
             var systemUserId = (Guid)(await FindUserByEmail(systemEmail)).Result.Id;
 
@@ -297,7 +294,7 @@ namespace RMuseum.Services.Implementation
             {
                 return new RServiceResult<bool>(false, "تلاش برای حذف کاربر سیستمی");
             }
-
+            
             string deletedUserEmail = $"{Configuration.GetSection("Ganjoor")["DeleteUserEmail"]}";
             var deletedUserId = (Guid)(await FindUserByEmail(deletedUserEmail)).Result.Id;
 
@@ -305,220 +302,23 @@ namespace RMuseum.Services.Implementation
             {
                 return new RServiceResult<bool>(false, "تلاش برای حذف کاربر سیستمی کاربر حذف شده");
             }
+            
 
-            var reviewedRecitations = await context.Recitations.Where(r => r.ReviewerId == userId).ToListAsync();
-            foreach(var reviewedRecitation in reviewedRecitations)
-                reviewedRecitation.ReviewerId = deletedUserId;
-            context.UpdateRange(reviewedRecitations);
-            await context.SaveChangesAsync(); //some tracking data related bugs makes it necessary to call this especially for same table data processing
-
-            var suggestedCorrections = await context.GanjoorPoemCorrections.Where(c => c.UserId == userId).ToListAsync();
-            foreach (var suggestedCorrection in suggestedCorrections)
-                suggestedCorrection.UserId = deletedUserId;
-            context.UpdateRange(suggestedCorrections);
-            await context.SaveChangesAsync();
-
-            var reviewedCorrections = await context.GanjoorPoemCorrections.Where(c => c.ReviewerUserId == userId).ToListAsync();
-            foreach (var reviewedCorrection in reviewedCorrections)
-                reviewedCorrection.ReviewerUserId = deletedUserId;
-            context.UpdateRange(reviewedCorrections);
-            await context.SaveChangesAsync();
-
-            var suggestedSectionCorrections = await context.GanjoorPoemSectionCorrections.Where(c => c.UserId == userId).ToListAsync();
-            foreach (var suggestedCorrection in suggestedSectionCorrections)
-                suggestedCorrection.UserId = deletedUserId;
-            context.UpdateRange(suggestedSectionCorrections);
-            await context.SaveChangesAsync();
-
-            var reviewedSectionCorrections = await context.GanjoorPoemSectionCorrections.Where(c => c.ReviewerUserId == userId).ToListAsync();
-            foreach (var reviewedCorrection in reviewedSectionCorrections)
-                reviewedCorrection.ReviewerUserId = deletedUserId;
-            context.UpdateRange(reviewedSectionCorrections);
-            await context.SaveChangesAsync();
-
-            var reportedComments = await context.GanjoorReportedComments.Where(r => r.ReportedById == userId).ToListAsync();
-            foreach (var reportedComment in reportedComments)
-                reportedComment.ReportedById = deletedUserId;
-            context.UpdateRange(reportedComments);
-            await context.SaveChangesAsync();
-
-            var ganjoorLinks = await context.GanjoorLinks.Where(l => l.SuggestedById == userId).ToListAsync();
+            var ganjoorLinks = await context.PDFGanjoorLinks.Where(l => l.SuggestedById == userId).ToListAsync();
             foreach (var ganjoorLink in ganjoorLinks)
                 ganjoorLink.SuggestedById = deletedUserId;
             context.UpdateRange(ganjoorLinks);
             await context.SaveChangesAsync();
 
-            var reviewedGanjoorLinks = await context.GanjoorLinks.Where(l => l.ReviewerId == userId).ToListAsync();
+            var reviewedGanjoorLinks = await context.PDFGanjoorLinks.Where(l => l.ReviewerId == userId).ToListAsync();
             foreach (var reviewedGanjoorLink in reviewedGanjoorLinks)
                 reviewedGanjoorLink.ReviewerId = deletedUserId;
             context.UpdateRange(reviewedGanjoorLinks);
             await context.SaveChangesAsync();
 
-            var pinLinks = await context.PinterestLinks.Where(l => l.SuggestedById == userId).ToListAsync();
-            foreach (var pinLink in pinLinks)
-                pinLink.SuggestedById = deletedUserId;
-            context.UpdateRange(pinLinks);
-            await context.SaveChangesAsync();
-
-            var reviewedPinLinks = await context.PinterestLinks.Where(l => l.ReviewerId == userId).ToListAsync();
-            foreach (var reviewedPinLink in reviewedPinLinks)
-                reviewedPinLink.ReviewerId = deletedUserId;
-            context.UpdateRange(reviewedPinLinks);
-            await context.SaveChangesAsync();
-
-            var poemMusicTracks = await context.GanjoorPoemMusicTracks.Where(m => m.SuggestedById == userId).ToListAsync();
-            foreach (var poemMusicTrack in poemMusicTracks)
-                poemMusicTrack.SuggestedById = deletedUserId;
-            context.UpdateRange(poemMusicTracks);
-            await context.SaveChangesAsync();
-
-            var snapshots = await context.GanjoorPageSnapshots.Where(s => s.MadeObsoleteByUserId == userId).ToListAsync();
-            foreach (var snapshot in snapshots)
-                snapshot.MadeObsoleteByUserId = deletedUserId;
-            context.UpdateRange(snapshots);
-            await context.SaveChangesAsync();
-
-            var translations = await context.GanjoorPoemTranslations.Where(t => t.UserId == userId).ToListAsync();
-            foreach (var translation in translations)
-                translation.UserId = deletedUserId;
-            context.UpdateRange(translations);
-            await context.SaveChangesAsync();
-
-            var suggestedPoetNotes = await context.GanjoorPoetSuggestedSpecLines.Where(s => s.SuggestedById == userId).ToListAsync();
-            foreach (var suggestedPoetNote in suggestedPoetNotes)
-                suggestedPoetNote.SuggestedById = deletedUserId;
-            context.UpdateRange(suggestedPoetNotes);
-            await context.SaveChangesAsync();
-
-            var suggestedPoetPhotos = await context.GanjoorPoetSuggestedPictures.Where(s => s.SuggestedById == userId).ToListAsync();
-            foreach (var suggestedPoetPhoto in suggestedPoetPhotos)
-                suggestedPoetPhoto.SuggestedById = deletedUserId;
-            context.UpdateRange(suggestedPoetPhotos);
-            await context.SaveChangesAsync();
-
-
-            var visits = await context.GanjoorUserPoemVisits.Where(v => v.UserId == userId).ToListAsync();
-            context.RemoveRange(visits);
-            await context.SaveChangesAsync();
-
-            var bookmarks = await context.UserBookmarks.Where(b => b.RAppUserId == userId).ToListAsync();
-            context.RemoveRange(bookmarks);
-            await context.SaveChangesAsync();
-
-            var uploadSessions = await context.UploadSessions.Where(s => s.UseId == userId).ToListAsync();
-            context.RemoveRange(uploadSessions);
-            await context.SaveChangesAsync();
-
-            var recitations = await context.Recitations.Where(r => r.OwnerId == userId).ToListAsync();
-            context.RemoveRange(recitations);
-            await context.SaveChangesAsync();
-
-            var ganjoorBookmarks = await context.GanjoorUserBookmarks.Where(b => b.UserId == userId).ToListAsync();
-            context.RemoveRange(ganjoorBookmarks);
-            await context.SaveChangesAsync();
-
-
-            var reportedRecitaions = await context.RecitationErrorReports.Where(r => r.ReporterId == userId).ToListAsync();
-            context.RemoveRange(reportedRecitaions);
-            await context.SaveChangesAsync();
-
-            var comments = await context.GanjoorComments.Where(c => c.UserId == userId).ToListAsync();
-            foreach (var comment in comments)
-            {
-                //await _ganjoorService.DeleteMyComment(userId, comment.Id);/*had error in service initializtion, so done it in the dirty way*/
-                await _DeleteComment(context, comment.Id);
-            }
-
-            var recitationsVotes = await context.RecitationUserUpVotes.Where(c => c.UserId == userId).ToListAsync();
-            foreach (var vote in recitationsVotes)
-            {
-                int poemId = await context.Recitations.AsNoTracking().Where(r => r.Id == vote.RecitationId).Select(r => r.GanjoorPostId).SingleAsync();
-                context.Remove(vote);
-                await context.SaveChangesAsync();
-                await _ReOrderPoemRecitationsAsync(context, poemId);
-            }
-
+            //PDFUserBookmarks has Cascase relationship
 
             return await base.RemoveUserData(userId);//notifications are deleted here, some of these operations might produce new notifications
-        }
-
-        private async Task<RServiceResult<bool>> _DeleteComment(RMuseumDbContext context, int commentId)
-        {
-            GanjoorComment comment = await context.GanjoorComments.Where(c => c.Id == commentId).SingleOrDefaultAsync();
-            if (comment == null)
-            {
-                return new RServiceResult<bool>(false); //not found
-            }
-
-            foreach(var reply in await _FindReplies(context, comment))
-            {
-                await _DeleteComment(context, reply.Id);
-            }
-
-
-            context.GanjoorComments.Remove(comment);
-            await _context.SaveChangesAsync();
-
-            return new RServiceResult<bool>(true);
-        }
-
-        private async Task<List<GanjoorComment>> _FindReplies(RMuseumDbContext context, GanjoorComment comment)
-        {
-            return await context.GanjoorComments.Where(c => c.InReplyToId == comment.Id).AsNoTracking().ToListAsync();
-        }
-
-        private async Task _ReOrderPoemRecitationsAsync(RMuseumDbContext context, int poemId, bool update = true)
-        {
-            var recitations =
-                     await context.Recitations
-                         .Where(r => r.ReviewStatus == AudioReviewStatus.Approved && r.GanjoorPostId == poemId)
-                         .OrderBy(r => r.Id) //this causes the oldest recirations to become the first one
-                         .ToListAsync();
-
-            List<RecitationOrderingViewModel> scores = new List<RecitationOrderingViewModel>();
-
-            for (var i = 0; i < recitations.Count; i++)
-            {
-                var recitation = recitations[i];
-                RecitationOrderingViewModel score = new RecitationOrderingViewModel()
-                {
-                    RecitationId = recitation.Id,
-                    EarlynessAdvantage = recitations.Count - 1 - i,
-                    InitialScore = recitations[i].InitialScore,
-                    UpVotes = await context.RecitationUserUpVotes.AsNoTracking().Where(r => r.RecitationId == recitation.Id && r.UserId != recitation.OwnerId)
-                    .CountAsync(),
-                    Mistakes = await context.RecitationApprovedMistakes.AsNoTracking().Where(m => m.RecitationId == recitation.Id).SumAsync(m => m.NumberOfLinesAffected)
-                };
-
-
-                score.TotalScores = score.EarlynessAdvantage
-                    +
-                    score.InitialScore
-                     + score.UpVotes
-                     - (5 * score.Mistakes);
-
-                //audio order is used as a temporary variable in the following line and soon is getting replaced by computed value
-                recitation.AudioOrder = score.TotalScores;
-
-                scores.Add(score);
-            }
-
-            recitations.Sort((a, b) => b.AudioOrder.CompareTo(a.AudioOrder));
-            for (var i = 0; i < recitations.Count; i++)
-            {
-                recitations[i].AudioOrder = i + 1;
-
-                scores.Where(s => s.RecitationId == recitations[i].Id).Single().ComputedOrder = i + 1;
-
-                if (update)
-                {
-                    context.Update(recitations[i]);
-                }
-
-            }
-
-            if (update)
-                await context.SaveChangesAsync();
         }
     }
 }

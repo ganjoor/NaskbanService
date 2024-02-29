@@ -10958,71 +10958,6 @@
             process end time
             </summary>
         </member>
-        <member name="T:RMuseum.Services.Implementation.GanjoorAppUserService">
-            <summary>
-            Ganjoor User Service
-            </summary>
-        </member>
-        <member name="F:RMuseum.Services.Implementation.GanjoorAppUserService._memoryCache">
-            <summary>
-            IMemoryCache
-            </summary>
-        </member>
-        <member name="M:RMuseum.Services.Implementation.GanjoorAppUserService.GetEmailSubject(RSecurityBackend.Models.Auth.Db.RVerifyQueueType,System.String)">
-            <summary>
-            Sign Up Email Subject
-            </summary>
-            <returns>
-            subject
-            </returns>
-            <param name="op"></param>
-            <param name="secretCode"></param>
-        </member>
-        <member name="M:RMuseum.Services.Implementation.GanjoorAppUserService.GetEmailHtmlContent(RSecurityBackend.Models.Auth.Db.RVerifyQueueType,System.String,System.String)">
-            <summary>
-            Sign Up Email Html Content
-            </summary>
-            <param name="op"></param>
-            <param name="secretCode"></param>
-            <param name="signupCallbackUrl"></param>
-            <returns>html content</returns>
-        </member>
-        <member name="M:RMuseum.Services.Implementation.GanjoorAppUserService.SignUp(System.String,System.String,System.String,System.String)">
-            <summary>
-            Start signup process using email
-            </summary>
-            <param name="email"></param>
-            <param name="clientIPAddress"></param>
-            <param name="clientAppName"></param>
-            <param name="langauge"></param>
-            <returns></returns>
-        </member>
-        <member name="M:RMuseum.Services.Implementation.GanjoorAppUserService.FinalizeSignUp(System.String,System.String,System.String,System.String,System.String)">
-            <summary>
-            finalize signup and assign his or him comments to him or her
-            </summary>
-            <param name="email"></param>
-            <param name="secret"></param>
-            <param name="password"></param>
-            <param name="firstName"></param>
-            <param name="sureName"></param>
-            <returns></returns>
-        </member>
-        <member name="M:RMuseum.Services.Implementation.GanjoorAppUserService.ModifyUser(System.Guid,RSecurityBackend.Models.Auth.ViewModels.RegisterRAppUser)">
-            <summary>
-            modify existing user /*update related entities cache*/
-            </summary>
-            <param name="userId"></param>
-            <param name="updateUserInfo"></param>
-            <returns></returns>
-        </member>
-        <member name="M:RMuseum.Services.Implementation.GanjoorAppUserService.RemoveUserData(System.Guid)">
-            <summary>
-            remove user data
-            </summary>
-            <param name="userId"></param>
-            <returns></returns>
-        </member>
         <member name="T:RMuseum.Services.Implementation.ImportedFromDesktopGanjoor.GPersianTextSync">
             <summary>
             Persian specific text utility class
@@ -11093,6 +11028,71 @@
             format datetime
             </summary>
             <param name="dateTime"></param>
+            <returns></returns>
+        </member>
+        <member name="T:RMuseum.Services.Implementation.NaskbaAppUserService">
+            <summary>
+            Ganjoor User Service
+            </summary>
+        </member>
+        <member name="F:RMuseum.Services.Implementation.NaskbaAppUserService._memoryCache">
+            <summary>
+            IMemoryCache
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.NaskbaAppUserService.GetEmailSubject(RSecurityBackend.Models.Auth.Db.RVerifyQueueType,System.String)">
+            <summary>
+            Sign Up Email Subject
+            </summary>
+            <returns>
+            subject
+            </returns>
+            <param name="op"></param>
+            <param name="secretCode"></param>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.NaskbaAppUserService.GetEmailHtmlContent(RSecurityBackend.Models.Auth.Db.RVerifyQueueType,System.String,System.String)">
+            <summary>
+            Sign Up Email Html Content
+            </summary>
+            <param name="op"></param>
+            <param name="secretCode"></param>
+            <param name="signupCallbackUrl"></param>
+            <returns>html content</returns>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.NaskbaAppUserService.SignUp(System.String,System.String,System.String,System.String)">
+            <summary>
+            Start signup process using email
+            </summary>
+            <param name="email"></param>
+            <param name="clientIPAddress"></param>
+            <param name="clientAppName"></param>
+            <param name="langauge"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.NaskbaAppUserService.FinalizeSignUp(System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            finalize signup and assign his or him comments to him or her
+            </summary>
+            <param name="email"></param>
+            <param name="secret"></param>
+            <param name="password"></param>
+            <param name="firstName"></param>
+            <param name="sureName"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.NaskbaAppUserService.ModifyUser(System.Guid,RSecurityBackend.Models.Auth.ViewModels.RegisterRAppUser)">
+            <summary>
+            modify existing user /*update related entities cache*/
+            </summary>
+            <param name="userId"></param>
+            <param name="updateUserInfo"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.NaskbaAppUserService.RemoveUserData(System.Guid)">
+            <summary>
+            remove user data
+            </summary>
+            <param name="userId"></param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFBookmarkService.SwitchBookmarkAsync(System.Int32,System.Guid,System.Nullable{System.Int32})">
