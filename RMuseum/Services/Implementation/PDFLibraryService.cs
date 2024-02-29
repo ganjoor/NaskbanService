@@ -409,6 +409,7 @@ namespace RMuseum.Services.Implementation
                     return new RServiceResult<bool>(false, "Page not found.");
 
                 pdfBook.CoverImage = RImage.DuplicateExcludingId(pdfPage.ThumbnailImage);
+                pdfBook.ExtenalCoverImageUrl = pdfPage.ExtenalThumbnailImageUrl;
 
                 pdfBook.LastModified = DateTime.Now;
 
