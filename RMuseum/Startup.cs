@@ -236,7 +236,7 @@ namespace RMuseum
             services.AddTransient<IImageFileService, ImageFileServiceEF>();
 
             //app user services
-            services.AddTransient<IAppUserService, GanjoorAppUserService>();
+            services.AddTransient<IAppUserService, NaskbaAppUserService>();
 
             //user groups services
             services.AddTransient<IUserRoleService, RoleService>();

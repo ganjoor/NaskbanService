@@ -22,9 +22,9 @@ namespace RMuseum.Services.Implementation
     /// <summary>
     /// Ganjoor User Service
     /// </summary>
-    public class GanjoorAppUserService : AppUserService
+    public class NaskbaAppUserService : AppUserService
     {
-        public GanjoorAppUserService(
+        public NaskbaAppUserService(
             RMuseumDbContext context,
             UserManager<RAppUser> userManager,
             SignInManager<RAppUser> signInManager,
