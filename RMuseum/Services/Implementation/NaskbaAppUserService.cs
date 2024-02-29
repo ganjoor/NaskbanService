@@ -105,7 +105,7 @@ namespace RMuseum.Services.Implementation
                 +
                 "<td align=\"center\" style=\"padding: 40px 0 30px 0;\">"
                 +
-                "<img src=\"https://naskban.ir/assets/logo-a0160b31.svg\" alt=\"نسک‌بان\" width=\"150\" height=\"150\" style=\"display: block;\" />"
+                "<img src=\"https://naskban.ir/logo.png\" alt=\"نسک‌بان\" width=\"150\" height=\"150\" style=\"display: block;\" />"
                 +
                 "</td>"
                 +
