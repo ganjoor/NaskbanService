@@ -29,6 +29,11 @@ namespace RMuseum.Models.PDFUserTracking
         public DateTime DateTime { get; set; }
 
         /// <summary>
+        /// service method
+        /// </summary>
+        public string ServiceMethod { get; set; }
+
+        /// <summary>
         /// PDF Book Id
         /// </summary>
         public int? PDFBookId { get; set; }
@@ -51,11 +56,11 @@ namespace RMuseum.Models.PDFUserTracking
         /// <summary>
         /// page number
         /// </summary>
-        public int? PageNumber { get; set; }
+        public int? QueryPageNumber { get; set; }
 
         /// <summary>
         /// page size
         /// </summary>
-        public int? PageSize { get; set; }
+        public int? QueryPageSize { get; set; }
     }
 }

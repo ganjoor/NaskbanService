@@ -18,6 +18,7 @@ using RMuseum.Models.Artifact;
 using RMuseum.Models.GanjoorIntegration.ViewModels;
 using RMuseum.Models.GanjoorIntegration;
 using RMuseum.Models.ImportJob;
+using RMuseum.Models.PDFUserTracking;
 
 namespace RMuseum.Controllers
 {
@@ -38,6 +39,26 @@ namespace RMuseum.Controllers
 
         public async Task<IActionResult> GetAllPDFBooksAsync([FromQuery] PagingParameterModel paging)
         {
+            var resVisit = await _pdfService.TrackVisitAsync
+                (
+                new PDFVisitRecord()
+                {
+                    RAppUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
+                    DateTime = DateTime.Now,
+                    ServiceMethod = "all",
+                    PDFBookId = null,
+                    PDFPageNumber = null,
+                    SearchTerm = null,
+                    IsFullTextSearch = false,
+                    QueryPageNumber = paging.PageNumber,
+                    QueryPageSize = paging.PageSize,
+                }
+                );
+            if(!resVisit.Result)
+            {
+                return BadRequest(resVisit.ExceptionString);
+            }
+
             var pdfBooksInfo = await _pdfService.GetAllPDFBooksAsync(paging, [PublishStatus.Published]);
             if (!string.IsNullOrEmpty(pdfBooksInfo.ExceptionString))
             {
@@ -75,6 +96,26 @@ namespace RMuseum.Controllers
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
         public async Task<IActionResult> GetUserVisiblePDFBooksAsync([FromQuery] PagingParameterModel paging)
         {
+            var resVisit = await _pdfService.TrackVisitAsync
+                (
+                new PDFVisitRecord()
+                {
+                    RAppUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
+                    DateTime = DateTime.Now,
+                    ServiceMethod = "secure",
+                    PDFBookId = null,
+                    PDFPageNumber = null,
+                    SearchTerm = null,
+                    IsFullTextSearch = false,
+                    QueryPageNumber = paging.PageNumber,
+                    QueryPageSize = paging.PageSize,
+                }
+                );
+            if (!resVisit.Result)
+            {
+                return BadRequest(resVisit.ExceptionString);
+            }
+
             RServiceResult<PublishStatus[]> v = await _GetUserVisiblePDFBooksStatusSetAsync
                 (
                 new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
@@ -129,6 +170,26 @@ namespace RMuseum.Controllers
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         public async Task<IActionResult> GetUserVisiblePDFBookAsync(int id, bool includePages = false, bool includeBookText = false, bool includePageText = false)
         {
+            var resVisit = await _pdfService.TrackVisitAsync
+                (
+                new PDFVisitRecord()
+                {
+                    RAppUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
+                    DateTime = DateTime.Now,
+                    ServiceMethod = "secure/id",
+                    PDFBookId = id,
+                    PDFPageNumber = null,
+                    SearchTerm = null,
+                    IsFullTextSearch = false,
+                    QueryPageNumber = null,
+                    QueryPageSize = null,
+                }
+                );
+            if (!resVisit.Result)
+            {
+                return BadRequest(resVisit.ExceptionString);
+            }
+
             RServiceResult<PublishStatus[]> v = await _GetUserVisiblePDFBooksStatusSetAsync
                (
                new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
@@ -222,7 +283,27 @@ namespace RMuseum.Controllers
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         public async Task<IActionResult> GetPDFBookByIdAsync(int id, bool includePages = false, bool includeBookText = false, bool includePageText = false)
         {
-            var bookRes = await _pdfService.GetPDFBookByIdAsync(id, new PublishStatus[] { PublishStatus.Published }, includePages, includeBookText, includePageText);
+            var resVisit = await _pdfService.TrackVisitAsync
+                (
+                new PDFVisitRecord()
+                {
+                    RAppUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
+                    DateTime = DateTime.Now,
+                    ServiceMethod = "id",
+                    PDFBookId = id,
+                    PDFPageNumber = null,
+                    SearchTerm = null,
+                    IsFullTextSearch = false,
+                    QueryPageNumber = null,
+                    QueryPageSize = null,
+                }
+                );
+            if (!resVisit.Result)
+            {
+                return BadRequest(resVisit.ExceptionString);
+            }
+
+            var bookRes = await _pdfService.GetPDFBookByIdAsync(id, [PublishStatus.Published], includePages, includeBookText, includePageText);
 
             if (!string.IsNullOrEmpty(bookRes.ExceptionString))
             {
@@ -588,6 +669,7 @@ namespace RMuseum.Controllers
 
         public async Task<IActionResult> GetAuthorByIdAsync(int id)
         {
+
             var authorsRes = await _pdfService.GetAuthorByIdAsync(id);
             if (!string.IsNullOrEmpty(authorsRes.ExceptionString))
             {
@@ -1237,6 +1319,26 @@ namespace RMuseum.Controllers
 
         public async Task<IActionResult> SearchPDFBooksAsync([FromQuery] PagingParameterModel paging, string term)
         {
+            var resVisit = await _pdfService.TrackVisitAsync
+                (
+                new PDFVisitRecord()
+                {
+                    RAppUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
+                    DateTime = DateTime.Now,
+                    ServiceMethod = "search",
+                    PDFBookId = null,
+                    PDFPageNumber = null,
+                    SearchTerm = term,
+                    IsFullTextSearch = false,
+                    QueryPageNumber = paging.PageNumber,
+                    QueryPageSize = paging.PageSize,
+                }
+                );
+            if (!resVisit.Result)
+            {
+                return BadRequest(resVisit.ExceptionString);
+            }
+
             var pagedResult = await _pdfService.SearchPDFBooksAsync(paging, term);
             if (!string.IsNullOrEmpty(pagedResult.ExceptionString))
                 return BadRequest(pagedResult.ExceptionString);
@@ -1262,6 +1364,26 @@ namespace RMuseum.Controllers
 
         public async Task<IActionResult> SearchPDFPagesTextAsync([FromQuery] PagingParameterModel paging, int id, string term)
         {
+            var resVisit = await _pdfService.TrackVisitAsync
+               (
+               new PDFVisitRecord()
+               {
+                   RAppUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
+                   DateTime = DateTime.Now,
+                   ServiceMethod = "search/text",
+                   PDFBookId = id,
+                   PDFPageNumber = null,
+                   SearchTerm = term,
+                   IsFullTextSearch = true,
+                   QueryPageNumber = paging.PageNumber,
+                   QueryPageSize = paging.PageSize,
+               }
+               );
+            if (!resVisit.Result)
+            {
+                return BadRequest(resVisit.ExceptionString);
+            }
+
             var pagedResult = await _pdfService.SearchPDFPagesTextAsync(paging, id, term);
             if (!string.IsNullOrEmpty(pagedResult.ExceptionString))
                 return BadRequest(pagedResult.ExceptionString);
@@ -1286,6 +1408,26 @@ namespace RMuseum.Controllers
 
         public async Task<IActionResult> SearchPDFBookForPDFPagesTextAsync([FromQuery] PagingParameterModel paging, string term)
         {
+            var resVisit = await _pdfService.TrackVisitAsync
+               (
+               new PDFVisitRecord()
+               {
+                   RAppUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
+                   DateTime = DateTime.Now,
+                   ServiceMethod = "search/text",
+                   PDFBookId = null,
+                   PDFPageNumber = null,
+                   SearchTerm = term,
+                   IsFullTextSearch = true,
+                   QueryPageNumber = paging.PageNumber,
+                   QueryPageSize = paging.PageSize,
+               }
+               );
+            if (!resVisit.Result)
+            {
+                return BadRequest(resVisit.ExceptionString);
+            }
+
             var pagedResult = await _pdfService.SearchPDFBookForPDFPagesTextAsync(paging, term);
             if (!string.IsNullOrEmpty(pagedResult.ExceptionString))
                 return BadRequest(pagedResult.ExceptionString);
@@ -1495,6 +1637,26 @@ namespace RMuseum.Controllers
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         public async Task<IActionResult> GetPDFPageAsync(int pdfBookId, int pageNumber)
         {
+            var resVisit = await _pdfService.TrackVisitAsync
+               (
+               new PDFVisitRecord()
+               {
+                   RAppUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
+                   DateTime = DateTime.Now,
+                   ServiceMethod = "page",
+                   PDFBookId = pdfBookId,
+                   PDFPageNumber = pageNumber,
+                   SearchTerm = null,
+                   IsFullTextSearch = false,
+                   QueryPageNumber = null,
+                   QueryPageSize = null,
+               }
+               );
+            if (!resVisit.Result)
+            {
+                return BadRequest(resVisit.ExceptionString);
+            }
+
             var bookRes = await _pdfService.GetPDFPageAsync(pdfBookId, pageNumber);
 
             if (!string.IsNullOrEmpty(bookRes.ExceptionString))

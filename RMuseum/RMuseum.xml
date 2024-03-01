@@ -1068,6 +1068,11 @@
             User Bookmarks
             </summary>
         </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.PDFVisitRecords">
+            <summary>
+            Visit Records
+            </summary>
+        </member>
         <member name="T:RMuseum.Migrations.PictureFileExtUrl">
             <inheritdoc />
         </member>
@@ -10778,6 +10783,11 @@
             date time
             </summary>
         </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFVisitRecord.ServiceMethod">
+            <summary>
+            service method
+            </summary>
+        </member>
         <member name="P:RMuseum.Models.PDFUserTracking.PDFVisitRecord.PDFBookId">
             <summary>
             PDF Book Id
@@ -10798,12 +10808,12 @@
             full text search
             </summary>
         </member>
-        <member name="P:RMuseum.Models.PDFUserTracking.PDFVisitRecord.PageNumber">
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFVisitRecord.QueryPageNumber">
             <summary>
             page number
             </summary>
         </member>
-        <member name="P:RMuseum.Models.PDFUserTracking.PDFVisitRecord.PageSize">
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFVisitRecord.QueryPageSize">
             <summary>
             page size
             </summary>
@@ -11677,6 +11687,13 @@
             fill missing book texts
             </summary>
         </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.TrackVisitAsync(RMuseum.Models.PDFUserTracking.PDFVisitRecord)">
+            <summary>
+            track visit
+            </summary>
+            <param name="visit"></param>
+            <returns></returns>
+        </member>
         <member name="F:RMuseum.Services.Implementation.PDFLibraryService._context">
             <summary>
             Database Context
@@ -12419,6 +12436,13 @@
             start processing queue pdf books
             </summary>
             <param name="count"></param>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.TrackVisitAsync(RMuseum.Models.PDFUserTracking.PDFVisitRecord)">
+            <summary>
+            track visit
+            </summary>
+            <param name="visit"></param>
+            <returns></returns>
         </member>
         <member name="T:RMuseum.Services.IPictureFileService">
             <summary>

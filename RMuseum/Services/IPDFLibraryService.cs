@@ -4,6 +4,7 @@ using RMuseum.Models.GanjoorIntegration.ViewModels;
 using RMuseum.Models.ImportJob;
 using RMuseum.Models.PDFLibrary;
 using RMuseum.Models.PDFLibrary.ViewModels;
+using RMuseum.Models.PDFUserTracking;
 using RSecurityBackend.Models.Generic;
 using System;
 using System.Threading.Tasks;
@@ -479,5 +480,13 @@ namespace RMuseum.Services
         /// </summary>
         /// <param name="count"></param>
         void StartProcessingQueuedPDFBooks(int count);
+
+
+        /// <summary>
+        /// track visit
+        /// </summary>
+        /// <param name="visit"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> TrackVisitAsync(PDFVisitRecord visit);
     }
 }

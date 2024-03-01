@@ -19,6 +19,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using FluentFTP;
+using RMuseum.Models.PDFUserTracking;
 
 namespace RMuseum.Services.Implementation
 {
@@ -2076,6 +2077,26 @@ namespace RMuseum.Services.Implementation
                                            }
                                        }
                                    );
+        }
+
+
+        /// <summary>
+        /// track visit
+        /// </summary>
+        /// <param name="visit"></param>
+        /// <returns></returns>
+        public async Task<RServiceResult<bool>> TrackVisitAsync(PDFVisitRecord visit)
+        {
+            try
+            {
+                _context.Add(visit);
+                await _context.SaveChangesAsync();
+                return new RServiceResult<bool>(true);
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<bool>(false, exp.ToString());
+            }
         }
 
         /// <summary>
