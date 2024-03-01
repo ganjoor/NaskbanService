@@ -5,6 +5,7 @@ using RMuseum.Models.ImportJob;
 using RMuseum.Models.PDFLibrary;
 using RMuseum.Models.PDFLibrary.ViewModels;
 using RMuseum.Models.PDFUserTracking;
+using RMuseum.Models.PDFUserTracking.ViewModels;
 using RSecurityBackend.Models.Generic;
 using System;
 using System.Threading.Tasks;
@@ -488,5 +489,12 @@ namespace RMuseum.Services
         /// <param name="visit"></param>
         /// <returns></returns>
         Task<RServiceResult<bool>> TrackVisitAsync(PDFVisitRecord visit);
+
+        /// <summary>
+        /// get user last activity
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        Task<RServiceResult<PDFVisistViewModel[]>> GetUserLastActivityAsync(Guid userId);
     }
 }

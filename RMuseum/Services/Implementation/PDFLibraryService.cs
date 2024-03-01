@@ -20,6 +20,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using FluentFTP;
 using RMuseum.Models.PDFUserTracking;
+using RMuseum.Models.PDFUserTracking.ViewModels;
 
 namespace RMuseum.Services.Implementation
 {
@@ -2096,6 +2097,82 @@ namespace RMuseum.Services.Implementation
             catch (Exception exp)
             {
                 return new RServiceResult<bool>(false, exp.ToString());
+            }
+        }
+
+        /// <summary>
+        /// get user last activity
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        public async Task<RServiceResult<PDFVisistViewModel[]>> GetUserLastActivityAsync(Guid userId)
+        {
+            try
+            {
+                var visitsUnfiltered = await _context.PDFVisitRecords.AsNoTracking()
+                                .Where
+                                (
+                                   t => t.RAppUserId == userId && t.PDFBookId != null
+                                )
+                                .OrderByDescending(t => t.DateTime)
+                                .Select(t => 
+                                    new PDFVisistViewModel()
+                                    {
+                                        DateTime = t.DateTime,
+                                        PDFBookId = (int)t.PDFBookId,
+                                        PageNumber = t.PDFPageNumber,
+                                    })
+                                .Take(200)
+                                .ToListAsync();
+
+                List<PDFVisistViewModel> visits = new List<PDFVisistViewModel>();
+
+                var bookIds = visitsUnfiltered.GroupBy(t => t.PDFBookId).ToList();
+                foreach(var bookId in bookIds )
+                {
+                    var visit = visitsUnfiltered.Where(v => v.PDFBookId == bookId.Key).First();
+                    if(visit.PageNumber != null)
+                    {
+                        var page = await _context.PDFPages.AsNoTracking().Where(p => p.PDFBookId == visit.PDFBookId && p.PageNumber == visit.PageNumber).FirstOrDefaultAsync();
+                        if(page != null)
+                        {
+                            visits.Add
+                                (
+                                new PDFVisistViewModel()
+                                {
+                                    DateTime = visit.DateTime,
+                                    PDFBookId = visit.PDFBookId,
+                                    PageNumber = visit.PageNumber,
+                                    ExternalImageUrl = page.ExtenalThumbnailImageUrl
+                                }
+                                );
+                        }
+                    }
+                    else
+                    {
+                        var pdf = await _context.PDFBooks.AsNoTracking().Where(p => p.Id == visit.PDFBookId).FirstOrDefaultAsync();
+                        if(pdf != null)
+                        {
+                            visits.Add
+                                (
+                                new PDFVisistViewModel()
+                                {
+                                    DateTime = visit.DateTime,
+                                    PDFBookId = visit.PDFBookId,
+                                    PageNumber = null,
+                                    ExternalImageUrl = pdf.ExtenalCoverImageUrl
+                                }
+                                );
+                        }
+                    }
+                }
+
+                return new RServiceResult<PDFVisistViewModel[]>(visits.ToArray());
+                
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<PDFVisistViewModel[]>(null, exp.ToString ());
             }
         }
 
