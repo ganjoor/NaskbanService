@@ -19,6 +19,7 @@ using RMuseum.Models.GanjoorIntegration.ViewModels;
 using RMuseum.Models.GanjoorIntegration;
 using RMuseum.Models.ImportJob;
 using RMuseum.Models.PDFUserTracking;
+using RMuseum.Models.PDFUserTracking.ViewModels;
 
 namespace RMuseum.Controllers
 {
@@ -1813,6 +1814,26 @@ namespace RMuseum.Controllers
             HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
 
             return Ok(res.Result.Bookmarks);
+        }
+
+        /// <summary>
+        /// get user last activity
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("visits")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFVisistViewModel>))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+
+        public async Task<IActionResult> GetUserLastActivityAsync()
+        {
+            Guid loggedOnUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.GetUserLastActivityAsync(loggedOnUserId);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+            {
+                return BadRequest(res.ExceptionString);
+            }
+            return Ok(res.Result);
         }
 
 

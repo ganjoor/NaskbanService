@@ -628,6 +628,12 @@
             <param name="pageId"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetUserLastActivityAsync">
+            <summary>
+            get user last activity
+            </summary>
+            <returns></returns>
+        </member>
         <member name="F:RMuseum.Controllers.PDFLibraryController._pdfService">
             <summary>
             PDF Service
@@ -10830,6 +10836,31 @@
             page size
             </summary>
         </member>
+        <member name="T:RMuseum.Models.PDFUserTracking.ViewModels.PDFVisistViewModel">
+            <summary>
+            PDF Visit View Model
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.ViewModels.PDFVisistViewModel.DateTime">
+            <summary>
+            date time
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.ViewModels.PDFVisistViewModel.PDFBookId">
+            <summary>
+            pdf book id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.ViewModels.PDFVisistViewModel.PageNumber">
+            <summary>
+            page number
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.ViewModels.PDFVisistViewModel.ExternalImageUrl">
+            <summary>
+            external image url
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.UploadSession.UploadSession">
             <summary>
             Upload Session
@@ -11706,6 +11737,13 @@
             <param name="visit"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetUserLastActivityAsync(System.Guid)">
+            <summary>
+            get user last activity
+            </summary>
+            <param name="userId"></param>
+            <returns></returns>
+        </member>
         <member name="F:RMuseum.Services.Implementation.PDFLibraryService._context">
             <summary>
             Database Context
@@ -12454,6 +12492,13 @@
             track visit
             </summary>
             <param name="visit"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetUserLastActivityAsync(System.Guid)">
+            <summary>
+            get user last activity
+            </summary>
+            <param name="userId"></param>
             <returns></returns>
         </member>
         <member name="T:RMuseum.Services.IPictureFileService">
