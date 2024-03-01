@@ -316,6 +316,12 @@ namespace RMuseum.Services.Implementation
             context.UpdateRange(reviewedGanjoorLinks);
             await context.SaveChangesAsync();
 
+            var visitTracks = await context.PDFVisitRecords.Where(t => t.RAppUserId == userId).ToListAsync();
+            foreach (var visitTrack in visitTracks)
+                visitTrack.RAppUserId = null;
+            await context.SaveChangesAsync();
+
+
             //PDFUserBookmarks has Cascase relationship
 
             return await base.RemoveUserData(userId);//notifications are deleted here, some of these operations might produce new notifications
