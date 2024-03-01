@@ -10753,6 +10753,61 @@
             DateTime
             </summary>
         </member>
+        <member name="T:RMuseum.Models.PDFUserTracking.PDFVisitRecord">
+            <summary>
+            Visit record
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFVisitRecord.Id">
+            <summary>
+            Id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFVisitRecord.RAppUserId">
+            <summary>
+            user id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFVisitRecord.RAppUser">
+            <summary>
+            user
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFVisitRecord.DateTime">
+            <summary>
+            date time
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFVisitRecord.PDFBookId">
+            <summary>
+            PDF Book Id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFVisitRecord.PDFPageNumber">
+            <summary>
+            PDF Page Number
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFVisitRecord.SearchTerm">
+            <summary>
+            search term
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFVisitRecord.IsFullTextSearch">
+            <summary>
+            full text search
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFVisitRecord.PageNumber">
+            <summary>
+            page number
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFVisitRecord.PageSize">
+            <summary>
+            page size
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.UploadSession.UploadSession">
             <summary>
             Upload Session
