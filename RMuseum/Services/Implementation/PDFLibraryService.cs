@@ -2134,9 +2134,18 @@ namespace RMuseum.Services.Implementation
                     var pdf = await _context.PDFBooks.AsNoTracking().Where(p => p.Id == visit.PDFBookId).FirstOrDefaultAsync();
                     if (pdf != null)
                     {
-                        if (visit.PageNumber != null)
+                        var pageNumber = visit.PageNumber;
+                        if (pageNumber == null)
                         {
-                            var page = await _context.PDFPages.AsNoTracking().Where(p => p.PDFBookId == visit.PDFBookId && p.PageNumber == visit.PageNumber).FirstOrDefaultAsync();
+                            var visitWithPageNumber = visitsUnfiltered.Where(t => t.PDFBookId == pdf.Id && t.PageNumber != null).FirstOrDefault();
+                            if(visitWithPageNumber != null)
+                            {
+                                pageNumber = visitWithPageNumber.PageNumber;
+                            }
+                        }
+                        if (pageNumber != null)
+                        {
+                            var page = await _context.PDFPages.AsNoTracking().Where(p => p.PDFBookId == visit.PDFBookId && p.PageNumber == pageNumber).FirstOrDefaultAsync();
                             if (page != null)
                             {
                                 visits.Add
@@ -2145,7 +2154,7 @@ namespace RMuseum.Services.Implementation
                                     {
                                         DateTime = visit.DateTime,
                                         PDFBookId = visit.PDFBookId,
-                                        PageNumber = visit.PageNumber,
+                                        PageNumber = pageNumber,
                                         BookTitle = pdf.Title,
                                         ExternalImageUrl = page.ExtenalThumbnailImageUrl
                                     }
