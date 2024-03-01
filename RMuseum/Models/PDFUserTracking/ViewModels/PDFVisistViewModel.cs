@@ -22,6 +22,11 @@ namespace RMuseum.Models.PDFUserTracking.ViewModels
         public int? PageNumber { get; set; }
 
         /// <summary>
+        /// book title
+        /// </summary>
+        public string BookTitle { get; set; }
+
+        /// <summary>
         /// external image url
         /// </summary>
         public string ExternalImageUrl { get; set; }

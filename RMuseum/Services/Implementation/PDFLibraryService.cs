@@ -2131,40 +2131,43 @@ namespace RMuseum.Services.Implementation
                 foreach(var bookId in bookIds )
                 {
                     var visit = visitsUnfiltered.Where(v => v.PDFBookId == bookId.Key).First();
-                    if(visit.PageNumber != null)
+                    var pdf = await _context.PDFBooks.AsNoTracking().Where(p => p.Id == visit.PDFBookId).FirstOrDefaultAsync();
+                    if (pdf != null)
                     {
-                        var page = await _context.PDFPages.AsNoTracking().Where(p => p.PDFBookId == visit.PDFBookId && p.PageNumber == visit.PageNumber).FirstOrDefaultAsync();
-                        if(page != null)
+                        if (visit.PageNumber != null)
+                        {
+                            var page = await _context.PDFPages.AsNoTracking().Where(p => p.PDFBookId == visit.PDFBookId && p.PageNumber == visit.PageNumber).FirstOrDefaultAsync();
+                            if (page != null)
+                            {
+                                visits.Add
+                                    (
+                                    new PDFVisistViewModel()
+                                    {
+                                        DateTime = visit.DateTime,
+                                        PDFBookId = visit.PDFBookId,
+                                        PageNumber = visit.PageNumber,
+                                        BookTitle = pdf.Title,
+                                        ExternalImageUrl = page.ExtenalThumbnailImageUrl
+                                    }
+                                    );
+                            }
+                        }
+                        else
                         {
                             visits.Add
-                                (
-                                new PDFVisistViewModel()
-                                {
-                                    DateTime = visit.DateTime,
-                                    PDFBookId = visit.PDFBookId,
-                                    PageNumber = visit.PageNumber,
-                                    ExternalImageUrl = page.ExtenalThumbnailImageUrl
-                                }
-                                );
+                                 (
+                                 new PDFVisistViewModel()
+                                 {
+                                     DateTime = visit.DateTime,
+                                     PDFBookId = visit.PDFBookId,
+                                     PageNumber = null,
+                                     BookTitle = pdf.Title,
+                                     ExternalImageUrl = pdf.ExtenalCoverImageUrl
+                                 }
+                                 );
                         }
                     }
-                    else
-                    {
-                        var pdf = await _context.PDFBooks.AsNoTracking().Where(p => p.Id == visit.PDFBookId).FirstOrDefaultAsync();
-                        if(pdf != null)
-                        {
-                            visits.Add
-                                (
-                                new PDFVisistViewModel()
-                                {
-                                    DateTime = visit.DateTime,
-                                    PDFBookId = visit.PDFBookId,
-                                    PageNumber = null,
-                                    ExternalImageUrl = pdf.ExtenalCoverImageUrl
-                                }
-                                );
-                        }
-                    }
+                    
                 }
 
                 return new RServiceResult<PDFVisistViewModel[]>(visits.ToArray());

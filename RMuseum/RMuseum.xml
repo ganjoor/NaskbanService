@@ -10856,6 +10856,11 @@
             page number
             </summary>
         </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.ViewModels.PDFVisistViewModel.BookTitle">
+            <summary>
+            book title
+            </summary>
+        </member>
         <member name="P:RMuseum.Models.PDFUserTracking.ViewModels.PDFVisistViewModel.ExternalImageUrl">
             <summary>
             external image url
