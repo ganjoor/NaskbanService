@@ -17,6 +17,7 @@ using System.IO;
 using RMuseum.Models.FAQ;
 using RMuseum.Models.PDFLibrary;
 using RMuseum.Models.ExternalFTPUpload;
+using RMuseum.Models.PDFUserTracking;
 
 namespace RMuseum.DbContext
 {
@@ -562,6 +563,11 @@ namespace RMuseum.DbContext
         /// User Bookmarks
         /// </summary>
         public DbSet<PDFUserBookmark> PDFUserBookmarks { get; set; }
+
+        /// <summary>
+        /// Visit Records
+        /// </summary>
+        public DbSet<PDFVisitRecord> PDFVisitRecords { get; set; }
 
     }
 }
