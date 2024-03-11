@@ -21,6 +21,8 @@ using System.Threading.Tasks;
 using FluentFTP;
 using RMuseum.Models.PDFUserTracking;
 using RMuseum.Models.PDFUserTracking.ViewModels;
+using RMuseum.Models.ImportJob;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace RMuseum.Services.Implementation
 {
@@ -29,13 +31,59 @@ namespace RMuseum.Services.Implementation
     /// </summary>
     public partial class PDFLibraryService : IPDFLibraryService
     {
+
+        /// <summary>
+        /// check known source before download (0 means no problem, -1 problem, greater than zero id for downloaed pdf)
+        /// </summary>
+        /// <param name="srcUrl"></param>
+        /// <returns></returns>
+        public async Task<RServiceResult<int>> CheckKnownSourceAsync(string srcUrl)
+        {
+            try
+            {
+                var downloaded = await _context.PDFBooks.AsNoTracking().Where(a => a.OriginalSourceUrl == srcUrl).FirstOrDefaultAsync();
+                if (
+                    downloaded
+                    !=
+                    null
+                    )
+                {
+                    return new RServiceResult<int>(downloaded.Id, $"duplicated srcUrl '{srcUrl}'");
+                }
+                if (
+                    (
+                    await _context.ImportJobs
+                        .Where(j => j.JobType == JobType.Pdf && j.SrcContent == ("scrapping ..." + srcUrl) && !(j.Status == ImportJobStatus.Failed || j.Status == ImportJobStatus.Aborted))
+                        .SingleOrDefaultAsync()
+                    )
+                    !=
+                    null
+                    )
+                {
+                    return new RServiceResult<int>(-1, $"Job is already scheduled or running for importing source url: {srcUrl}");
+                }
+
+                return new RServiceResult<int>(0);
+
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<int>(0, exp.ToString());
+            }
+        }
+
         /// <summary>
         /// import from uknown sources
         /// </summary>
         /// <param name="srcUrl"></param>
         /// <returns></returns>
-        public void StartImportingKnownSourceAsync(string srcUrl)
+        public async Task<RServiceResult<int>> StartImportingKnownSourceAsync(string srcUrl)
         {
+            var res = await CheckKnownSourceAsync(srcUrl);
+            if(string.IsNullOrEmpty(res.ExceptionString))
+            {
+                return res;
+            }
             _backgroundTaskQueue.QueueBackgroundWorkItem
                       (
                           async token =>
@@ -46,6 +94,7 @@ namespace RMuseum.Services.Implementation
                               }
                           }
                       );
+            return res;
         }
         /// <summary>
         /// import from known sources

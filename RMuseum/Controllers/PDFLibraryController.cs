@@ -353,9 +353,11 @@ namespace RMuseum.Controllers
         [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.AddOperationShortName)]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
-        public IActionResult StartImportingKnownSourceAsync([FromBody]string srcUrl)
+        public async Task<IActionResult> StartImportingKnownSourceAsync([FromBody]string srcUrl)
         {
-            _pdfService.StartImportingKnownSourceAsync(srcUrl);
+            var res = await _pdfService.StartImportingKnownSourceAsync(srcUrl);
+            if (string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
             return Ok();
         }
 

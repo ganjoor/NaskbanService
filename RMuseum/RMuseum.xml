@@ -11321,6 +11321,13 @@
             <param name="end"></param>
             <param name="finalizeDownload"></param>
         </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.CheckKnownSourceAsync(System.String)">
+            <summary>
+            check known source before download (0 means no problem, -1 problem, greater than zero id for downloaed pdf)
+            </summary>
+            <param name="srcUrl"></param>
+            <returns></returns>
+        </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.StartImportingKnownSourceAsync(System.String)">
             <summary>
             import from uknown sources
