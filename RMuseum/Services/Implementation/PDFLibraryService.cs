@@ -80,7 +80,7 @@ namespace RMuseum.Services.Implementation
         public async Task<RServiceResult<int>> StartImportingKnownSourceAsync(string srcUrl)
         {
             var res = await CheckKnownSourceAsync(srcUrl);
-            if(string.IsNullOrEmpty(res.ExceptionString))
+            if(!string.IsNullOrEmpty(res.ExceptionString))
             {
                 return res;
             }
