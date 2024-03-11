@@ -356,7 +356,7 @@ namespace RMuseum.Controllers
         public async Task<IActionResult> StartImportingKnownSourceAsync([FromBody]string srcUrl)
         {
             var res = await _pdfService.StartImportingKnownSourceAsync(srcUrl);
-            if (string.IsNullOrEmpty(res.ExceptionString))
+            if (!string.IsNullOrEmpty(res.ExceptionString))
                 return BadRequest(res.ExceptionString);
             return Ok();
         }
