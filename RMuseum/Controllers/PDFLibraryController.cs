@@ -362,6 +362,23 @@ namespace RMuseum.Controllers
         }
 
         /// <summary>
+        /// queue import from know source
+        /// </summary>
+        /// <param name="srcUrl"></param>
+        /// <returns></returns>
+        [HttpPost("import/queue")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.AddOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> QueueImportfFromKnownSourceAsync([FromBody] string srcUrl)
+        {
+            var res = await _pdfService.ImportfFromKnownSourceAsync(srcUrl, false);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok();
+        }
+
+        /// <summary>
         /// batch import soha library
         /// </summary>
         /// <param name="start"></param>

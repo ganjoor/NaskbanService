@@ -90,7 +90,7 @@ namespace RMuseum.Services.Implementation
                           {
                               using (RMuseumDbContext context = new RMuseumDbContext(new DbContextOptions<RMuseumDbContext>()))
                               {
-                                  await ImportfFromKnownSourceAsync(_context, srcUrl);
+                                  await _ImportfFromKnownSourceAsync(_context, srcUrl);
                               }
                           }
                       );
@@ -102,7 +102,7 @@ namespace RMuseum.Services.Implementation
         /// <param name="context"></param>
         /// <param name="srcUrl"></param>
         /// <returns></returns>
-        private async Task<RServiceResult<int>> ImportfFromKnownSourceAsync(RMuseumDbContext context, string srcUrl)
+        private async Task<RServiceResult<int>> _ImportfFromKnownSourceAsync(RMuseumDbContext context, string srcUrl)
         {
             if (srcUrl.Contains("https://sohalibrary.com"))
             {
@@ -113,6 +113,25 @@ namespace RMuseum.Services.Implementation
                 return await StartImportingELiteratureBookUrlAsync(context, srcUrl);
             }
         }
+
+        /// <summary>
+        /// import from known source
+        /// </summary>
+        /// <param name="srcUrl"></param>
+        /// <param name="finalizeDownload"></param>
+        /// <returns></returns>
+        public async Task<RServiceResult<int>> ImportfFromKnownSourceAsync(string srcUrl, bool finalizeDownload)
+        {
+            if (srcUrl.Contains("https://sohalibrary.com"))
+            {
+                return await ImportSohaLibraryUrlAsync(srcUrl, _context, finalizeDownload);
+            }
+            else
+            {
+                return await ImportELiteratureBookLibraryUrlAsync(srcUrl, _context, finalizeDownload);
+            }
+        }
+
         /// <summary>
         /// get pdf book by id
         /// </summary>
