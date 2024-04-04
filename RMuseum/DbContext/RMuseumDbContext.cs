@@ -569,5 +569,11 @@ namespace RMuseum.DbContext
         /// </summary>
         public DbSet<PDFVisitRecord> PDFVisitRecords { get; set; }
 
+
+        /// <summary>
+        /// ganjoor-poem match findings
+        /// </summary>
+        public DbSet<GanjoorPoemMatchFinding> GanjoorPoemMatchFindings { get; set; }
+
     }
 }

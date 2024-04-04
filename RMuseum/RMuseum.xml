@@ -1086,6 +1086,11 @@
             Visit Records
             </summary>
         </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.GanjoorPoemMatchFindings">
+            <summary>
+            ganjoor-poem match findings
+            </summary>
+        </member>
         <member name="T:RMuseum.Migrations.PictureFileExtUrl">
             <inheritdoc />
         </member>
@@ -9943,6 +9948,96 @@
             Manuscript
             </summary>
         </member>
+        <member name="P:RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding.Id">
+            <summary>
+            id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding.GanjoorCatId">
+            <summary>
+            cat id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding.GanjoorCatFullTitle">
+            <summary>
+            cat full title
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding.GanjoorCatFullUrl">
+            <summary>
+            cat full url
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding.GanjoorPoemId">
+            <summary>
+            start from this poem
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding.BookId">
+            <summary>
+            book id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding.BookTitle">
+            <summary>
+            book title
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding.PageNumber">
+            <summary>
+            page number
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding.Threshold">
+            <summary>
+            threshold
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding.QueueTime">
+            <summary>
+            queue time
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding.Started">
+            <summary>
+            started
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding.StartTime">
+            <summary>
+            start time
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding.LastUpdate">
+            <summary>
+            last update
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding.CurrentPoemId">
+            <summary>
+            current poem id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding.Progress">
+            <summary>
+            progress
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding.CurrentPageNumber">
+            <summary>
+            current page number
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding.Finished">
+            <summary>
+            finished
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding.FinishTime">
+            <summary>
+            finish time
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.PDFLibrary.MultiVolumePDFCollection">
             <summary>
             Multi Volume Book
@@ -10486,6 +10581,31 @@
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.AuthorRoleCount.Count">
             <summary>
             Counts
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.GanjoorPoemMatchViewModel.GanjoorCatId">
+            <summary>
+            cat id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.GanjoorPoemMatchViewModel.GanjoorPoemId">
+            <summary>
+            start from this poem
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.GanjoorPoemMatchViewModel.BookId">
+            <summary>
+            book id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.GanjoorPoemMatchViewModel.PageNumber">
+            <summary>
+            page number
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.GanjoorPoemMatchViewModel.Threshold">
+            <summary>
+            threshold
             </summary>
         </member>
         <member name="T:RMuseum.Models.PDFLibrary.ViewModels.NewPDFBookViewModel">
@@ -11268,6 +11388,13 @@
             <param name="ajaxPageIndexStart">from 0</param>
             <param name="ajaxPageIndexEnd"></param>
             <param name="finalizeDownload"></param>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.QueueGanjoorPoemMatchAsync(RMuseum.Models.PDFLibrary.ViewModels.GanjoorPoemMatchViewModel)">
+            <summary>
+            queue ganjoor poem match finding
+            </summary>
+            <param name="model"></param>
+            <returns></returns>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.StartImportingLocalPDFAsync(RMuseum.Models.PDFLibrary.ViewModels.NewPDFBookViewModel)">
             <summary>
