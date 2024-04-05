@@ -1855,6 +1855,72 @@ namespace RMuseum.Controllers
             return Ok(res.Result);
         }
 
+        /// <summary>
+        /// get matchings
+        /// </summary>
+        /// <param name="notStarted"></param>
+        /// <param name="notFinished"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("ganjoor/matching")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(GanjoorPoemMatchFinding[]))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        public async Task<IActionResult> GetGanjoorPoemMatchQueueAsync(bool notStarted = false, bool notFinished = true)
+        {
+            var res = await _pdfService.GetGanjoorPoemMatchQueueAsync(notStarted, notFinished);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+            {
+                return BadRequest(res.ExceptionString);
+            }
+            return Ok(res.Result);
+        }
+
+        /// <summary>
+        /// queue ganjoor poem match finding
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("ganjoor/matching")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.ModifyOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        public async Task<IActionResult> QueueGanjoorPoemMatchAsync([FromBody] GanjoorPoemMatchViewModel model)
+        {
+            var res = await _pdfService.QueueGanjoorPoemMatchAsync(model);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+            {
+                return BadRequest(res.ExceptionString);
+            }
+            return Ok();
+        }
+
+        /// <summary>
+        /// update a ganjoor poem match finding
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+
+        [HttpPut]
+        [Route("ganjoor/matching")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        public async Task<IActionResult> UpdateGanjoorPoemMatchFindingAsync([FromBody] GanjoorPoemMatchFinding model)
+        {
+            model.LastUpdatedByUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.UpdateGanjoorPoemMatchFindingAsync(model);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+            {
+                return BadRequest(res.ExceptionString);
+            }
+            return Ok();
+        }
+
 
         /// <summary>
         /// PDF Service

@@ -641,6 +641,28 @@
             </summary>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetGanjoorPoemMatchQueueAsync(System.Boolean,System.Boolean)">
+            <summary>
+            get matchings
+            </summary>
+            <param name="notStarted"></param>
+            <param name="notFinished"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.QueueGanjoorPoemMatchAsync(RMuseum.Models.PDFLibrary.ViewModels.GanjoorPoemMatchViewModel)">
+            <summary>
+            queue ganjoor poem match finding
+            </summary>
+            <param name="model"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.UpdateGanjoorPoemMatchFindingAsync(RMuseum.Models.PDFLibrary.GanjoorPoemMatchFinding)">
+            <summary>
+            update a ganjoor poem match finding
+            </summary>
+            <param name="model"></param>
+            <returns></returns>
+        </member>
         <member name="F:RMuseum.Controllers.PDFLibraryController._pdfService">
             <summary>
             PDF Service
