@@ -22,7 +22,6 @@ using FluentFTP;
 using RMuseum.Models.PDFUserTracking;
 using RMuseum.Models.PDFUserTracking.ViewModels;
 using RMuseum.Models.ImportJob;
-using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace RMuseum.Services.Implementation
 {

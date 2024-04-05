@@ -70,6 +70,11 @@ namespace RMuseum.Models.PDFLibrary
         public DateTime? LastUpdate { get; set; }
 
         /// <summary>
+        /// updated by user
+        /// </summary>
+        public Guid? LastUpdatedByUserId { get; set; }
+
+        /// <summary>
         /// current poem id
         /// </summary>
         public int CurrentPoemId { get; set; }

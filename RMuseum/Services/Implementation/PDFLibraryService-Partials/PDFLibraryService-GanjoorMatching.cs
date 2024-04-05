@@ -90,5 +90,40 @@ namespace RMuseum.Services.Implementation
                 return new RServiceResult<GanjoorPoemMatchFinding[]>(null, exp.ToString());
             }
         }
+
+        /// <summary>
+        /// update a ganjoor poem match finding
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public async Task<RServiceResult<bool>> UpdateGanjoorPoemMatchFindingAsync(GanjoorPoemMatchFinding model)
+        {
+            try
+            {
+                var dbModel = await _context.GanjoorPoemMatchFindings.Where(m => m.Id == model.Id).SingleAsync();
+                dbModel.LastUpdate = DateTime.Now;
+                dbModel.LastUpdatedByUserId = model.LastUpdatedByUserId;
+                if(dbModel.Started == false && model.Started == true)
+                {
+                    dbModel.StartTime = DateTime.Now;
+                    dbModel.Started = model.Started;
+                }
+                dbModel.CurrentPoemId = model.CurrentPoemId;
+                dbModel.CurrentPageNumber = model.CurrentPageNumber;
+                dbModel.Progress = model.Progress;
+                if(model.Finished && dbModel.Finished == false)
+                {
+                    dbModel.Finished = true;
+                    dbModel.Finished = model.Finished;
+                }
+                _context.Update(dbModel);
+                await _context.SaveChangesAsync();
+                return new RServiceResult<bool>(true);
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<bool>(false, exp.ToString());
+            }
+        }
     }
 }

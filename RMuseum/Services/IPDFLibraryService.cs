@@ -505,5 +505,28 @@ namespace RMuseum.Services
         /// <param name="userId"></param>
         /// <returns></returns>
         Task<RServiceResult<PDFVisistViewModel[]>> GetUserLastActivityAsync(Guid userId);
+
+
+        /// <summary>
+        /// queue ganjoor poem match finding
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> QueueGanjoorPoemMatchAsync(GanjoorPoemMatchViewModel model);
+
+        /// <summary>
+        /// ganjoor poem match finding queue
+        /// </summary>
+        /// <param name="notStarted"></param>
+        /// <param name="notFinished"></param>
+        /// <returns></returns>
+        Task<RServiceResult<GanjoorPoemMatchFinding[]>> GetGanjoorPoemMatchQueueAsync(bool notStarted = false, bool notFinished = true);
+
+        /// <summary>
+        /// update a ganjoor poem match finding
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> UpdateGanjoorPoemMatchFindingAsync(GanjoorPoemMatchFinding model);
     }
 }
