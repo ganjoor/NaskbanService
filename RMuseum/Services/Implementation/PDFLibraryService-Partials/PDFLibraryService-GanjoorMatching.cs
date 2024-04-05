@@ -1,14 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Org.BouncyCastle.Asn1.Cmp;
-using RMuseum.DbContext;
 using RMuseum.Models.Artifact;
 using RMuseum.Models.Ganjoor.ViewModels;
 using RMuseum.Models.PDFLibrary;
 using RMuseum.Models.PDFLibrary.ViewModels;
 using RSecurityBackend.Models.Generic;
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 
@@ -61,6 +60,35 @@ namespace RMuseum.Services.Implementation
 			{
                 return new RServiceResult<bool>(false, exp.ToString());
 			}
+        }
+
+        /// <summary>
+        /// ganjoor poem match finding queue
+        /// </summary>
+        /// <param name="notStarted"></param>
+        /// <param name="notFinished"></param>
+        /// <returns></returns>
+        public async Task<RServiceResult<GanjoorPoemMatchFinding[]>> GetGanjoorPoemMatchQueueAsync(bool notStarted = false, bool notFinished = true)
+        {
+            try
+            {
+                return new RServiceResult<GanjoorPoemMatchFinding[]>
+                    (
+                    await _context.GanjoorPoemMatchFindings.AsNoTracking()
+                        .Where
+                        (
+                        m => 
+                            (notStarted == false || m.Started == false)
+                            &&
+                            (notFinished == false || m.Finished == false)
+                        )
+                        .ToArrayAsync()
+                    );
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<GanjoorPoemMatchFinding[]>(null, exp.ToString());
+            }
         }
     }
 }
