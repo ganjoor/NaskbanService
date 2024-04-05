@@ -24,6 +24,11 @@ namespace RMuseum.Services.Implementation
         {
 			try
 			{
+                if(await _context.GanjoorPoemMatchFindings.Where(m => m.GanjoorCatId == model.GanjoorCatId && m.BookId == model.BookId).AnyAsync())
+                {
+                    return new RServiceResult<bool>(false, $"Duplicated item - CatId = {model.GanjoorCatId}, BookId = {model.BookId}");
+                }
+
                 GanjoorPoemMatchFinding matchFinding = new GanjoorPoemMatchFinding()
                 {
                     GanjoorCatId = model.GanjoorCatId,
