@@ -527,13 +527,22 @@
             <param name="link"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Controllers.PDFLibraryController.GetNextUnreviewedGanjoorLinkAsync(System.Int32)">
+        <member name="M:RMuseum.Controllers.PDFLibraryController.IsBookRelatedToPoemAsync(System.Int32,System.Int32)">
+            <summary>
+            is book link to ganjoor poem
+            </summary>
+            <param name="bookId"></param>
+            <param name="poemId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetNextUnreviewedGanjoorLinkAsync(System.Int32,System.Boolean)">
             <summary>
             finds next awaiting suggested link 
             return value might be null (has paging-headers)
             </summary>
             <remarks>has paging-headers</remarks>
             <param name="skip"></param>
+            <param name="onlyMachineSuggested"></param>
             <returns> return value might be null </returns>
         </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.ReviewSuggestedLinkAsync(System.Guid,RMuseum.Models.GanjoorIntegration.ReviewResult)">
@@ -4059,6 +4068,11 @@
         <member name="P:RMuseum.Models.GanjoorIntegration.PDFGanjoorLink.ExternalThumbnailImageUrl">
             <summary>
             external thumbnail image url
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.GanjoorIntegration.PDFGanjoorLink.SuggestedByMachine">
+            <summary>
+            suggested using machine computations
             </summary>
         </member>
         <member name="T:RMuseum.Models.GanjoorIntegration.PinterestLink">
@@ -10877,6 +10891,11 @@
             is this the text original source?
             </summary>
         </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFGanjoorLinkSuggestion.SuggestedByMachine">
+            <summary>
+            suggested by a machine
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFPageOCRDataViewModel">
             <summary>
             PDF Page OCR Data View Model
@@ -11854,6 +11873,14 @@
             <param name="term"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.IsBookRelatedToPoemAsync(System.Int32,System.Int32)">
+            <summary>
+            check to see if book is related to poem
+            </summary>
+            <param name="bookId"></param>
+            <param name="poemId"></param>
+            <returns></returns>
+        </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.SuggestGanjoorLinkAsync(System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFGanjoorLinkSuggestion)">
             <summary>
             suggest ganjoor link
@@ -11862,11 +11889,12 @@
             <param name="link"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetNextUnreviewedGanjoorLinkAsync(System.Int32)">
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetNextUnreviewedGanjoorLinkAsync(System.Int32,System.Boolean)">
             <summary>
             finds what the method name suggests
             </summary>
             <param name="skip"></param>
+            <param name="onlyMachineSuggested"></param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetUnreviewedGanjoorLinksCountAsync">
@@ -12584,6 +12612,14 @@
             <param name="term"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.IsBookRelatedToPoemAsync(System.Int32,System.Int32)">
+            <summary>
+            check to see if book is related to poem
+            </summary>
+            <param name="bookId"></param>
+            <param name="poemId"></param>
+            <returns></returns>
+        </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.SuggestGanjoorLinkAsync(System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFGanjoorLinkSuggestion)">
             <summary>
             suggest ganjoor link
@@ -12592,11 +12628,12 @@
             <param name="link"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Services.IPDFLibraryService.GetNextUnreviewedGanjoorLinkAsync(System.Int32)">
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetNextUnreviewedGanjoorLinkAsync(System.Int32,System.Boolean)">
             <summary>
             finds what the method name suggests
             </summary>
             <param name="skip"></param>
+            <param name="onlyMachineSuggested"></param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.GetUnreviewedGanjoorLinksCountAsync">

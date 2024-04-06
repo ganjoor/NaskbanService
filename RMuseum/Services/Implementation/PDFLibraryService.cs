@@ -22,6 +22,7 @@ using FluentFTP;
 using RMuseum.Models.PDFUserTracking;
 using RMuseum.Models.PDFUserTracking.ViewModels;
 using RMuseum.Models.ImportJob;
+using static System.Windows.Forms.LinkLabel;
 
 namespace RMuseum.Services.Implementation
 {
@@ -1624,6 +1625,29 @@ namespace RMuseum.Services.Implementation
         }
 
         /// <summary>
+        /// check to see if book is related to poem
+        /// </summary>
+        /// <param name="bookId"></param>
+        /// <param name="poemId"></param>
+        /// <returns></returns>
+        public async Task<RServiceResult<bool>> IsBookRelatedToPoemAsync(int bookId, int poemId)
+        {
+            try
+            {
+                return new RServiceResult<bool>
+                    (
+                    await _context.PDFGanjoorLinks.AsNoTracking().
+                        Where(l => l.GanjoorPostId == poemId && l.PDFBookId == bookId && l.ReviewResult != ReviewResult.Rejected)
+                            .AnyAsync()
+                    );
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<bool> (false, exp.ToString());
+            }
+        }
+
+        /// <summary>
         /// suggest ganjoor link
         /// </summary>
         /// <param name="userId"></param>
@@ -1656,6 +1680,7 @@ namespace RMuseum.Services.Implementation
                         ExternalThumbnailImageUrl = (await _context.PDFPages.AsNoTracking().Where(l => l.PDFBookId == link.PDFBookId && l.PageNumber == link.PageNumber).SingleAsync()).ExtenalThumbnailImageUrl,
                         PDFPageTitle = pdfBook.Title + " - صفحهٔ " + link.PageNumber.ToString().ToPersianNumbers(),
                         IsTextOriginalSource = link.IsTextOriginalSource,
+                        SuggestedByMachine = link.SuggestedByMachine,
                     };
 
                 _context.PDFGanjoorLinks.Add(suggestion);
@@ -1673,14 +1698,21 @@ namespace RMuseum.Services.Implementation
         /// finds what the method name suggests
         /// </summary>
         /// <param name="skip"></param>
+        /// <param name="onlyMachineSuggested"></param>
         /// <returns></returns>
-        public async Task<RServiceResult<GanjoorLinkViewModel>> GetNextUnreviewedGanjoorLinkAsync(int skip)
+        public async Task<RServiceResult<GanjoorLinkViewModel>> GetNextUnreviewedGanjoorLinkAsync(int skip, bool onlyMachineSuggested)
         {
             try
             {
                 var link = await _context.PDFGanjoorLinks.AsNoTracking()
                  .Include(l => l.SuggestedBy)
-                 .Where(l => l.ReviewResult == ReviewResult.Awaiting)
+                 .Where
+                 (
+                    l => 
+                    l.ReviewResult == ReviewResult.Awaiting
+                    &&
+                    (onlyMachineSuggested == false || l.SuggestedByMachine == true )
+                    )
                  .OrderBy(l => l.SuggestionDate)
                  .Skip(skip)
                  .FirstOrDefaultAsync();
@@ -1712,7 +1744,7 @@ namespace RMuseum.Services.Implementation
                                 Bio = link.SuggestedBy.Bio,
                                 EmailConfirmed = link.SuggestedBy.EmailConfirmed
                             },
-                            IsTextOriginalSource = link.IsTextOriginalSource
+                            IsTextOriginalSource = link.IsTextOriginalSource,
                         });
                 }
                 return new RServiceResult<GanjoorLinkViewModel>(null);

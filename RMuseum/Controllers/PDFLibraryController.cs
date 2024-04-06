@@ -1478,20 +1478,40 @@ namespace RMuseum.Controllers
         }
 
         /// <summary>
+        /// is book link to ganjoor poem
+        /// </summary>
+        /// <param name="bookId"></param>
+        /// <param name="poemId"></param>
+        /// <returns></returns>
+
+        [HttpGet]
+        [Route("ganjoor/islinked/book/{bookId}/poem/{poemId}")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(bool))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> IsBookRelatedToPoemAsync(int bookId, int poemId)
+        {
+            var res = await _pdfService.IsBookRelatedToPoemAsync(bookId, poemId);
+            if(!string.IsNullOrEmpty(res.ExceptionString)) return BadRequest(res.ExceptionString);
+            return Ok(res.Result);
+        }
+
+        /// <summary>
         /// finds next awaiting suggested link 
         /// return value might be null (has paging-headers)
         /// </summary>
         /// <remarks>has paging-headers</remarks>
         /// <param name="skip"></param>
+        /// <param name="onlyMachineSuggested"></param>
         /// <returns> return value might be null </returns>
         [HttpGet]
         [Route("ganjoor/nextunreviewed")]
         [Authorize]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(GanjoorLinkViewModel))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
-        public async Task<IActionResult> GetNextUnreviewedGanjoorLinkAsync(int skip)
+        public async Task<IActionResult> GetNextUnreviewedGanjoorLinkAsync(int skip, bool onlyMachineSuggested = false)
         {
-            RServiceResult<GanjoorLinkViewModel> res = await _pdfService.GetNextUnreviewedGanjoorLinkAsync(skip);
+            RServiceResult<GanjoorLinkViewModel> res = await _pdfService.GetNextUnreviewedGanjoorLinkAsync(skip, onlyMachineSuggested);
             if (!string.IsNullOrEmpty(res.ExceptionString))
                 return BadRequest(res.ExceptionString);
             var resCount = await _pdfService.GetUnreviewedGanjoorLinksCountAsync();

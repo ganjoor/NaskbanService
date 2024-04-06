@@ -34,5 +34,10 @@
         /// is this the text original source?
         /// </summary>
         public bool IsTextOriginalSource { get; set; }
+
+        /// <summary>
+        /// suggested by a machine
+        /// </summary>
+        public bool SuggestedByMachine { get; set; }
     }
 }

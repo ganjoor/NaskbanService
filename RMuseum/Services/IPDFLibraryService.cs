@@ -373,6 +373,14 @@ namespace RMuseum.Services
         Task<RServiceResult<(PaginationMetadata PagingMeta, PDFBook[] Items)>> SearchPDFBooksAsync(PagingParameterModel paging, string term);
 
         /// <summary>
+        /// check to see if book is related to poem
+        /// </summary>
+        /// <param name="bookId"></param>
+        /// <param name="poemId"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> IsBookRelatedToPoemAsync(int bookId, int poemId);
+
+        /// <summary>
         /// suggest ganjoor link
         /// </summary>
         /// <param name="userId"></param>
@@ -384,8 +392,9 @@ namespace RMuseum.Services
         /// finds what the method name suggests
         /// </summary>
         /// <param name="skip"></param>
+        /// <param name="onlyMachineSuggested"></param>
         /// <returns></returns>
-        Task<RServiceResult<GanjoorLinkViewModel>> GetNextUnreviewedGanjoorLinkAsync(int skip);
+        Task<RServiceResult<GanjoorLinkViewModel>> GetNextUnreviewedGanjoorLinkAsync(int skip, bool onlyMachineSuggested);
 
         /// <summary>
         /// get unreviewed image count
