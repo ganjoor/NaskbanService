@@ -119,7 +119,7 @@ namespace RMuseum.Services.Implementation
                 if(model.Finished && dbModel.Finished == false)
                 {
                     dbModel.Finished = true;
-                    dbModel.Finished = model.Finished;
+                    dbModel.FinishTime = model.FinishTime;
                 }
                 _context.Update(dbModel);
                 await _context.SaveChangesAsync();
