@@ -1666,6 +1666,12 @@ namespace RMuseum.Services.Implementation
                 if (alreadySuggest != null)
                     return new RServiceResult<bool>(false, "این مورد پیشتر پیشنهاد شده است.");
 
+                string pdfPageTitle = pdfBook.Title;
+                if(!string.IsNullOrEmpty(pdfBook.AuthorsLine))
+                {
+                    pdfPageTitle += $" - {pdfBook.AuthorsLine}";
+                }
+
                 PDFGanjoorLink suggestion =
                     new PDFGanjoorLink()
                     {
@@ -1678,7 +1684,7 @@ namespace RMuseum.Services.Implementation
                         SuggestionDate = DateTime.Now,
                         ReviewResult = ReviewResult.Awaiting,
                         ExternalThumbnailImageUrl = (await _context.PDFPages.AsNoTracking().Where(l => l.PDFBookId == link.PDFBookId && l.PageNumber == link.PageNumber).SingleAsync()).ExtenalThumbnailImageUrl,
-                        PDFPageTitle = pdfBook.Title + " - صفحهٔ " + link.PageNumber.ToString().ToPersianNumbers(),
+                        PDFPageTitle = pdfPageTitle + " - صفحهٔ " + link.PageNumber.ToString().ToPersianNumbers(),
                         IsTextOriginalSource = link.IsTextOriginalSource,
                         SuggestedByMachine = link.SuggestedByMachine,
                     };
