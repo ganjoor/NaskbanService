@@ -1684,7 +1684,7 @@ namespace RMuseum.Services.Implementation
                         SuggestionDate = DateTime.Now,
                         ReviewResult = ReviewResult.Awaiting,
                         ExternalThumbnailImageUrl = (await _context.PDFPages.AsNoTracking().Where(l => l.PDFBookId == link.PDFBookId && l.PageNumber == link.PageNumber).SingleAsync()).ExtenalThumbnailImageUrl,
-                        PDFPageTitle = pdfPageTitle + " - صفحهٔ " + link.PageNumber.ToString().ToPersianNumbers(),
+                        PDFPageTitle = pdfPageTitle + " - تصویر " + link.PageNumber.ToString().ToPersianNumbers(),
                         IsTextOriginalSource = link.IsTextOriginalSource,
                         SuggestedByMachine = link.SuggestedByMachine,
                     };
