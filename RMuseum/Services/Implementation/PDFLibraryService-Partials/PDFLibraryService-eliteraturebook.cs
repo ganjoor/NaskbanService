@@ -726,6 +726,14 @@ namespace RMuseum.Services.Implementation
                                                    string srcUrl = html.Substring(idx, endIdx - idx);
                                                    idx = html.IndexOf("https://eliteraturebook.com/books/view/", idx + 1);
 
+                                                   if(!finalizeDownload)
+                                                   {
+                                                       if(true == await context.QueuedPDFBooks.Where(q => q.OriginalSourceUrl == srcUrl).AnyAsync())
+                                                       {
+                                                           continue;
+                                                       }
+                                                   }
+
                                                    if (
                                                     (await context.PDFBooks.Where(a => a.OriginalSourceUrl == srcUrl).SingleOrDefaultAsync())
                                                     ==
