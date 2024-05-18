@@ -16,11 +16,11 @@ using System.Threading.Tasks;
 namespace RMuseum.Services.Implementation
 {
     /// <summary>
-    /// Ganjoor User Service
+    /// Naskban User Service
     /// </summary>
-    public class NaskbaAppUserService : AppUserService
+    public class NaskbanAppUserService : AppUserService
     {
-        public NaskbaAppUserService(
+        public NaskbanAppUserService(
             RMuseumDbContext context,
             UserManager<RAppUser> userManager,
             SignInManager<RAppUser> signInManager,

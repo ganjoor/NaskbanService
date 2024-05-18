@@ -11340,17 +11340,17 @@
             <param name="dateTime"></param>
             <returns></returns>
         </member>
-        <member name="T:RMuseum.Services.Implementation.NaskbaAppUserService">
+        <member name="T:RMuseum.Services.Implementation.NaskbanAppUserService">
             <summary>
-            Ganjoor User Service
+            Naskban User Service
             </summary>
         </member>
-        <member name="F:RMuseum.Services.Implementation.NaskbaAppUserService._memoryCache">
+        <member name="F:RMuseum.Services.Implementation.NaskbanAppUserService._memoryCache">
             <summary>
             IMemoryCache
             </summary>
         </member>
-        <member name="M:RMuseum.Services.Implementation.NaskbaAppUserService.GetEmailSubject(RSecurityBackend.Models.Auth.Db.RVerifyQueueType,System.String)">
+        <member name="M:RMuseum.Services.Implementation.NaskbanAppUserService.GetEmailSubject(RSecurityBackend.Models.Auth.Db.RVerifyQueueType,System.String)">
             <summary>
             Sign Up Email Subject
             </summary>
@@ -11360,7 +11360,7 @@
             <param name="op"></param>
             <param name="secretCode"></param>
         </member>
-        <member name="M:RMuseum.Services.Implementation.NaskbaAppUserService.GetEmailHtmlContent(RSecurityBackend.Models.Auth.Db.RVerifyQueueType,System.String,System.String)">
+        <member name="M:RMuseum.Services.Implementation.NaskbanAppUserService.GetEmailHtmlContent(RSecurityBackend.Models.Auth.Db.RVerifyQueueType,System.String,System.String)">
             <summary>
             Sign Up Email Html Content
             </summary>
@@ -11369,7 +11369,7 @@
             <param name="signupCallbackUrl"></param>
             <returns>html content</returns>
         </member>
-        <member name="M:RMuseum.Services.Implementation.NaskbaAppUserService.SignUp(System.String,System.String,System.String,System.String)">
+        <member name="M:RMuseum.Services.Implementation.NaskbanAppUserService.SignUp(System.String,System.String,System.String,System.String)">
             <summary>
             Start signup process using email
             </summary>
@@ -11379,7 +11379,7 @@
             <param name="langauge"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Services.Implementation.NaskbaAppUserService.FinalizeSignUp(System.String,System.String,System.String,System.String,System.String)">
+        <member name="M:RMuseum.Services.Implementation.NaskbanAppUserService.FinalizeSignUp(System.String,System.String,System.String,System.String,System.String)">
             <summary>
             finalize signup and assign his or him comments to him or her
             </summary>
@@ -11390,7 +11390,7 @@
             <param name="sureName"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Services.Implementation.NaskbaAppUserService.ModifyUser(System.Guid,RSecurityBackend.Models.Auth.ViewModels.RegisterRAppUser)">
+        <member name="M:RMuseum.Services.Implementation.NaskbanAppUserService.ModifyUser(System.Guid,RSecurityBackend.Models.Auth.ViewModels.RegisterRAppUser)">
             <summary>
             modify existing user /*update related entities cache*/
             </summary>
@@ -11398,7 +11398,7 @@
             <param name="updateUserInfo"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Services.Implementation.NaskbaAppUserService.RemoveUserData(System.Guid)">
+        <member name="M:RMuseum.Services.Implementation.NaskbanAppUserService.RemoveUserData(System.Guid)">
             <summary>
             remove user data
             </summary>
