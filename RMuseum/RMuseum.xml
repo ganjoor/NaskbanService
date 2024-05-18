@@ -11379,7 +11379,7 @@
             <param name="langauge"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Services.Implementation.NaskbanAppUserService.FinalizeSignUp(System.String,System.String,System.String,System.String,System.String)">
+        <member name="M:RMuseum.Services.Implementation.NaskbanAppUserService.FinalizeSignUp(System.String,System.String,System.String,System.String,System.String,System.String)">
             <summary>
             finalize signup and assign his or him comments to him or her
             </summary>
@@ -11388,6 +11388,7 @@
             <param name="password"></param>
             <param name="firstName"></param>
             <param name="sureName"></param>
+            <param name="phoneNumber"></param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.Implementation.NaskbanAppUserService.ModifyUser(System.Guid,RSecurityBackend.Models.Auth.ViewModels.RegisterRAppUser)">
