@@ -61,7 +61,7 @@ namespace RMuseum.Services.Implementation
                 "بازیابی کلمهٔ عبور"
                 :
                 "حذف حساب کاربری";
-            return $"{secretCode} کد {opString} شما در نسک‌بان";
+            return $"{secretCode} کد {opString} شما در نسکبان";
         }
 
         /// <summary>
@@ -74,12 +74,12 @@ namespace RMuseum.Services.Implementation
         public override string GetEmailHtmlContent(RVerifyQueueType op, string secretCode, string signupCallbackUrl)
         {
             string opString = op == RVerifyQueueType.SignUp ? "نام‌نویسی" : op == RVerifyQueueType.ForgotPassword ? "بازیابی کلمهٔ عبور" : "حذف حساب کاربری";
-            string ifNot = op == RVerifyQueueType.SignUp ? "اگر در نسک‌بان نام‌نویسی نکرده‌اید لطفاً این نامه را نادیده بگیرید."
+            string ifNot = op == RVerifyQueueType.SignUp ? "اگر در نسکبان نام‌نویسی نکرده‌اید لطفاً این نامه را نادیده بگیرید."
                                 : op == RVerifyQueueType.ForgotPassword ?
-                                "اگر در نسک‌بان فراموشی گذرواژه را نزده‌اید یا گذرواژه‌تان را به خاطر آوردید لطفاً این نامه را نادیده بگیرید."
+                                "اگر در نسکبان فراموشی گذرواژه را نزده‌اید یا گذرواژه‌تان را به خاطر آوردید لطفاً این نامه را نادیده بگیرید."
                                 :
                                 op == RVerifyQueueType.UserSelfDelete ? 
-                                "اگر در نسک‌بان حذف حساب کاربری را نزده‌اید یا از حذف حساب کاربریتان منصرف شده‌اید لطفاً این نامه را نادیده بگیرید."
+                                "اگر در نسکبان حذف حساب کاربری را نزده‌اید یا از حذف حساب کاربریتان منصرف شده‌اید لطفاً این نامه را نادیده بگیرید."
                                 :
                                 "";
             string content =
@@ -91,7 +91,7 @@ namespace RMuseum.Services.Implementation
                +
                "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />"
                +
-               (op == RVerifyQueueType.KickOutUser ? $"<title>حذف حساب کاربری شما در نسک‌بان</title>" : $" <title>کد {opString} شما در نسک‌بان: {secretCode}</title>")
+               (op == RVerifyQueueType.KickOutUser ? $"<title>حذف حساب کاربری شما در نسکبان</title>" : $" <title>کد {opString} شما در نسکبان: {secretCode}</title>")
                +
                "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"/>"
                +
@@ -105,7 +105,7 @@ namespace RMuseum.Services.Implementation
                 +
                 "<td align=\"center\" style=\"padding: 40px 0 30px 0;\">"
                 +
-                "<img src=\"https://naskban.ir/logo.png\" alt=\"نسک‌بان\" width=\"150\" height=\"150\" style=\"display: block;\" />"
+                "<img src=\"https://naskban.ir/logo.png\" alt=\"نسکبان\" width=\"150\" height=\"150\" style=\"display: block;\" />"
                 +
                 "</td>"
                 +
@@ -115,12 +115,12 @@ namespace RMuseum.Services.Implementation
                 +
                 (
                 op == RVerifyQueueType.KickOutUser ?
-                $"<p style=\"font:normal 12px tahoma;direction:rtl\">کاربر گرامی، متأسفیم که به اطلاع برسانیم که به دلیل نقض قوانین استفاده از نسک‌بان و به طور مشخص {secretCode} حساب کاربری شما به همراه حاشیه‌ها، خوانش‌ها و سایر اطلاعات خصوصیتان از نسک‌بان حذف شده است. امیدواریم در آینده در صورت تمایل به استفاده از نسک‌بان در چارچوب‌های قابل پذیرش برای ما با حساب کاربری جدیدی پذیرای شما باشیم. با این ایمیل امکان نام‌نویسی مجدد نخواهید داشت.</p>"
+                $"<p style=\"font:normal 12px tahoma;direction:rtl\">کاربر گرامی، متأسفیم که به اطلاع برسانیم که به دلیل نقض قوانین استفاده از نسکبان و به طور مشخص {secretCode} حساب کاربری شما به همراه حاشیه‌ها، خوانش‌ها و سایر اطلاعات خصوصیتان از نسکبان حذف شده است. امیدواریم در آینده در صورت تمایل به استفاده از نسکبان در چارچوب‌های قابل پذیرش برای ما با حساب کاربری جدیدی پذیرای شما باشیم. با این ایمیل امکان نام‌نویسی مجدد نخواهید داشت.</p>"
                 :
                 string.IsNullOrEmpty(signupCallbackUrl) ?
-                $"<p style=\"font:normal 12px tahoma;direction:rtl\">لطفاً جهت تکمیل {opString} در نسک‌بان کد <strong>{secretCode}</strong> را به عنوان رمز دریافتی در صفحهٔ {opString} وارد کنید.</p>"
+                $"<p style=\"font:normal 12px tahoma;direction:rtl\">لطفاً جهت تکمیل {opString} در نسکبان کد <strong>{secretCode}</strong> را به عنوان رمز دریافتی در صفحهٔ {opString} وارد کنید.</p>"
                 :
-                $"<p style=\"font:normal 12px tahoma;direction:rtl\">لطفاً جهت تکمیل {opString} در نسک‌بان <a href=\"{signupCallbackUrl}?secret={secretCode}\">اینجا</a> کلیک کنید یا اگر صفحهٔ {opString} هنوز باز است کد <strong>{secretCode}</strong> را در آن وارد کنید.</p>"
+                $"<p style=\"font:normal 12px tahoma;direction:rtl\">لطفاً جهت تکمیل {opString} در نسکبان <a href=\"{signupCallbackUrl}?secret={secretCode}\">اینجا</a> کلیک کنید یا اگر صفحهٔ {opString} هنوز باز است کد <strong>{secretCode}</strong> را در آن وارد کنید.</p>"
                 )
                 +
                 "</td></tr>"

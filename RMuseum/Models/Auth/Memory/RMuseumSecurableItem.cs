@@ -207,7 +207,7 @@ namespace RMuseum.Models.Auth.Memory
                     new SecurableItem()
                     {
                         ShortName = PDFLibraryEntityShortName,
-                        Description = "نسک‌بان",
+                        Description = "نسکبان",
                         Operations = new SecurableItemOperation[]
                         {
                             new SecurableItemOperation(AddOperationShortName, "ایجاد", false),
