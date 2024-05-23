@@ -160,17 +160,17 @@ namespace RMuseum.Services.Implementation
                 }
 
                 idxStart = html.IndexOf("box summary-box");
-                if(idxStart != -1)
+                if (idxStart != -1)
                 {
                     idxStart = html.IndexOf("<p>", idxStart);
-                    if(idxStart != -1)
+                    if (idxStart != -1)
                     {
                         idxStart += "<p>".Length;
                         int idxEnd = html.IndexOf("<", idxStart);
 
                         if (idxEnd != -1)
                         {
-                            model.Description = html.Substring(idxStart + 1, idxEnd - idxStart - 1).ApplyCorrectYeKe();
+                            model.Description = html.Substring(idxStart, idxEnd - idxStart).ApplyCorrectYeKe();
                             model.Description = model.Description.Trim();
                         }
                     }
@@ -258,7 +258,7 @@ namespace RMuseum.Services.Implementation
                         }
                     }
                 }
-                
+
 
 
 
@@ -282,7 +282,7 @@ namespace RMuseum.Services.Implementation
 
                     string tagValueCleaned = tagValue.Replace("\n", "").Replace("\r", "").Trim().ToPersianNumbers().ApplyCorrectYeKe();
 
-                    
+
                     if (tagName == "مترجم")
                     {
                         model.TranslatorsLine = tagValueCleaned;
@@ -452,7 +452,7 @@ namespace RMuseum.Services.Implementation
                 }
 
                 idx = html.IndexOf("\"tag\"");
-                while(idx != -1)
+                while (idx != -1)
                 {
                     idxStart = html.IndexOf(">", idx);
                     if (idxStart != -1)
@@ -530,7 +530,7 @@ namespace RMuseum.Services.Implementation
                 idx = html.IndexOf("https://eliteraturebook.com/books/download");
                 int idxQuote = html.IndexOf('"', idx);
                 string downloadUrl = html.Substring(idx, idxQuote - idx);
-       
+
 
 
                 model.OriginalFileUrl = downloadUrl;
@@ -569,7 +569,7 @@ namespace RMuseum.Services.Implementation
                         if (result.IsSuccessStatusCode)
                         {
                             string fileName = (1 + await context.PDFBooks.MaxAsync(p => p.Id)).ToString().PadLeft(8, '0') + "-eliteraturebook.pdf";
-                            
+
 
                             model.LocalImportingPDFFilePath = Path.Combine(_imageFileService.ImageStoragePath, fileName);
                             if (File.Exists(model.LocalImportingPDFFilePath))
@@ -619,7 +619,7 @@ namespace RMuseum.Services.Implementation
                                     return new RServiceResult<int>(0, "ImportLocalPDFFileAsync result was null");
                                 }
 
-                                if(res.ExceptionString.Contains("duplicated pdf with checksum"))
+                                if (res.ExceptionString.Contains("duplicated pdf with checksum"))
                                 {
                                     return new RServiceResult<int>(-2, res.ExceptionString);
                                 }
@@ -695,8 +695,10 @@ namespace RMuseum.Services.Implementation
                                            using (var client = new HttpClient())
                                            {
                                                using (var result = await client.PostAsync(ajaxPageUrl,
-                                                   new StringContent($"ajaxPage={nAjaxPageIndex}")
-                                                   ))
+                                                new FormUrlEncodedContent(
+                                                [
+                                                    new KeyValuePair<string, string>("ajaxPage", nAjaxPageIndex.ToString()),
+                                                ])))
                                                {
                                                    if (result.IsSuccessStatusCode)
                                                    {
@@ -717,18 +719,18 @@ namespace RMuseum.Services.Implementation
                                                    }
                                                }
                                            }
-                                           if(!string.IsNullOrEmpty(html))
+                                           if (!string.IsNullOrEmpty(html))
                                            {
                                                int idx = html.IndexOf("https://eliteraturebook.com/books/view/");
-                                               while(idx != -1)
+                                               while (idx != -1)
                                                {
                                                    int endIdx = html.IndexOf("\"", idx);
                                                    string srcUrl = html.Substring(idx, endIdx - idx);
                                                    idx = html.IndexOf("https://eliteraturebook.com/books/view/", idx + 1);
 
-                                                   if(!finalizeDownload)
+                                                   if (!finalizeDownload)
                                                    {
-                                                       if(true == await context.QueuedPDFBooks.Where(q => q.OriginalSourceUrl == srcUrl).AnyAsync())
+                                                       if (true == await context.QueuedPDFBooks.Where(q => q.OriginalSourceUrl == srcUrl).AnyAsync())
                                                        {
                                                            continue;
                                                        }
@@ -742,11 +744,11 @@ namespace RMuseum.Services.Implementation
                                                    {
                                                        await ImportELiteratureBookLibraryUrlAsync(srcUrl, context, finalizeDownload);
                                                    }
-                                                   
+
                                                }
-                                              
+
                                            }
-                                           
+
                                        }
                                        catch
                                        {
