@@ -82,6 +82,17 @@ namespace RMuseum.Services.Implementation
                                 "اگر در نسکبان حذف حساب کاربری را نزده‌اید یا از حذف حساب کاربریتان منصرف شده‌اید لطفاً این نامه را نادیده بگیرید."
                                 :
                                 "";
+            if(!string.IsNullOrEmpty(signupCallbackUrl))
+            {
+                if(signupCallbackUrl.Contains("?"))
+                {
+                    signupCallbackUrl = $"{signupCallbackUrl}&secret={secretCode}";
+                }
+                else
+                {
+                    signupCallbackUrl = $"{signupCallbackUrl}?secret={secretCode}";
+                }
+            }
             string content =
                "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">"
                +
@@ -120,7 +131,7 @@ namespace RMuseum.Services.Implementation
                 string.IsNullOrEmpty(signupCallbackUrl) ?
                 $"<p style=\"font:normal 12px tahoma;direction:rtl\">لطفاً جهت تکمیل {opString} در نسکبان کد <strong>{secretCode}</strong> را به عنوان رمز دریافتی در صفحهٔ {opString} وارد کنید.</p>"
                 :
-                $"<p style=\"font:normal 12px tahoma;direction:rtl\">لطفاً جهت تکمیل {opString} در نسکبان <a href=\"{signupCallbackUrl}?secret={secretCode}\">اینجا</a> کلیک کنید یا اگر صفحهٔ {opString} هنوز باز است کد <strong>{secretCode}</strong> را در آن وارد کنید.</p>"
+                $"<p style=\"font:normal 12px tahoma;direction:rtl\">لطفاً جهت تکمیل {opString} در نسکبان <a href=\"{signupCallbackUrl}\">اینجا</a> کلیک کنید یا اگر صفحهٔ {opString} هنوز باز است کد <strong>{secretCode}</strong> را در آن وارد کنید.</p>"
                 )
                 +
                 "</td></tr>"
