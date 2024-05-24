@@ -673,24 +673,24 @@ namespace RMuseum.Services.Implementation
                                    string ajaxPageUrl = "https://eliteraturebook.com/index";
                                    for (int nAjaxPageIndex = ajaxPageIndexEnd; nAjaxPageIndex >= ajaxPageIndexStart; nAjaxPageIndex--)
                                    {
-                                       try
+                                       ImportJob job = new ImportJob()
                                        {
-                                           ImportJob job = new ImportJob()
-                                           {
-                                               JobType = JobType.Pdf,
-                                               SrcContent = "",
-                                               ResourceNumber = $"scrapping ajax page ... {nAjaxPageIndex}",
-                                               FriendlyUrl = "",
-                                               SrcUrl = "",
-                                               QueueTime = DateTime.Now,
-                                               ProgressPercent = 0,
-                                               Status = ImportJobStatus.NotStarted
-                                           };
-                                           await context.ImportJobs.AddAsync
-                                               (
-                                               job
-                                               );
-                                           await context.SaveChangesAsync();
+                                           JobType = JobType.Pdf,
+                                           SrcContent = "",
+                                           ResourceNumber = $"scrapping ajax page ... {nAjaxPageIndex}",
+                                           FriendlyUrl = "",
+                                           SrcUrl = "",
+                                           QueueTime = DateTime.Now,
+                                           ProgressPercent = 0,
+                                           Status = ImportJobStatus.NotStarted
+                                       };
+                                       await context.ImportJobs.AddAsync
+                                           (
+                                           job
+                                           );
+                                       await context.SaveChangesAsync();
+                                       try
+                                       { 
                                            string html = string.Empty;
                                            using (var client = new HttpClient())
                                            {
@@ -750,9 +750,14 @@ namespace RMuseum.Services.Implementation
                                            }
 
                                        }
-                                       catch
+                                       catch(Exception exp)
                                        {
-                                           //ignore
+                                           job.EndTime = DateTime.Now;
+                                           job.Status = ImportJobStatus.Failed;
+                                           job.Exception = $"ajaxPage={nAjaxPageIndex}, {exp}";
+                                           context.Update(job);
+                                           await context.SaveChangesAsync();
+                                           return;
                                        }
                                    }
                                }
