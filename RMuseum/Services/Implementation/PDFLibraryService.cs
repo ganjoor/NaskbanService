@@ -1741,7 +1741,7 @@ namespace RMuseum.Services.Implementation
                                 Username = link.SuggestedBy.UserName,
                                 Email = link.SuggestedBy.Email,
                                 FirstName = link.SuggestedBy.FirstName,
-                                SureName = link.SuggestedBy.SureName,
+                                SurName = link.SuggestedBy.SurName,
                                 PhoneNumber = link.SuggestedBy.PhoneNumber,
                                 RImageId = link.SuggestedBy.RImageId,
                                 Status = link.SuggestedBy.Status,
