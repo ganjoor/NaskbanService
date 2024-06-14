@@ -750,14 +750,9 @@ namespace RMuseum.Services.Implementation
                                            }
 
                                        }
-                                       catch(Exception exp)
+                                       catch
                                        {
-                                           job.EndTime = DateTime.Now;
-                                           job.Status = ImportJobStatus.Failed;
-                                           job.Exception = $"ajaxPage={nAjaxPageIndex}, {exp}";
-                                           context.Update(job);
-                                           await context.SaveChangesAsync();
-                                           return;
+                                           //ignore 
                                        }
                                    }
                                }
