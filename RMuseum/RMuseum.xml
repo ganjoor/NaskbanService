@@ -627,12 +627,13 @@
             <param name="count"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Controllers.PDFLibraryController.SwitchBookmarkAsync(System.Int32,System.Nullable{System.Int32})">
+        <member name="M:RMuseum.Controllers.PDFLibraryController.SwitchBookmarkAsync(System.Int32,System.Nullable{System.Int32},System.String)">
             <summary>
             switch book mark
             </summary>
             <param name="pdfBookId"></param>
             <param name="pageId">send 0 for the whole book</param>
+            <param name="note"></param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.GetBookmarksAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.Nullable{System.Int32},System.Nullable{System.Int32})">
@@ -1444,6 +1445,18 @@
             <inheritdoc />
         </member>
         <member name="M:RMuseum.Migrations.RSecUpdate.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:RMuseum.Migrations.SurNameFix">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.SurNameFix.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.SurNameFix.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.SurNameFix.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
         <member name="T:RMuseum.Models.Accounting.DonationExpenditure">
@@ -11418,13 +11431,14 @@
             <param name="userId"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Services.Implementation.PDFBookmarkService.SwitchBookmarkAsync(System.Int32,System.Guid,System.Nullable{System.Int32})">
+        <member name="M:RMuseum.Services.Implementation.PDFBookmarkService.SwitchBookmarkAsync(System.Int32,System.Guid,System.Nullable{System.Int32},System.String)">
             <summary>
             Bookmark PDF Book (or one of its pages)
             </summary>
             <param name="pdfBookId"></param>
             <param name="userId"></param>
             <param name="pageId"></param>
+            <param name="note"></param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFBookmarkService.GetBookmarksAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.Guid,System.Nullable{System.Int32},System.Nullable{System.Int32})">
@@ -12261,13 +12275,14 @@
             </summary>
             <param name="roleManager"></param>       
         </member>
-        <member name="M:RMuseum.Services.IPDFBookmarkService.SwitchBookmarkAsync(System.Int32,System.Guid,System.Nullable{System.Int32})">
+        <member name="M:RMuseum.Services.IPDFBookmarkService.SwitchBookmarkAsync(System.Int32,System.Guid,System.Nullable{System.Int32},System.String)">
             <summary>
             Bookmark PDF Book (or one of its pages)
             </summary>
             <param name="pdfBookId"></param>
             <param name="userId"></param>
             <param name="pageId"></param>
+            <param name="note"></param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.IPDFBookmarkService.GetBookmarksAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.Guid,System.Nullable{System.Int32},System.Nullable{System.Int32})">

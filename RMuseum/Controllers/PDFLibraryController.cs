@@ -1809,6 +1809,7 @@ namespace RMuseum.Controllers
         /// </summary>
         /// <param name="pdfBookId"></param>
         /// <param name="pageId">send 0 for the whole book</param>
+        /// <param name="note"></param>
         /// <returns></returns>
         [HttpPost]
         [Route("bookmark/{pdfBookId}/{pageId}")]
@@ -1816,10 +1817,10 @@ namespace RMuseum.Controllers
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(PDFUserBookmark))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
-        public async Task<IActionResult> SwitchBookmarkAsync(int pdfBookId, int? pageId)
+        public async Task<IActionResult> SwitchBookmarkAsync(int pdfBookId, int? pageId, [FromBody] string note)
         {
             Guid loggedOnUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
-            var res = await _bookmarkingService.SwitchBookmarkAsync(pdfBookId, loggedOnUserId, pageId);
+            var res = await _bookmarkingService.SwitchBookmarkAsync(pdfBookId, loggedOnUserId, pageId, note);
             if (!string.IsNullOrEmpty(res.ExceptionString))
             {
                 return BadRequest(res.ExceptionString);
