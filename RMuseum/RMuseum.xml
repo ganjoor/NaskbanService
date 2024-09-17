@@ -632,7 +632,7 @@
             switch book mark
             </summary>
             <param name="pdfBookId"></param>
-            <param name="pageId">send 0 for the whole book</param>
+            <param name="pageNumber">send 0 for the whole book</param>
             <param name="note"></param>
             <returns></returns>
         </member>
@@ -11437,7 +11437,7 @@
             </summary>
             <param name="pdfBookId"></param>
             <param name="userId"></param>
-            <param name="pageId"></param>
+            <param name="pageNumber"></param>
             <param name="note"></param>
             <returns></returns>
         </member>
@@ -12281,7 +12281,7 @@
             </summary>
             <param name="pdfBookId"></param>
             <param name="userId"></param>
-            <param name="pageId"></param>
+            <param name="pageNumber"></param>
             <param name="note"></param>
             <returns></returns>
         </member>

@@ -17,14 +17,15 @@ namespace RMuseum.Services.Implementation
         /// </summary>
         /// <param name="pdfBookId"></param>
         /// <param name="userId"></param>
-        /// <param name="pageId"></param>
+        /// <param name="pageNumber"></param>
         /// <param name="note"></param>
         /// <returns></returns>
-        public async Task<RServiceResult<PDFUserBookmark>> SwitchBookmarkAsync(int pdfBookId, Guid userId, int? pageId, string note)
+        public async Task<RServiceResult<PDFUserBookmark>> SwitchBookmarkAsync(int pdfBookId, Guid userId, int? pageNumber, string note)
         {
             if (ReadOnlyMode)
                 return new RServiceResult<PDFUserBookmark>(null, "سایت به دلایل فنی مثل انتقال سرور موقتاً در حالت فقط خواندنی قرار دارد. لطفاً ساعاتی دیگر مجدداً تلاش کنید.");
 
+            int? pageId = pageNumber == null ? null : (await _context.PDFPages.AsNoTracking().Where(p => p.PDFBookId == pdfBookId && p.PageNumber == pageNumber).SingleAsync()).Id;
             var alreadyBookmarked = await _context.PDFUserBookmarks.Where(b => b.RAppUserId == userId && b.PDFBookId == pdfBookId && b.PageId == pageId).FirstOrDefaultAsync();
             if (alreadyBookmarked != null)
             {

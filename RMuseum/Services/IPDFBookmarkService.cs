@@ -13,10 +13,10 @@ namespace RMuseum.Services
         /// </summary>
         /// <param name="pdfBookId"></param>
         /// <param name="userId"></param>
-        /// <param name="pageId"></param>
+        /// <param name="pageNumber"></param>
         /// <param name="note"></param>
         /// <returns></returns>
-        Task<RServiceResult<PDFUserBookmark>> SwitchBookmarkAsync(int pdfBookId, Guid userId, int? pageId, string note);
+        Task<RServiceResult<PDFUserBookmark>> SwitchBookmarkAsync(int pdfBookId, Guid userId, int? pageNumber, string note);
 
         /// <summary>
         /// get user bookmarks
