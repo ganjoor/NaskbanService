@@ -1833,7 +1833,7 @@ namespace RMuseum.Controllers
         /// </summary>
         /// <param name="paging"></param>
         /// <param name="pdfBookId"></param>
-        /// <param name="pageNumber"></param>
+        /// <param name="pageNo"></param>
         /// <returns></returns>
         [HttpGet]
         [Route("bookmark/{pdfBookId}/{pageId}")]
@@ -1841,10 +1841,10 @@ namespace RMuseum.Controllers
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFUserBookmarkViewModel>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
-        public async Task<IActionResult> GetBookmarksAsync([FromQuery] PagingParameterModel paging, int? pdfBookId, int? pageNumber)
+        public async Task<IActionResult> GetBookmarksAsync([FromQuery] PagingParameterModel paging, int? pdfBookId, int? pageNo)
         {
             Guid loggedOnUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
-            var res = await _bookmarkingService.GetBookmarksAsync(paging, loggedOnUserId, pdfBookId, pageNumber);
+            var res = await _bookmarkingService.GetBookmarksAsync(paging, loggedOnUserId, pdfBookId, pageNo);
             if (!string.IsNullOrEmpty(res.ExceptionString))
             {
                 return BadRequest(res.ExceptionString);

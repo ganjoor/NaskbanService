@@ -59,14 +59,14 @@ namespace RMuseum.Services.Implementation
         /// </summary>
         /// <param name="paging"></param>
         /// <param name="userId"></param>
-        /// <param name="pageNumber"></param>
+        /// <param name="pageNo"></param>
         /// <param name="pdfBookId"></param>
         /// <returns></returns>
-        public async Task<RServiceResult<(PaginationMetadata PagingMeta, PDFUserBookmarkViewModel[] Bookmarks)>> GetBookmarksAsync(PagingParameterModel paging, Guid userId, int? pdfBookId, int? pageNumber)
+        public async Task<RServiceResult<(PaginationMetadata PagingMeta, PDFUserBookmarkViewModel[] Bookmarks)>> GetBookmarksAsync(PagingParameterModel paging, Guid userId, int? pdfBookId, int? pageNo)
         {
             try
             {
-                int? pageId = pageNumber == null ? null : (await _context.PDFPages.AsNoTracking().Where(p => p.PDFBookId == pdfBookId && p.PageNumber == pageNumber).SingleAsync()).Id;
+                int? pageId = pageNo == null || pageNo == 0 ? null : (await _context.PDFPages.AsNoTracking().Where(p => p.PDFBookId == pdfBookId && p.PageNumber == pageNo).SingleAsync()).Id;
                 var source =
                 _context.PDFUserBookmarks
                 .Include(b => b.PDFBook)

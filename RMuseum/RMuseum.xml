@@ -642,7 +642,13 @@
             </summary>
             <param name="paging"></param>
             <param name="pdfBookId"></param>
-            <param name="pageId"></param>
+            <param name="pageNo"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.DeleteAllBookmarks">
+            <summary>
+            delete all bookmarks
+            </summary>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.GetUserLastActivityAsync">
@@ -11447,8 +11453,15 @@
             </summary>
             <param name="paging"></param>
             <param name="userId"></param>
-            <param name="pageId"></param>
+            <param name="pageNo"></param>
             <param name="pdfBookId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFBookmarkService.DeleteAllBookmarks(System.Guid)">
+            <summary>
+            delete all user bookmarks
+            </summary>
+            <param name="userId"></param>
             <returns></returns>
         </member>
         <member name="P:RMuseum.Services.Implementation.PDFBookmarkService.ReadOnlyMode">
@@ -12291,8 +12304,15 @@
             </summary>
             <param name="paging"></param>
             <param name="userId"></param>
-            <param name="pageId"></param>
+            <param name="pageNo"></param>
             <param name="pdfBookId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFBookmarkService.DeleteAllBookmarks(System.Guid)">
+            <summary>
+            delete all user bookmarks
+            </summary>
+            <param name="userId"></param>
             <returns></returns>
         </member>
         <member name="T:RMuseum.Services.IPDFLibraryService">
