@@ -23,9 +23,16 @@ namespace RMuseum.Services
         /// </summary>
         /// <param name="paging"></param>
         /// <param name="userId"></param>
-        /// <param name="pageId"></param>
+        /// <param name="pageNo"></param>
         /// <param name="pdfBookId"></param>
         /// <returns></returns>
-        Task<RServiceResult<(PaginationMetadata PagingMeta, PDFUserBookmarkViewModel[] Bookmarks)>> GetBookmarksAsync(PagingParameterModel paging, Guid userId, int? pdfBookId, int? pageId);
+        Task<RServiceResult<(PaginationMetadata PagingMeta, PDFUserBookmarkViewModel[] Bookmarks)>> GetBookmarksAsync(PagingParameterModel paging, Guid userId, int? pdfBookId, int? pageNo);
+
+        /// <summary>
+        /// delete all user bookmarks
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> DeleteAllBookmarks(Guid userId);
     }
 }

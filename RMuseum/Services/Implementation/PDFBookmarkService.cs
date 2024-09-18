@@ -22,59 +22,97 @@ namespace RMuseum.Services.Implementation
         /// <returns></returns>
         public async Task<RServiceResult<PDFUserBookmark>> SwitchBookmarkAsync(int pdfBookId, Guid userId, int? pageNumber, string note)
         {
-            if (ReadOnlyMode)
-                return new RServiceResult<PDFUserBookmark>(null, "سایت به دلایل فنی مثل انتقال سرور موقتاً در حالت فقط خواندنی قرار دارد. لطفاً ساعاتی دیگر مجدداً تلاش کنید.");
-
-            int? pageId = pageNumber == null ? null : (await _context.PDFPages.AsNoTracking().Where(p => p.PDFBookId == pdfBookId && p.PageNumber == pageNumber).SingleAsync()).Id;
-            var alreadyBookmarked = await _context.PDFUserBookmarks.Where(b => b.RAppUserId == userId && b.PDFBookId == pdfBookId && b.PageId == pageId).FirstOrDefaultAsync();
-            if (alreadyBookmarked != null)
+            try
             {
-                _context.Remove(alreadyBookmarked);
-                await _context.SaveChangesAsync();
-                return new RServiceResult<PDFUserBookmark>(alreadyBookmarked);
-            }
-            PDFUserBookmark bookmark =
-                new PDFUserBookmark()
+                if (ReadOnlyMode)
+                    return new RServiceResult<PDFUserBookmark>(null, "سایت به دلایل فنی مثل انتقال سرور موقتاً در حالت فقط خواندنی قرار دارد. لطفاً ساعاتی دیگر مجدداً تلاش کنید.");
+
+                int? pageId = pageNumber == null ? null : (await _context.PDFPages.AsNoTracking().Where(p => p.PDFBookId == pdfBookId && p.PageNumber == pageNumber).SingleAsync()).Id;
+                var alreadyBookmarked = await _context.PDFUserBookmarks.Where(b => b.RAppUserId == userId && b.PDFBookId == pdfBookId && b.PageId == pageId).FirstOrDefaultAsync();
+                if (alreadyBookmarked != null)
                 {
-                    RAppUserId = userId,
-                    PDFBookId = pdfBookId,
-                    PageId = pageId,
-                    DateTime = DateTime.Now,
-                    Note = note ?? ""
-                };
-            _context.PDFUserBookmarks.Add(bookmark);
-            await _context.SaveChangesAsync();
-            return new RServiceResult<PDFUserBookmark>(bookmark);
+                    _context.Remove(alreadyBookmarked);
+                    await _context.SaveChangesAsync();
+                    return new RServiceResult<PDFUserBookmark>(alreadyBookmarked);
+                }
+                PDFUserBookmark bookmark =
+                    new PDFUserBookmark()
+                    {
+                        RAppUserId = userId,
+                        PDFBookId = pdfBookId,
+                        PageId = pageId,
+                        DateTime = DateTime.Now,
+                        Note = note ?? ""
+                    };
+                _context.PDFUserBookmarks.Add(bookmark);
+                await _context.SaveChangesAsync();
+                return new RServiceResult<PDFUserBookmark>(bookmark);
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<PDFUserBookmark>(null, exp.ToString());
+            }
+
         }
         /// <summary>
         /// get user bookmarks
         /// </summary>
         /// <param name="paging"></param>
         /// <param name="userId"></param>
-        /// <param name="pageId"></param>
+        /// <param name="pageNumber"></param>
         /// <param name="pdfBookId"></param>
         /// <returns></returns>
-        public async Task<RServiceResult<(PaginationMetadata PagingMeta, PDFUserBookmarkViewModel[] Bookmarks)>> GetBookmarksAsync(PagingParameterModel paging, Guid userId, int? pdfBookId, int? pageId)
+        public async Task<RServiceResult<(PaginationMetadata PagingMeta, PDFUserBookmarkViewModel[] Bookmarks)>> GetBookmarksAsync(PagingParameterModel paging, Guid userId, int? pdfBookId, int? pageNumber)
         {
-            var source =
-                 _context.PDFUserBookmarks
-                 .Include(b => b.PDFBook)
-                 .Include(b => b.Page)
-                 .Where(b => b.RAppUserId == userId && (pdfBookId == null || (b.PDFBookId == pdfBookId)) && ((pageId == 0 && b.PageId == null) || pageId == null || b.PageId == pageId))
-                .OrderByDescending(b => b.DateTime)
-                .Select(b => new PDFUserBookmarkViewModel()
-                {
-                    Id = b.Id,
-                    BookTitle = b.PDFBook.Title,
-                    BookId = b.PDFBook.Id,
-                    PageNumber = b.Page == null ? 0 : b.Page.PageNumber,
-                    Note = b.Note,
-                    DateTime = b.DateTime,
-                    ExtenalImageUrl = b.Page == null ? b.PDFBook.ExtenalCoverImageUrl : b.Page.ExtenalThumbnailImageUrl
-                })
-                .AsQueryable();
-            return new RServiceResult<(PaginationMetadata PagingMeta, PDFUserBookmarkViewModel[] Bookmarks)>(await QueryablePaginator<PDFUserBookmarkViewModel>.Paginate(source, paging));
+            try
+            {
+                int? pageId = pageNumber == null ? null : (await _context.PDFPages.AsNoTracking().Where(p => p.PDFBookId == pdfBookId && p.PageNumber == pageNumber).SingleAsync()).Id;
+                var source =
+                _context.PDFUserBookmarks
+                .Include(b => b.PDFBook)
+                .Include(b => b.Page)
+                .Where(b => b.RAppUserId == userId && (pdfBookId == null || (b.PDFBookId == pdfBookId)) && ((pageId == 0 && b.PageId == null) || pageId == null || b.PageId == pageId))
+               .OrderByDescending(b => b.DateTime)
+               .Select(b => new PDFUserBookmarkViewModel()
+               {
+                   Id = b.Id,
+                   BookTitle = b.PDFBook.Title,
+                   BookId = b.PDFBook.Id,
+                   PageNumber = b.Page == null ? 0 : b.Page.PageNumber,
+                   Note = b.Note,
+                   DateTime = b.DateTime,
+                   ExtenalImageUrl = b.Page == null ? b.PDFBook.ExtenalCoverImageUrl : b.Page.ExtenalThumbnailImageUrl
+               })
+               .AsQueryable();
+                return new RServiceResult<(PaginationMetadata PagingMeta, PDFUserBookmarkViewModel[] Bookmarks)>(await QueryablePaginator<PDFUserBookmarkViewModel>.Paginate(source, paging));
+
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<(PaginationMetadata PagingMeta, PDFUserBookmarkViewModel[] Bookmarks)>((null, null), exp.ToString());
+            }
         }
+        
+        /// <summary>
+        /// delete all user bookmarks
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        public async Task<RServiceResult<bool>> DeleteAllBookmarks(Guid userId)
+        {
+            try
+            {
+                var bookmarks = await _context.PDFUserBookmarks.Where(b => b.RAppUserId == userId).ToListAsync();
+                _context.RemoveRange(bookmarks);
+                await _context.SaveChangesAsync();
+                return new RServiceResult<bool>(true);
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<bool>(false, exp.ToString());
+            }
+        }
+
         /// <summary>
         /// readonly mode
         /// </summary>
@@ -96,7 +134,7 @@ namespace RMuseum.Services.Implementation
         /// Database Contetxt
         /// </summary>
         protected readonly RMuseumDbContext _context;
-        
+
         /// <summary>
         /// Configuration
         /// </summary>

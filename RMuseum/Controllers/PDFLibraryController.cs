@@ -1833,7 +1833,7 @@ namespace RMuseum.Controllers
         /// </summary>
         /// <param name="paging"></param>
         /// <param name="pdfBookId"></param>
-        /// <param name="pageId"></param>
+        /// <param name="pageNumber"></param>
         /// <returns></returns>
         [HttpGet]
         [Route("bookmark/{pdfBookId}/{pageId}")]
@@ -1841,10 +1841,10 @@ namespace RMuseum.Controllers
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFUserBookmarkViewModel>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
-        public async Task<IActionResult> GetBookmarksAsync([FromQuery] PagingParameterModel paging, int? pdfBookId, int? pageId)
+        public async Task<IActionResult> GetBookmarksAsync([FromQuery] PagingParameterModel paging, int? pdfBookId, int? pageNumber)
         {
             Guid loggedOnUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
-            var res = await _bookmarkingService.GetBookmarksAsync(paging, loggedOnUserId, pdfBookId, pageId);
+            var res = await _bookmarkingService.GetBookmarksAsync(paging, loggedOnUserId, pdfBookId, pageNumber);
             if (!string.IsNullOrEmpty(res.ExceptionString))
             {
                 return BadRequest(res.ExceptionString);
@@ -1854,6 +1854,26 @@ namespace RMuseum.Controllers
             HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
 
             return Ok(res.Result.Bookmarks);
+        }
+
+        /// <summary>
+        /// delete all bookmarks
+        /// </summary>
+        /// <returns></returns>
+        [HttpDelete("all")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFVisistViewModel>))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+
+        public async Task<IActionResult> DeleteAllBookmarks()
+        {
+            Guid loggedOnUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _bookmarkingService.DeleteAllBookmarks(loggedOnUserId);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+            {
+                return BadRequest(res.ExceptionString);
+            }
+            return Ok(res.Result);
         }
 
         /// <summary>
