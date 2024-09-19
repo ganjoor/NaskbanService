@@ -1836,7 +1836,7 @@ namespace RMuseum.Controllers
         /// <param name="pageNo"></param>
         /// <returns></returns>
         [HttpGet]
-        [Route("bookmark/{pdfBookId}/{pageId}")]
+        [Route("bookmark/{pdfBookId}/{pageNo}")]
         [Authorize]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFUserBookmarkViewModel>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
