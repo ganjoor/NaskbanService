@@ -196,6 +196,9 @@ namespace RMuseum.DbContext
 
             builder.Entity<GanjoorCachedRelatedSection>()
                 .HasIndex(v => new { v.PoemId, v.SectionIndex });
+
+            builder.Entity<PDFVisitRecord>()
+                .HasIndex(v => new { v.RAppUserId, v.PDFBookId });
         }
 
 
