@@ -578,5 +578,10 @@ namespace RMuseum.DbContext
         /// </summary>
         public DbSet<GanjoorPoemMatchFinding> GanjoorPoemMatchFindings { get; set; }
 
+        /// <summary>
+        /// AI Queue Items
+        /// </summary>
+        public DbSet<AIQueue> AIQueuedItems { get; set; }
+
     }
 }

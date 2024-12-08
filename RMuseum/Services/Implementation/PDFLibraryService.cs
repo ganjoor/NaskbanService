@@ -1974,8 +1974,29 @@ namespace RMuseum.Services.Implementation
                     if (!pdfBook.Pages.Any(p => p.AIRevised == false))
                     {
                         pdfBook.AIRevised = true;
-                        _context.Update(pdfBook);
-                        await _context.SaveChangesAsync();
+                        string oldBookText = pdfBook.BookText;
+                        try
+                        {
+                            string bookText = "";
+                            foreach (var page in pdfBook.Pages.OrderBy(p => p.PageNumber))
+                            {
+                                if (!string.IsNullOrEmpty(page.PageText))
+                                {
+                                    bookText += page.PageText;
+                                    bookText += Environment.NewLine;
+                                }
+                            }
+                            pdfBook.BookText = bookText;
+                            _context.Update(pdfBook);
+                            await _context.SaveChangesAsync();
+                        }
+                        catch //if book text exceeds field max length, is it possible?
+                        {
+                           pdfBook.BookText = oldBookText;
+                            _context.Update(pdfBook);
+                            await _context.SaveChangesAsync();
+                        }
+                       
                     }
                 }
                 else
@@ -2017,6 +2038,65 @@ namespace RMuseum.Services.Implementation
             catch (Exception exp)
             {
                 return new RServiceResult<bool>(false, exp.ToString());
+            }
+        }
+
+        /// <summary>
+        /// get next un-aied PDF Book and add it to a queue
+        /// </summary>
+        /// <returns></returns>
+        public async Task<RServiceResult<PDFBook>> GetNextUnAIedPDFBookAsync()
+        {
+            try
+            {
+                var maxOCRQueuedItemId =
+                    await _context.AIQueuedItems.AnyAsync() ?
+                    await _context.AIQueuedItems.AsNoTracking().MaxAsync(q => q.PDFBookId)
+                    : 0;
+                var pdfBook = await _context.PDFBooks.AsNoTracking()
+                            .Include(b => b.PDFFile)
+                            .Include(b => b.Pages)
+                            .Where(b => b.Status == PublishStatus.Published && b.AIRevised == false && b.Id > maxOCRQueuedItemId)
+                            .OrderBy(b => b.Id)
+                            .FirstOrDefaultAsync();
+                if (pdfBook != null)
+                {
+                    _context.AIQueuedItems.Add
+                        (new AIQueue()
+                        {
+                            PDFBookId = pdfBook.Id
+                        });
+                    await _context.SaveChangesAsync();
+                }
+                return new RServiceResult<PDFBook>(pdfBook);
+
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<PDFBook>(null, exp.ToString());
+            }
+        }
+
+        /// <summary>
+        /// reset AI Queue (remove queued items)
+        /// </summary>
+        /// <returns></returns>
+        public async Task<RServiceResult<bool>> ResetAIQueueAsync()
+        {
+            try
+            {
+                var ocrQueuedItems = await _context.AIQueuedItems.ToListAsync();
+                if (ocrQueuedItems.Count > 0)
+                {
+                    _context.RemoveRange(ocrQueuedItems);
+                    await _context.SaveChangesAsync();
+                }
+                return new RServiceResult<bool>(true);
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<bool>(false, exp.ToString());
+                throw;
             }
         }
 

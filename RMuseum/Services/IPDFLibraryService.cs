@@ -444,6 +444,18 @@ namespace RMuseum.Services
         Task<RServiceResult<bool>> SetPDFPageOCRInfoAsync(PDFPageOCRDataViewModel model);
 
         /// <summary>
+        /// get next un-aied PDF Book and add it to a queue
+        /// </summary>
+        /// <returns></returns>
+        Task<RServiceResult<PDFBook>> GetNextUnAIedPDFBookAsync();
+
+        /// <summary>
+        /// reset AI Queue (remove queued items)
+        /// </summary>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> ResetAIQueueAsync();
+
+        /// <summary>
         /// search pdf books pages for a text
         /// </summary>
         /// <param name="paging"></param>

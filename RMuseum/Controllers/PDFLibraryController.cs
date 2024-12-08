@@ -1648,6 +1648,40 @@ namespace RMuseum.Controllers
         }
 
         /// <summary>
+        /// next un-AIed pdf book
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("ai/nextunaid")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.ModifyOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(PDFBook))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetNextUnAIedPDFBookAsync()
+        {
+            RServiceResult<PDFBook> res = await _pdfService.GetNextUnAIedPDFBookAsync();
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+
+            return Ok(res.Result);
+        }
+
+        /// <summary>
+        /// reset AI queue
+        /// </summary>
+        /// <returns></returns>
+        [HttpDelete("ai/queue")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.ModifyOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> ResetAIQueueAsync()
+        {
+            var res = await _pdfService.ResetAIQueueAsync();
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok();
+        }
+
+        /// <summary>
         /// fill book text
         /// </summary>
         /// <returns></returns>

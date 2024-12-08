@@ -585,6 +585,18 @@
             </summary>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetNextUnAIedPDFBookAsync">
+            <summary>
+            next un-AIed pdf book
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.ResetAIQueueAsync">
+            <summary>
+            reset AI queue
+            </summary>
+            <returns></returns>
+        </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.StartFillingMissingBookTextsAsync">
             <summary>
             fill book text
@@ -1127,6 +1139,11 @@
         <member name="P:RMuseum.DbContext.RMuseumDbContext.GanjoorPoemMatchFindings">
             <summary>
             ganjoor-poem match findings
+            </summary>
+        </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.AIQueuedItems">
+            <summary>
+            AI Queue Items
             </summary>
         </member>
         <member name="T:RMuseum.Migrations.PictureFileExtUrl">
@@ -9928,6 +9945,21 @@
             <param name="dateTime"></param>
             <returns></returns>
         </member>
+        <member name="T:RMuseum.Models.PDFLibrary.AIQueue">
+            <summary>
+            AI Revise Queue
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.AIQueue.Id">
+            <summary>
+            id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.AIQueue.PDFBookId">
+            <summary>
+            PDF Book Id
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.PDFLibrary.Author">
             <summary>
             Author
@@ -12035,6 +12067,18 @@
             <param name="model"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetNextUnAIedPDFBookAsync">
+            <summary>
+            get next un-aied PDF Book and add it to a queue
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.ResetAIQueueAsync">
+            <summary>
+            reset AI Queue (remove queued items)
+            </summary>
+            <returns></returns>
+        </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.SearchPDFBookForPDFPagesTextAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.String)">
             <summary>
             search pdf books pages for a text
@@ -12780,6 +12824,18 @@
             set pdf page ocr info (and if a book whole pages are ocred the book ocred flag is set to true)
             </summary>
             <param name="model"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetNextUnAIedPDFBookAsync">
+            <summary>
+            get next un-aied PDF Book and add it to a queue
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.ResetAIQueueAsync">
+            <summary>
+            reset AI Queue (remove queued items)
+            </summary>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.SearchPDFBookForPDFPagesTextAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.String)">
