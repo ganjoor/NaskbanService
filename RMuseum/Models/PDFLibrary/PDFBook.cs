@@ -249,5 +249,10 @@ namespace RMuseum.Models.PDFLibrary
         /// book text
         /// </summary>
         public string BookText { get; set; }
+
+        /// <summary>
+        /// OCR AI revised
+        /// </summary>
+        public bool AIRevised { get; set; }
     }
 }

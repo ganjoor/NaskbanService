@@ -31,5 +31,10 @@ namespace RMuseum.Models.PDFLibrary.ViewModels
         /// page text
         /// </summary>
         public string PageText { get; set; }
+
+        /// <summary>
+        /// OCR AI revised
+        /// </summary>
+        public bool AIRevised { get; set; }
     }
 }

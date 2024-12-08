@@ -1953,8 +1953,14 @@ namespace RMuseum.Services.Implementation
                     dbPage.FullResolutionImageWidth = model.FullResolutionImageWidth;
                     dbPage.FullResolutionImageHeight = model.FullResolutionImageHeight;
                 }
-                dbPage.OCRed = model.OCRed;
-                dbPage.OCRTime = DateTime.Now;
+                if (model.AIRevised)
+                    dbPage.AIRevised = true;
+                else
+                {
+                    dbPage.OCRed = model.OCRed;
+                    dbPage.OCRTime = DateTime.Now;
+                }
+
                 dbPage.PageText = model.PageText;
                 _context.Update(dbPage);
                 await _context.SaveChangesAsync();
@@ -1963,6 +1969,16 @@ namespace RMuseum.Services.Implementation
                             .Include(b => b.Pages)
                             .Where(b => b.Id == dbPage.PDFBookId)
                             .SingleAsync();
+                if(model.AIRevised)
+                {
+                    if (!pdfBook.Pages.Any(p => p.AIRevised == false))
+                    {
+                        pdfBook.AIRevised = true;
+                        _context.Update(pdfBook);
+                        await _context.SaveChangesAsync();
+                    }
+                }
+                else
                 if (!pdfBook.Pages.Any(p => p.OCRed == false))
                 {
                     pdfBook.OCRed = true;
@@ -1989,8 +2005,6 @@ namespace RMuseum.Services.Implementation
                         _context.Update(pdfBook);
                         await _context.SaveChangesAsync();
                     }
-
-                   
                 }
                 else if (pdfBook.OCRed)
                 {
