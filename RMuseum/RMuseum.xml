@@ -1146,6 +1146,11 @@
             AI Queue Items
             </summary>
         </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.PDFPageUnrevisedTexts">
+            <summary>
+            unrevised texts
+            </summary>
+        </member>
         <member name="T:RMuseum.Migrations.PictureFileExtUrl">
             <inheritdoc />
         </member>
@@ -10590,6 +10595,26 @@
         <member name="P:RMuseum.Models.PDFLibrary.PDFPage.ArtifactTags">
             <summary>
             tags view models
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFPageUnrevisedText">
+            <summary>
+            backup for ai chanegs
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageUnrevisedText.Id">
+            <summary>
+            id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageUnrevisedText.PageId">
+            <summary>
+            page id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageUnrevisedText.PageText">
+            <summary>
+            page text
             </summary>
         </member>
         <member name="T:RMuseum.Models.PDFLibrary.PDFSource">

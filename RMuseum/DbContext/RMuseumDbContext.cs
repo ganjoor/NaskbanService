@@ -583,5 +583,10 @@ namespace RMuseum.DbContext
         /// </summary>
         public DbSet<AIQueue> AIQueuedItems { get; set; }
 
+        /// <summary>
+        /// unrevised texts
+        /// </summary>
+        public DbSet<PDFPageUnrevisedText> PDFPageUnrevisedTexts { get; set; }
+
     }
 }
