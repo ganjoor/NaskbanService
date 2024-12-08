@@ -1465,6 +1465,18 @@
         <member name="M:RMuseum.Migrations.SurNameFix.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
+        <member name="T:RMuseum.Migrations.VisitsIndex">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.VisitsIndex.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.VisitsIndex.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.VisitsIndex.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
         <member name="T:RMuseum.Models.Accounting.DonationExpenditure">
             <summary>
             donation expenditures
@@ -10502,6 +10514,11 @@
         <member name="P:RMuseum.Models.PDFLibrary.PDFPage.PageText">
             <summary>
             page text
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPage.AIRevised">
+            <summary>
+            OCR AI revised
             </summary>
         </member>
         <member name="P:RMuseum.Models.PDFLibrary.PDFPage.PDFBook">

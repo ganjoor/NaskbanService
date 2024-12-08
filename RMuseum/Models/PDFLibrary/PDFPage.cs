@@ -83,6 +83,11 @@ namespace RMuseum.Models.PDFLibrary
         public string PageText { get; set; }
 
         /// <summary>
+        /// OCR AI revised
+        /// </summary>
+        public bool AIRevised { get; set; }
+
+        /// <summary>
         /// pdf book
         /// </summary>
         [NotMapped]
