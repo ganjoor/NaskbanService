@@ -2056,7 +2056,7 @@ namespace RMuseum.Services.Implementation
                 var pdfBook = await _context.PDFBooks.AsNoTracking()
                             .Include(b => b.PDFFile)
                             .Include(b => b.Pages)
-                            .Where(b => b.Status == PublishStatus.Published && b.AIRevised == false && b.Id > maxOCRQueuedItemId)
+                            .Where(b => b.Status == PublishStatus.Published && b.OCRed == true && b.AIRevised == false && b.Id > maxOCRQueuedItemId)
                             .OrderBy(b => b.Id)
                             .FirstOrDefaultAsync();
                 if (pdfBook != null)
