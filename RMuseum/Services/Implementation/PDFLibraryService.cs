@@ -297,6 +297,56 @@ namespace RMuseum.Services.Implementation
                         }
 
                         rArtifactTags.Sort((a, b) => a.Order - b.Order);
+
+                        var unrevisedText = await _context.PDFPageUnrevisedTexts.AsNoTracking().Where(t => t.PageId == pdfPage.Id).SingleOrDefaultAsync();
+                        if(unrevisedText != null)
+                        {
+                            pdfPage.Tags.Add
+                                (
+                                new RTagValue()
+                                {
+                                    Id = Guid.Empty,
+                                    Order = 1000,
+                                    RTagId = Guid.Empty,
+                                    Value = unrevisedText.PageText,
+                                    RTag = new RTag()
+                                    {
+                                        Id = Guid.Empty,
+                                        Order = 1000,
+                                        TagType = RTagType.Ordinary,
+                                        FriendlyUrl = "",
+                                        Status = PublishStatus.Published,
+                                        Name = "متن بازبینی نشده توسط هوش مصنوعی",
+                                        NameInEnglish = "Unrevised Text",
+                                        GlobalValue = false,
+                                        PluralName = "",
+                                        PluralNameInEnglish = "",
+                                    }
+                                }
+                                );
+                            rArtifactTags.Add(new RArtifactTagViewModel()
+                            {
+                                Id = Guid.Empty,
+                                Order = 1000,
+                                TagType = RTagType.Ordinary,
+                                FriendlyUrl = "",
+                                Status = PublishStatus.Published,
+                                Name = "متن بازبینی نشده توسط هوش مصنوعی",
+                                NameInEnglish = "Unrevised Text",
+                                GlobalValue = false,
+                                PluralName = "",
+                                PluralNameInEnglish = "",
+                                Values = [
+                                    new RTagValue() 
+                                    {
+                                        Id = Guid.Empty,
+                                        Order = 1000,
+                                        RTagId = Guid.Empty,
+                                        Value = unrevisedText.PageText,
+                                    }],
+                            }
+                            );
+                        }
                     }
                     pdfPage.ArtifactTags = rArtifactTags;
                 }
