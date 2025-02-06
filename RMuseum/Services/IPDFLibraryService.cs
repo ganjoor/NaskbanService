@@ -557,5 +557,10 @@ namespace RMuseum.Services
         /// <param name="id"></param>
         /// <returns></returns>
         Task<RServiceResult<RTitleInContents[]>> GetPDFBookTableOfContentsAsync(int id);
+
+        /// <summary>
+        /// put first verse to ganjoor toc titles
+        /// </summary>
+        void StartCompletingGanjoorTOCVersesAsync();
     }
 }

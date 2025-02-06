@@ -2010,6 +2010,23 @@ namespace RMuseum.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// put first verse to ganjoor toc titles
+        /// </summary>
+        /// <returns></returns>
+        [HttpPut]
+        [Route("ganjoor/toc/fill")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.ModifyOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        public IActionResult StartCompletingGanjoorTOCVersesAsync()
+        {
+
+            _pdfService.StartCompletingGanjoorTOCVersesAsync();
+            return Ok();
+        }
+
 
         /// <summary>
         /// PDF Service

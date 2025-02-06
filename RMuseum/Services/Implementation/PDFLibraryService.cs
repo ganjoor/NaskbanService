@@ -2544,6 +2544,73 @@ namespace RMuseum.Services.Implementation
         }
 
         /// <summary>
+        /// put first verse to ganjoor toc titles
+        /// </summary>
+        public void StartCompletingGanjoorTOCVersesAsync()
+        {
+            _backgroundTaskQueue.QueueBackgroundWorkItem
+                                   (
+                                       async token =>
+                                       {
+                                           using (RMuseumDbContext context = new RMuseumDbContext(new DbContextOptions<RMuseumDbContext>()))
+                                           {
+                                               LongRunningJobProgressServiceEF jobProgressServiceEF = new LongRunningJobProgressServiceEF(context);
+                                               var job = (await jobProgressServiceEF.NewJob("StartCompletingGanjoorTOCVersesAsync", "Query data")).Result;
+
+                                               try
+                                               {
+                                                   var values = await context.TagValues.Include(t => t.RTag).Where(b => b.RTag.TagType == RTagType.TitleInContents).ToListAsync();
+                                                   int i = 0;
+                                                   foreach (var value in values)
+                                                   {
+                                                       if(i % 1000 == 0)
+                                                       {
+                                                           await jobProgressServiceEF.UpdateJob(job.Id, i);
+                                                       }
+                                                       var linkTag = await context.TagValues.Include(t => t.RTag).AsNoTracking().Where(t => t.RTag.NameInEnglish == "Ganjoor Link" && t.Value == value.Value).FirstOrDefaultAsync();
+                                                       if(linkTag != null)
+                                                       {
+                                                           var link = linkTag.ValueSupplement;
+                                                           if(link.StartsWith("https://ganjoor.net"))
+                                                           {
+                                                               string firstVerse = await GetGanjoorPageFirstVerseAsync(link);
+                                                               if (!string.IsNullOrEmpty(firstVerse))
+                                                               {
+                                                                   if (firstVerse.Length > 100)
+                                                                   {
+                                                                       firstVerse = firstVerse.Substring(0, 50);
+                                                                       int n = firstVerse.LastIndexOf(' ');
+                                                                       if (n >= 0)
+                                                                       {
+                                                                           firstVerse = firstVerse.Substring(0, n) + " ...";
+                                                                       }
+                                                                       else
+                                                                       {
+                                                                           firstVerse += "...";
+                                                                       }
+                                                                   }
+                                                                   value.Value = $"{value.Value}: {firstVerse}";
+                                                                   context.Update(value);
+                                                               }
+
+                                                           }
+                                                           i++;
+                                                       }
+                                                   }
+
+                                                   await jobProgressServiceEF.UpdateJob(job.Id, 100, "", true);
+                                               }
+                                               catch (Exception exp)
+                                               {
+                                                   await jobProgressServiceEF.UpdateJob(job.Id, 100, "", false, exp.ToString());
+                                               }
+
+                                           }
+                                       }
+                                   );
+        }
+
+        /// <summary>
         /// Database Context
         /// </summary>
         protected readonly RMuseumDbContext _context;

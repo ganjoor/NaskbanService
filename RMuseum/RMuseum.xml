@@ -688,6 +688,12 @@
             <param name="model"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.StartCompletingGanjoorTOCVersesAsync">
+            <summary>
+            put first verse to ganjoor toc titles
+            </summary>
+            <returns></returns>
+        </member>
         <member name="F:RMuseum.Controllers.PDFLibraryController._pdfService">
             <summary>
             PDF Service
@@ -12168,6 +12174,11 @@
             <param name="id"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.StartCompletingGanjoorTOCVersesAsync">
+            <summary>
+            put first verse to ganjoor toc titles
+            </summary>
+        </member>
         <member name="F:RMuseum.Services.Implementation.PDFLibraryService._context">
             <summary>
             Database Context
@@ -12990,6 +13001,11 @@
             </summary>
             <param name="id"></param>
             <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.StartCompletingGanjoorTOCVersesAsync">
+            <summary>
+            put first verse to ganjoor toc titles
+            </summary>
         </member>
         <member name="T:RMuseum.Services.IPictureFileService">
             <summary>
