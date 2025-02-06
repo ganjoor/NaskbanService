@@ -2559,13 +2559,14 @@ namespace RMuseum.Services.Implementation
 
                                                try
                                                {
-                                                   var values = await context.TagValues.Include(t => t.RTag).Where(b => b.RTag.TagType == RTagType.TitleInContents).ToListAsync();
+                                                   var values = await context.TagValues.Include(t => t.RTag).Where(t => t.Value == t.ValueInEnglish && t.RTag.TagType == RTagType.TitleInContents).ToListAsync();
                                                    int i = 0;
+                                                   int count = values.Count;
                                                    foreach (var value in values)
                                                    {
                                                        if(i % 1000 == 0)
                                                        {
-                                                           await jobProgressServiceEF.UpdateJob(job.Id, i);
+                                                           await jobProgressServiceEF.UpdateJob(job.Id, i, $"{i} از {count}");
                                                        }
                                                        var linkTag = await context.TagValues.Include(t => t.RTag).AsNoTracking().Where(t => t.RTag.NameInEnglish == "Ganjoor Link" && t.Value == value.Value).FirstOrDefaultAsync();
                                                        if(linkTag != null)
