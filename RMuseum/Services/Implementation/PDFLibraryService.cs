@@ -2465,7 +2465,7 @@ namespace RMuseum.Services.Implementation
             {
                 List<RTitleInContents> contents = new List<RTitleInContents>();
 
-                var pages = await _context.PDFPages.AsNoTracking().Include(p => p.Tags).ThenInclude(p => p.RTag).ToListAsync();
+                var pages = await _context.PDFPages.AsNoTracking().Include(p => p.Tags).ThenInclude(p => p.RTag).Where(p => p.PDFBookId == id).ToListAsync();
                 int orderOfContents = 0;
                 foreach (var page in pages)
                 {
