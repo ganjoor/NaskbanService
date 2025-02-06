@@ -2596,8 +2596,11 @@ namespace RMuseum.Services.Implementation
                                                                            firstVerse += "...";
                                                                        }
                                                                    }
-                                                                   value.Value = $"{value.Value}: {firstVerse}";
-                                                                   context.Update(value);
+                                                                   if(!value.Value.Contains(firstVerse))
+                                                                   {
+                                                                       value.Value = $"{value.Value}: {firstVerse}";
+                                                                       context.Update(value);
+                                                                   }
                                                                }
 
                                                            }
