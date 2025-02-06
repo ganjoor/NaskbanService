@@ -23,6 +23,11 @@ using RMuseum.Models.PDFUserTracking;
 using RMuseum.Models.PDFUserTracking.ViewModels;
 using RMuseum.Models.ImportJob;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
+using RMuseum.Models.Ganjoor.ViewModels;
+using RMuseum.Models.Ganjoor;
+using System.Net.Http;
+using System.Net;
 
 namespace RMuseum.Services.Implementation
 {
@@ -1876,6 +1881,26 @@ namespace RMuseum.Services.Implementation
             }
         }
 
+        private async Task<string> GetGanjoorPageFirstVerseAsync(string ganjoorUrl)
+        {
+            ganjoorUrl = ganjoorUrl.Replace("https://ganjoor.net", "");
+            using (HttpClient client = new HttpClient())
+            {
+                var pageQuery = await client.GetAsync($"https://api.ganjoor.net/api/ganjoor/page?url={ganjoorUrl}");
+                if (!pageQuery.IsSuccessStatusCode)
+                {
+                    return "";
+                }
+                var ganjoorPage = JObject.Parse(await pageQuery.Content.ReadAsStringAsync()).ToObject<GanjoorPageCompleteViewModel>();
+                var verse = ganjoorPage.Poem.Verses.Where(v => v.VersePosition != VersePosition.Comment).OrderBy(v => v.VOrder).FirstOrDefault();
+                if (verse != null)
+                {
+                    return verse.Text;
+                }
+            }
+            return "";
+        }
+
         /// <summary>
         /// Review Suggested Link
         /// </summary>
@@ -1893,12 +1918,13 @@ namespace RMuseum.Services.Implementation
             link.ReviewResult = result;
             link.ReviewerId = userId;
             link.ReviewDate = DateTime.Now;
+            
 
             _context.PDFGanjoorLinks.Update(link);
 
             if (link.ReviewResult == ReviewResult.Approved)
             {
-
+                
                 var pageInfo = await _context.PDFPages
                                         .Include(i => i.Tags)
                                         .ThenInclude(t => t.RTag)
@@ -1912,6 +1938,24 @@ namespace RMuseum.Services.Implementation
                 _context.PDFPages.Update(pageInfo);
 
 
+                string firstVerse = await GetGanjoorPageFirstVerseAsync(link.GanjoorUrl);
+                if (!string.IsNullOrEmpty(firstVerse))
+                {
+                    if(firstVerse.Length > 100)
+                    {
+                        firstVerse = firstVerse.Substring(0, 50);
+                        int n = firstVerse.LastIndexOf(' ');
+                        if (n >= 0)
+                        {
+                            firstVerse = firstVerse.Substring(0, n) + " ...";
+                        }
+                        else
+                        {
+                            firstVerse += "...";
+                        }
+                    }
+                    link.GanjoorTitle = $"{link.GanjoorTitle}: {firstVerse}";
+                }
 
 
                 RTagValue toc = await TagHandler.PrepareAttribute(_context, "Title in TOC", link.GanjoorTitle, 1);
