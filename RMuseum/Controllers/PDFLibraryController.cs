@@ -20,6 +20,7 @@ using RMuseum.Models.GanjoorIntegration;
 using RMuseum.Models.ImportJob;
 using RMuseum.Models.PDFUserTracking;
 using RMuseum.Models.PDFUserTracking.ViewModels;
+using RMuseum.Models.Artifact.ViewModels;
 
 namespace RMuseum.Controllers
 {
@@ -270,13 +271,26 @@ namespace RMuseum.Controllers
         }
 
         /// <summary>
-        /// get published PDF Book by id
+        /// PDF Book contents by id
         /// </summary>
         /// <param name="id"></param>
-        /// <param name="includePages"></param>
-        /// <param name="includeBookText"></param>
-        /// <param name="includePageText"></param>
         /// <returns></returns>
+        [HttpGet("toc/{id}")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(RTitleInContents[]))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        public async Task<IActionResult> GetPDFBookTableOfContentsAsync(int id)
+        {
+            var contentRes = await _pdfService.GetPDFBookTableOfContentsAsync(id);
+
+            if (!string.IsNullOrEmpty(contentRes.ExceptionString))
+            {
+                return BadRequest(contentRes.ExceptionString);
+            }
+            return Ok(contentRes.Result);
+        }
+
         [HttpGet("{id}")]
         [Authorize]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(PDFBook))]

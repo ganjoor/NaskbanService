@@ -2459,7 +2459,7 @@ namespace RMuseum.Services.Implementation
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public async Task<RServiceResult<RTitleInContents[]>> GetPDFBookTabelOfContentsAsync(int id)
+        public async Task<RServiceResult<RTitleInContents[]>> GetPDFBookTableOfContentsAsync(int id)
         {
             try
             {

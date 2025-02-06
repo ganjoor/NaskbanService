@@ -552,10 +552,10 @@ namespace RMuseum.Services
         Task<RServiceResult<bool>> UpdateGanjoorPoemMatchFindingAsync(GanjoorPoemMatchFinding model);
 
         /// <summary>
-        /// get pdf bool table of contents
+        /// pdf book table of contents
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        Task<RServiceResult<RTitleInContents[]>> GetPDFBookTabelOfContentsAsync(int id);
+        Task<RServiceResult<RTitleInContents[]>> GetPDFBookTableOfContentsAsync(int id);
     }
 }
