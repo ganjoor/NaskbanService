@@ -1910,67 +1910,73 @@ namespace RMuseum.Services.Implementation
         /// <returns></returns>
         public async Task<RServiceResult<bool>> ReviewSuggestedLinkAsync(Guid linkId, Guid userId, ReviewResult result)
         {
-            PDFGanjoorLink link =
-            await _context.PDFGanjoorLinks
-                 .Where(l => l.Id == linkId)
-                 .SingleOrDefaultAsync();
-
-            link.ReviewResult = result;
-            link.ReviewerId = userId;
-            link.ReviewDate = DateTime.Now;
-            
-
-            _context.PDFGanjoorLinks.Update(link);
-
-            if (link.ReviewResult == ReviewResult.Approved)
+            try
             {
-                
-                var pageInfo = await _context.PDFPages
-                                        .Include(i => i.Tags)
-                                        .ThenInclude(t => t.RTag)
-                                        .Where(i => i.PDFBookId == link.PDFBookId && i.PageNumber == link.PageNumber).SingleAsync();
+                PDFGanjoorLink link =
+                await _context.PDFGanjoorLinks
+                 .Where(l => l.Id == linkId)
+                 .SingleAsync();
+
+                link.ReviewResult = result;
+                link.ReviewerId = userId;
+                link.ReviewDate = DateTime.Now;
 
 
+                _context.PDFGanjoorLinks.Update(link);
 
-                RTagValue tag = await TagHandler.PrepareAttribute(_context, "Ganjoor Link", link.GanjoorTitle, 1);
-                tag.ValueSupplement = link.GanjoorUrl;
-                pageInfo.Tags.Add(tag);
-                _context.PDFPages.Update(pageInfo);
-
-
-                string firstVerse = await GetGanjoorPageFirstVerseAsync(link.GanjoorUrl);
-                if (!string.IsNullOrEmpty(firstVerse))
+                if (link.ReviewResult == ReviewResult.Approved)
                 {
-                    if(firstVerse.Length > 100)
-                    {
-                        firstVerse = firstVerse.Substring(0, 50);
-                        int n = firstVerse.LastIndexOf(' ');
-                        if (n >= 0)
-                        {
-                            firstVerse = firstVerse.Substring(0, n) + " ...";
-                        }
-                        else
-                        {
-                            firstVerse += "...";
-                        }
-                    }
-                    link.GanjoorTitle = $"{link.GanjoorTitle}: {firstVerse}";
-                }
+                    string firstVerse = await GetGanjoorPageFirstVerseAsync(link.GanjoorUrl);
+                    var pageInfo = await _context.PDFPages
+                                            .Include(i => i.Tags)
+                                            .ThenInclude(t => t.RTag)
+                                            .Where(i => i.PDFBookId == link.PDFBookId && i.PageNumber == link.PageNumber).SingleAsync();
 
 
-                RTagValue toc = await TagHandler.PrepareAttribute(_context, "Title in TOC", link.GanjoorTitle, 1);
-                toc.ValueSupplement = "1";//font size
-                if (pageInfo.Tags.Where(t => t.RTag.Name == "Title in TOC" && t.Value == toc.Value).Count() == 0)
-                {
-                    toc.Order = 1 + pageInfo.Tags.Where(t => t.RTag.NameInEnglish == "Title in TOC").Count();
-                    pageInfo.Tags.Add(toc);
+
+                    RTagValue tag = await TagHandler.PrepareAttribute(_context, "Ganjoor Link", link.GanjoorTitle, 1);
+                    tag.ValueSupplement = link.GanjoorUrl;
+                    pageInfo.Tags.Add(tag);
                     _context.PDFPages.Update(pageInfo);
+
+                    if (!string.IsNullOrEmpty(firstVerse))
+                    {
+                        if (firstVerse.Length > 100)
+                        {
+                            firstVerse = firstVerse.Substring(0, 50);
+                            int n = firstVerse.LastIndexOf(' ');
+                            if (n >= 0)
+                            {
+                                firstVerse = firstVerse.Substring(0, n) + " ...";
+                            }
+                            else
+                            {
+                                firstVerse += "...";
+                            }
+                        }
+                        link.GanjoorTitle = $"{link.GanjoorTitle}: {firstVerse}";
+                    }
+
+
+                    RTagValue toc = await TagHandler.PrepareAttribute(_context, "Title in TOC", link.GanjoorTitle, 1);
+                    toc.ValueSupplement = "1";//font size
+                    if (pageInfo.Tags.Where(t => t.RTag.Name == "Title in TOC" && t.Value == toc.Value).Count() == 0)
+                    {
+                        toc.Order = 1 + pageInfo.Tags.Where(t => t.RTag.NameInEnglish == "Title in TOC").Count();
+                        pageInfo.Tags.Add(toc);
+                        _context.PDFPages.Update(pageInfo);
+                    }
                 }
+
+                await _context.SaveChangesAsync();
+
+                return new RServiceResult<bool>(true);
             }
-
-            await _context.SaveChangesAsync();
-
-            return new RServiceResult<bool>(true);
+            catch (Exception e)
+            {
+                return new RServiceResult<bool>(false, e.ToString());
+            }
+            
         }
 
         /// <summary>
