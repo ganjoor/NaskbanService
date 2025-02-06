@@ -1,4 +1,5 @@
 ﻿using RMuseum.Models.Artifact;
+using RMuseum.Models.Artifact.ViewModels;
 using RMuseum.Models.GanjoorIntegration;
 using RMuseum.Models.GanjoorIntegration.ViewModels;
 using RMuseum.Models.ImportJob;
@@ -549,5 +550,12 @@ namespace RMuseum.Services
         /// <param name="model"></param>
         /// <returns></returns>
         Task<RServiceResult<bool>> UpdateGanjoorPoemMatchFindingAsync(GanjoorPoemMatchFinding model);
+
+        /// <summary>
+        /// get pdf bool table of contents
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        Task<RServiceResult<RTitleInContents[]>> GetPDFBookTabelOfContentsAsync(int id);
     }
 }

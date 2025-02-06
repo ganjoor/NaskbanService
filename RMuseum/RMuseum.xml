@@ -12164,6 +12164,13 @@
             <param name="userId"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetPDFBookTabelOfContentsAsync(System.Int32)">
+            <summary>
+            get pdf bool table of contents
+            </summary>
+            <param name="id"></param>
+            <returns></returns>
+        </member>
         <member name="F:RMuseum.Services.Implementation.PDFLibraryService._context">
             <summary>
             Database Context
@@ -12978,6 +12985,13 @@
             update a ganjoor poem match finding
             </summary>
             <param name="model"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetPDFBookTabelOfContentsAsync(System.Int32)">
+            <summary>
+            get pdf bool table of contents
+            </summary>
+            <param name="id"></param>
             <returns></returns>
         </member>
         <member name="T:RMuseum.Services.IPictureFileService">

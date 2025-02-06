@@ -22,7 +22,7 @@ using FluentFTP;
 using RMuseum.Models.PDFUserTracking;
 using RMuseum.Models.PDFUserTracking.ViewModels;
 using RMuseum.Models.ImportJob;
-using static System.Windows.Forms.LinkLabel;
+using Newtonsoft.Json.Linq;
 
 namespace RMuseum.Services.Implementation
 {
@@ -80,7 +80,7 @@ namespace RMuseum.Services.Implementation
         public async Task<RServiceResult<int>> StartImportingKnownSourceAsync(string srcUrl)
         {
             var res = await CheckKnownSourceAsync(srcUrl);
-            if(!string.IsNullOrEmpty(res.ExceptionString))
+            if (!string.IsNullOrEmpty(res.ExceptionString))
             {
                 return res;
             }
@@ -299,7 +299,7 @@ namespace RMuseum.Services.Implementation
                         rArtifactTags.Sort((a, b) => a.Order - b.Order);
 
                         var unrevisedText = await _context.PDFPageUnrevisedTexts.AsNoTracking().Where(t => t.PageId == pdfPage.Id).SingleOrDefaultAsync();
-                        if(unrevisedText != null)
+                        if (unrevisedText != null)
                         {
                             pdfPage.Tags.Add
                                 (
@@ -337,7 +337,7 @@ namespace RMuseum.Services.Implementation
                                 PluralName = "",
                                 PluralNameInEnglish = "",
                                 Values = [
-                                    new RTagValue() 
+                                    new RTagValue()
                                     {
                                         Id = Guid.Empty,
                                         Order = 1000,
@@ -376,7 +376,7 @@ namespace RMuseum.Services.Implementation
                 .Select(b => new PDFBook()
                 {
                     Id = b.Id,
-                    BookId = b.BookId, 
+                    BookId = b.BookId,
                     Status = b.Status,
                     Title = b.Title,
                     SubTitle = b.SubTitle,
@@ -1693,7 +1693,7 @@ namespace RMuseum.Services.Implementation
             }
             catch (Exception exp)
             {
-                return new RServiceResult<bool> (false, exp.ToString());
+                return new RServiceResult<bool>(false, exp.ToString());
             }
         }
 
@@ -1717,7 +1717,7 @@ namespace RMuseum.Services.Implementation
                     return new RServiceResult<bool>(false, "این مورد پیشتر پیشنهاد شده است.");
 
                 string pdfPageTitle = pdfBook.Title;
-                if(!string.IsNullOrEmpty(pdfBook.AuthorsLine))
+                if (!string.IsNullOrEmpty(pdfBook.AuthorsLine))
                 {
                     pdfPageTitle += $" - {pdfBook.AuthorsLine}";
                 }
@@ -1764,10 +1764,10 @@ namespace RMuseum.Services.Implementation
                  .Include(l => l.SuggestedBy)
                  .Where
                  (
-                    l => 
+                    l =>
                     l.ReviewResult == ReviewResult.Awaiting
                     &&
-                    (onlyMachineSuggested == false || l.SuggestedByMachine == true )
+                    (onlyMachineSuggested == false || l.SuggestedByMachine == true)
                     )
                  .OrderBy(l => l.SuggestionDate)
                  .Skip(skip)
@@ -1974,7 +1974,7 @@ namespace RMuseum.Services.Implementation
             try
             {
                 var ocrQueuedItems = await _context.OCRQueuedItems.ToListAsync();
-                if(ocrQueuedItems.Count > 0)
+                if (ocrQueuedItems.Count > 0)
                 {
                     _context.RemoveRange(ocrQueuedItems);
                     await _context.SaveChangesAsync();
@@ -2026,7 +2026,7 @@ namespace RMuseum.Services.Implementation
                     dbPage.OCRTime = DateTime.Now;
                 }
 
-                
+
 
                 dbPage.PageText = model.PageText;
                 _context.Update(dbPage);
@@ -2036,7 +2036,7 @@ namespace RMuseum.Services.Implementation
                             .Include(b => b.Pages)
                             .Where(b => b.Id == dbPage.PDFBookId)
                             .SingleAsync();
-                if(model.AIRevised)
+                if (model.AIRevised)
                 {
                     if (!pdfBook.Pages.Any(p => p.AIRevised == false))
                     {
@@ -2059,11 +2059,11 @@ namespace RMuseum.Services.Implementation
                         }
                         catch //if book text exceeds field max length, is it possible?
                         {
-                           pdfBook.BookText = oldBookText;
+                            pdfBook.BookText = oldBookText;
                             _context.Update(pdfBook);
                             await _context.SaveChangesAsync();
                         }
-                       
+
                     }
                 }
                 else
@@ -2340,7 +2340,7 @@ namespace RMuseum.Services.Implementation
                                                {
                                                    await jobProgressServiceEF.UpdateJob(job.Id, 100, "", false, exp.ToString());
                                                }
-                                              
+
                                            }
                                        }
                                    );
@@ -2381,7 +2381,7 @@ namespace RMuseum.Services.Implementation
                                    t => t.RAppUserId == userId && t.PDFBookId != null
                                 )
                                 .OrderByDescending(t => t.DateTime)
-                                .Select(t => 
+                                .Select(t =>
                                     new PDFVisistViewModel()
                                     {
                                         DateTime = t.DateTime,
@@ -2394,7 +2394,7 @@ namespace RMuseum.Services.Implementation
                 List<PDFVisistViewModel> visits = new List<PDFVisistViewModel>();
 
                 var bookIds = visitsUnfiltered.GroupBy(t => t.PDFBookId).ToList();
-                foreach(var bookId in bookIds )
+                foreach (var bookId in bookIds)
                 {
                     var visit = visitsUnfiltered.Where(v => v.PDFBookId == bookId.Key).First();
                     var pdf = await _context.PDFBooks.AsNoTracking().Where(p => p.Id == visit.PDFBookId).FirstOrDefaultAsync();
@@ -2404,7 +2404,7 @@ namespace RMuseum.Services.Implementation
                         if (pageNumber == null)
                         {
                             var visitWithPageNumber = visitsUnfiltered.Where(t => t.PDFBookId == pdf.Id && t.PageNumber != null).FirstOrDefault();
-                            if(visitWithPageNumber != null)
+                            if (visitWithPageNumber != null)
                             {
                                 pageNumber = visitWithPageNumber.PageNumber;
                             }
@@ -2442,15 +2442,60 @@ namespace RMuseum.Services.Implementation
                                  );
                         }
                     }
-                    
+
                 }
 
                 return new RServiceResult<PDFVisistViewModel[]>(visits.ToArray());
-                
+
             }
             catch (Exception exp)
             {
-                return new RServiceResult<PDFVisistViewModel[]>(null, exp.ToString ());
+                return new RServiceResult<PDFVisistViewModel[]>(null, exp.ToString());
+            }
+        }
+
+        /// <summary>
+        /// get pdf bool table of contents
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public async Task<RServiceResult<RTitleInContents[]>> GetPDFBookTabelOfContentsAsync(int id)
+        {
+            try
+            {
+                List<RTitleInContents> contents = new List<RTitleInContents>();
+
+                var pages = await _context.PDFPages.AsNoTracking().Include(p => p.Tags).ThenInclude(p => p.RTag).ToListAsync();
+                int orderOfContents = 0;
+                foreach (var page in pages)
+                {
+                    foreach (var value in page.Tags)
+                    {
+                        if (value.RTag.TagType == RTagType.TitleInContents)
+                        {
+                            if (!int.TryParse(value.ValueSupplement, out int level))
+                            {
+                                level = 1;
+                            }
+                            contents.Add
+                            (
+                            new RTitleInContents()
+                            {
+                                Title = value.Value,
+                                Order = ++orderOfContents,
+                                Level = level,
+                                ItemFriendlyUrl = $"{id}/{page.PageNumber}"
+                            }
+                            );
+                        }
+                    }
+                }
+
+                return new RServiceResult<RTitleInContents[]>(contents.ToArray());
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<RTitleInContents[]>(null, exp.ToString());
             }
         }
 
