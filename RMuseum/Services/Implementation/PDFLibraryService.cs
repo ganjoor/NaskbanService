@@ -2519,7 +2519,7 @@ namespace RMuseum.Services.Implementation
                 int orderOfContents = 0;
                 foreach (var page in pages)
                 {
-                    foreach (var value in page.Tags)
+                    foreach (var value in page.Tags.OrderBy(t => t.Id))
                     {
                         if (value.RTag.TagType == RTagType.TitleInContents)
                         {
