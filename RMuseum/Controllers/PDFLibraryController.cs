@@ -45,7 +45,7 @@ namespace RMuseum.Controllers
                 (
                 new PDFVisitRecord()
                 {
-                    RAppUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
+                    RAppUserId = User.Claims.FirstOrDefault(c => c.Type == "UserId") == null ? null : new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
                     DateTime = DateTime.Now,
                     ServiceMethod = "all",
                     PDFBookId = null,
@@ -302,7 +302,7 @@ namespace RMuseum.Controllers
                 (
                 new PDFVisitRecord()
                 {
-                    RAppUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
+                    RAppUserId = User.Claims.FirstOrDefault(c => c.Type == "UserId") == null ? null : new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
                     DateTime = DateTime.Now,
                     ServiceMethod = "id",
                     PDFBookId = id,
@@ -1357,7 +1357,7 @@ namespace RMuseum.Controllers
                 (
                 new PDFVisitRecord()
                 {
-                    RAppUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
+                    RAppUserId = User.Claims.FirstOrDefault(c => c.Type == "UserId") == null ? null : new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
                     DateTime = DateTime.Now,
                     ServiceMethod = "search",
                     PDFBookId = null,
@@ -1402,7 +1402,7 @@ namespace RMuseum.Controllers
                (
                new PDFVisitRecord()
                {
-                   RAppUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
+                   RAppUserId = User.Claims.FirstOrDefault(c => c.Type == "UserId") == null ? null : new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
                    DateTime = DateTime.Now,
                    ServiceMethod = "search/text",
                    PDFBookId = id,
@@ -1446,7 +1446,7 @@ namespace RMuseum.Controllers
                (
                new PDFVisitRecord()
                {
-                   RAppUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
+                   RAppUserId = User.Claims.FirstOrDefault(c => c.Type == "UserId") == null ? null : new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
                    DateTime = DateTime.Now,
                    ServiceMethod = "search/text",
                    PDFBookId = null,
@@ -1729,7 +1729,7 @@ namespace RMuseum.Controllers
                (
                new PDFVisitRecord()
                {
-                   RAppUserId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
+                   RAppUserId = User.Claims.FirstOrDefault(c => c.Type == "UserId") == null ? null : new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
                    DateTime = DateTime.Now,
                    ServiceMethod = "page",
                    PDFBookId = pdfBookId,
