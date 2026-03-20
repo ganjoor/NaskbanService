@@ -35,7 +35,7 @@ namespace RMuseum.Controllers
         /// <returns></returns>
 
         [HttpGet]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFBook>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
@@ -276,7 +276,7 @@ namespace RMuseum.Controllers
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("toc/{id}")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(RTitleInContents[]))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
@@ -292,7 +292,7 @@ namespace RMuseum.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(PDFBook))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
@@ -626,7 +626,7 @@ namespace RMuseum.Controllers
         /// <returns></returns>
 
         [HttpGet("tagged/{tagUrl}/{valueUrl}")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFBook>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
         public async Task<IActionResult> GetByTagValueAsync(string tagUrl, string valueUrl)
@@ -660,7 +660,7 @@ namespace RMuseum.Controllers
         /// <param name="authorName"></param>
         /// <returns></returns>
         [HttpGet("author")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<Author>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
@@ -697,7 +697,7 @@ namespace RMuseum.Controllers
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("author/{id}")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(Author))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
@@ -849,7 +849,7 @@ namespace RMuseum.Controllers
         /// <param name="authorId"></param>
         /// <returns></returns>
         [HttpGet("pdfbook/by/contributer/{authorId}/groupby/role")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<AuthorRoleCount>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
@@ -871,7 +871,7 @@ namespace RMuseum.Controllers
         /// <returns></returns>
 
         [HttpGet("book")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<Book>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
@@ -908,7 +908,7 @@ namespace RMuseum.Controllers
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("book/{id}")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(Book))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
@@ -1021,7 +1021,7 @@ namespace RMuseum.Controllers
         /// <param name="role"></param>
         /// <returns></returns>
         [HttpGet("book/by/author/{authorId}")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<Book>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
@@ -1058,7 +1058,7 @@ namespace RMuseum.Controllers
         /// <param name="authorId"></param>
         /// <returns></returns>
         [HttpGet("book/by/author/{authorId}/groupby/role")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<AuthorRoleCount>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
@@ -1081,7 +1081,7 @@ namespace RMuseum.Controllers
         /// <returns></returns>
 
         [HttpGet("book/{bookId}/pdfs")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFBook>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
@@ -1119,7 +1119,7 @@ namespace RMuseum.Controllers
         /// <returns></returns>
 
         [HttpGet("volumes/{id}")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(MultiVolumePDFCollection))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
@@ -1192,7 +1192,7 @@ namespace RMuseum.Controllers
         /// <param name="volumeId"></param>
         /// <returns></returns>
         [HttpGet("volumes/{volumeId}/pdfs")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFBook>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
@@ -1213,7 +1213,7 @@ namespace RMuseum.Controllers
         /// <returns></returns>
 
         [HttpGet("source")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFSource>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
@@ -1234,7 +1234,7 @@ namespace RMuseum.Controllers
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("source/{id}")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(PDFSource))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
@@ -1308,7 +1308,7 @@ namespace RMuseum.Controllers
         /// <param name="sourceId"></param>
         /// <returns></returns>
         [HttpGet("source/{sourceId}/pdfs")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFBook>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
@@ -1347,7 +1347,7 @@ namespace RMuseum.Controllers
         /// <returns></returns>
         [HttpGet]
         [Route("search")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<RArtifactMasterRecord>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
@@ -1392,7 +1392,7 @@ namespace RMuseum.Controllers
         /// <returns></returns>
         [HttpGet]
         [Route("search/pdfbook/{id}/text")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<RArtifactMasterRecord>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
@@ -1436,7 +1436,7 @@ namespace RMuseum.Controllers
         /// <returns></returns>
         [HttpGet]
         [Route("search/pages/text")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<RArtifactMasterRecord>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
@@ -1500,7 +1500,7 @@ namespace RMuseum.Controllers
 
         [HttpGet]
         [Route("ganjoor/islinked/book/{bookId}/poem/{poemId}")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(bool))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
         public async Task<IActionResult> IsBookRelatedToPoemAsync(int bookId, int poemId)
@@ -1719,7 +1719,7 @@ namespace RMuseum.Controllers
         /// <param name="pageNumber"></param>
         /// <returns></returns>
         [HttpGet("{pdfBookId}/page/{pageNumber}")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(PDFPage))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
