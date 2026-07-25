@@ -13,7 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using RMuseum.DbContext;
 using RMuseum.Models.Auth.Memory;
 using RMuseum.Services;
@@ -181,9 +181,9 @@ namespace RMuseum
             {
                 c.SwaggerDoc("v1", new OpenApiInfo
                 {
-                    Title = "RMuseum API",
+                    Title = "Naskban API",
                     Version = "v1",
-                    Description = "RMuseum API",
+                    Description = "Naskban API",
                     TermsOfService = new Uri("https://ganjoor.net/contact"),
                     Contact = new OpenApiContact
                     {

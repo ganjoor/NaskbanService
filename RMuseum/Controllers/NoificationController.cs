@@ -15,7 +15,8 @@ namespace RMuseum.Controllers
         /// constructor
         /// </summary>
         /// <param name="notificationService"></param>
-        public NoificationController(IRNotificationService notificationService) : base(notificationService)
+        /// <param name="appUserService"></param>
+        public NoificationController(IRNotificationService notificationService, IAppUserService appUserService) : base(notificationService, appUserService)
         {
         }
     }
