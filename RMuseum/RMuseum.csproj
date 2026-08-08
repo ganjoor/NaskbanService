@@ -22,8 +22,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="NAudio" Version="2.3.0" />
-    <PackageReference Include="PDFtoImage" Version="5.2.1" />
-    <PackageReference Include="RSecurityBackend" Version="1.6.5" />
+    <PackageReference Include="PDFtoImage" Version="5.3.0" />
+    <PackageReference Include="RSecurityBackend" Version="1.7.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
     <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.2.3" />
     <PackageReference Include="Swashbuckle.AspNetCore.Filters" Version="10.0.1" />
