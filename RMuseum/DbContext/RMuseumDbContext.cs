@@ -593,5 +593,10 @@ namespace RMuseum.DbContext
         /// </summary>
         public DbSet<PDFBookDuplicateCandidate> PDFBookDuplicateCandidates { get; set; }
 
+        /// <summary>
+        /// PDFBook duplicate detection progress (for resumable detection runs)
+        /// </summary>
+        public DbSet<PDFBookDuplicateDetectionState> PDFBookDuplicateDetectionStates { get; set; }
+
     }
 }

@@ -569,6 +569,12 @@ namespace RMuseum.Services
         void StartDetectingDuplicatePDFBooksAsync();
 
         /// <summary>
+        /// current duplicate-detection progress/resume state (title-fuzzy-matching pass)
+        /// </summary>
+        /// <returns></returns>
+        Task<RServiceResult<PDFBookDuplicateDetectionState>> GetPDFBookDuplicateDetectionStateAsync();
+
+        /// <summary>
         /// paginated list of duplicate candidates awaiting/undergone review
         /// </summary>
         /// <param name="paging"></param>

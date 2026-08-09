@@ -3416,7 +3416,7 @@ namespace RMuseum.Migrations
                     b.ToTable("PDFBookDuplicateCandidates");
                 });
 
-modelBuilder.Entity("RMuseum.Models.PDFLibrary.PDFPage", b =>
+            modelBuilder.Entity("RMuseum.Models.PDFLibrary.PDFPage", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()

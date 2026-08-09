@@ -47,6 +47,13 @@ namespace RMuseum.Services.Implementation
         private const double DupMinTitleSimilarity = 0.55;
 
         /// <summary>
+        /// how many title buckets to process between DB checkpoints. Lower = safer against
+        /// abrupt interruption (process kill / app-pool recycle) but more DB round trips;
+        /// higher = faster but risks redoing more work after an interruption.
+        /// </summary>
+        private const int DupCheckpointEveryNBuckets = 50;
+
+        /// <summary>
         /// start the duplicate PDFBook detection background job
         /// </summary>
         public void StartDetectingDuplicatePDFBooksAsync()
@@ -187,6 +194,10 @@ namespace RMuseum.Services.Implementation
                 );
             }
 
+            // --- pass 1 & 2 are cheap grouped scans over the whole table (well under a second even
+            //     at ~30000 rows), so they always run in full on every start regardless of resume
+            //     state; QueueCandidateIfNew is idempotent against both this run and prior runs ---
+
             // --- pass 1: identical file (exact checksum match) - as certain a duplicate as it gets ---
             foreach (var group in books.Where(b => b.FileMD5CheckSum != null).GroupBy(b => b.FileMD5CheckSum))
             {
@@ -195,8 +206,6 @@ namespace RMuseum.Services.Implementation
                     for (int j = i + 1; j < arr.Length; j++)
                         QueueCandidateIfNew(arr[i], arr[j], 100, "identical file checksum (MD5)");
             }
-
-            await jobProgressServiceEF.UpdateJob(jobId, 20, $"{newCandidates.Count} checksum matches so far");
 
             // --- pass 2: identical ISBN ---
             foreach (var group in books.Where(b => b.ISBN != null).GroupBy(b => b.ISBN))
@@ -207,23 +216,59 @@ namespace RMuseum.Services.Implementation
                         QueueCandidateIfNew(arr[i], arr[j], 100, "identical ISBN");
             }
 
-            await jobProgressServiceEF.UpdateJob(jobId, 35, $"{newCandidates.Count} checksum/ISBN matches so far");
+            if (newCandidates.Count > 0)
+            {
+                context.PDFBookDuplicateCandidates.AddRange(newCandidates);
+                await context.SaveChangesAsync();
+                newCandidates.Clear();
+            }
 
-            // --- pass 3: fuzzy title match, bucketed by leading normalized-title characters ---
+            await jobProgressServiceEF.UpdateJob(jobId, 20, $"checksum/ISBN passes done, {existingPairs.Count} candidates recorded so far");
+
+            // --- pass 3: fuzzy title match, bucketed by leading normalized-title characters.
+            //     buckets are processed in a fixed (ordinal) order so progress is resumable: we
+            //     persist the last fully-completed bucket key and, on the next start, skip every
+            //     bucket up to and including it. ---
             var bucketed = books
                 .Where(b => b.NormalizedTitle.Replace(" ", "").Length >= DupMinTitleLengthForFuzzyMatch)
                 .GroupBy(b => b.BucketKey)
+                .OrderBy(g => g.Key, StringComparer.Ordinal)
                 .ToArray();
+
+            var state = await context.PDFBookDuplicateDetectionStates.FirstOrDefaultAsync();
+            if (state == null)
+            {
+                state = new PDFBookDuplicateDetectionState() { Id = Guid.NewGuid() };
+                context.PDFBookDuplicateDetectionStates.Add(state);
+            }
+
+            string resumeAfterKey = (!state.Completed && !string.IsNullOrEmpty(state.LastProcessedTitleBucketKey))
+                                        ? state.LastProcessedTitleBucketKey
+                                        : null;
+
+            if (resumeAfterKey == null)
+            {
+                // fresh run: either first ever run, or the previous run completed fully
+                state.LastRunStarted = DateTime.Now;
+                state.LastProcessedTitleBucketKey = null;
+            }
+            state.Completed = false;
+            state.TotalTitleBuckets = bucketed.Length;
+            state.LastRunUpdated = DateTime.Now;
+            await context.SaveChangesAsync();
+
+            if (resumeAfterKey != null)
+            {
+                await jobProgressServiceEF.UpdateJob(jobId, 20, $"resuming title comparison after bucket '{resumeAfterKey}'");
+            }
 
             int bucketIndex = 0;
             foreach (var bucket in bucketed)
             {
                 bucketIndex++;
-                if (bucketIndex % 200 == 0)
-                {
-                    int percent = 35 + (int)(60.0 * bucketIndex / bucketed.Length);
-                    await jobProgressServiceEF.UpdateJob(jobId, Math.Min(percent, 95), $"comparing titles: bucket {bucketIndex} of {bucketed.Length}");
-                }
+
+                if (resumeAfterKey != null && string.CompareOrdinal(bucket.Key, resumeAfterKey) <= 0)
+                    continue;
 
                 var arr = bucket.ToArray();
                 for (int i = 0; i < arr.Length; i++)
@@ -273,15 +318,43 @@ namespace RMuseum.Services.Implementation
                         QueueCandidateIfNew(a, b, finalScore, string.Join("; ", reasons));
                     }
                 }
+
+                state.LastProcessedTitleBucketKey = bucket.Key;
+                state.ProcessedTitleBuckets = bucketIndex;
+                state.LastRunUpdated = DateTime.Now;
+
+                if (bucketIndex % DupCheckpointEveryNBuckets == 0)
+                {
+                    // checkpoint: persist both the newly found candidates and the resume point
+                    // together, so an abrupt interruption right after this never loses either
+                    if (newCandidates.Count > 0)
+                    {
+                        context.PDFBookDuplicateCandidates.AddRange(newCandidates);
+                        newCandidates.Clear();
+                    }
+                    await context.SaveChangesAsync();
+                }
+
+                if (bucketIndex % 200 == 0)
+                {
+                    int percent = 20 + (int)(75.0 * bucketIndex / bucketed.Length);
+                    await jobProgressServiceEF.UpdateJob(jobId, Math.Min(percent, 95), $"comparing titles: bucket {bucketIndex} of {bucketed.Length}");
+                }
             }
 
+            // final flush of any candidates found since the last checkpoint
             if (newCandidates.Count > 0)
             {
                 context.PDFBookDuplicateCandidates.AddRange(newCandidates);
-                await context.SaveChangesAsync();
             }
 
-            await jobProgressServiceEF.UpdateJob(jobId, 99, $"{newCandidates.Count} new duplicate candidates queued for review");
+            state.Completed = true;
+            state.LastProcessedTitleBucketKey = null; // next start does a fresh full rescan (catches newly-imported books)
+            state.LastRunUpdated = DateTime.Now;
+
+            await context.SaveChangesAsync();
+
+            await jobProgressServiceEF.UpdateJob(jobId, 99, $"{existingPairs.Count} total duplicate candidates on file after this run");
         }
 
         /// <summary>
@@ -358,6 +431,22 @@ namespace RMuseum.Services.Implementation
             }
 
             return d[a.Length, b.Length];
+        }
+
+        /// <summary>
+        /// current duplicate-detection progress/resume state (title-fuzzy-matching pass)
+        /// </summary>
+        public async Task<RServiceResult<PDFBookDuplicateDetectionState>> GetPDFBookDuplicateDetectionStateAsync()
+        {
+            try
+            {
+                var state = await _context.PDFBookDuplicateDetectionStates.AsNoTracking().FirstOrDefaultAsync();
+                return new RServiceResult<PDFBookDuplicateDetectionState>(state);
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<PDFBookDuplicateDetectionState>(null, exp.ToString());
+            }
         }
 
         /// <summary>

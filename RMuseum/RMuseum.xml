@@ -701,6 +701,12 @@
             </summary>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetPDFBookDuplicateDetectionStateAsync">
+            <summary>
+            current duplicate-detection progress/resume state (title-fuzzy-matching pass)
+            </summary>
+            <returns></returns>
+        </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.GetPDFBookDuplicateCandidatesAsync(RSecurityBackend.Models.Generic.PagingParameterModel,RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidateStatus[])">
             <summary>
             get duplicate candidates queue - check paging-headers for paging info
@@ -1188,6 +1194,11 @@
             PDFBook duplicate candidates awaiting/undergone human review
             </summary>
         </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.PDFBookDuplicateDetectionStates">
+            <summary>
+            PDFBook duplicate detection progress (for resumable detection runs)
+            </summary>
+        </member>
         <member name="T:RMuseum.Migrations.PictureFileExtUrl">
             <inheritdoc />
         </member>
@@ -1606,6 +1617,18 @@
             <inheritdoc />
         </member>
         <member name="M:RMuseum.Migrations.PDFBookDuplicateCandidates.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:RMuseum.Migrations.PDFBookDuplicateDetectionState">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.PDFBookDuplicateDetectionState.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.PDFBookDuplicateDetectionState.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.PDFBookDuplicateDetectionState.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
         <member name="T:RMuseum.Models.Accounting.DonationExpenditure">
@@ -10691,6 +10714,53 @@
             already merged
             </summary>
         </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFBookDuplicateDetectionState">
+            <summary>
+            singleton row tracking the progress of the title-fuzzy-matching pass of duplicate
+            detection, so an interrupted run can resume instead of rescanning ~30000 books from
+            scratch. The cheap exact-match passes (MD5 checksum, ISBN) are always re-run in full
+            on every start, since they are simple grouped queries and finish in well under a second.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateDetectionState.Id">
+            <summary>
+            Id (single row is ever expected to exist)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateDetectionState.Completed">
+            <summary>
+            true once a full title-bucket pass has completed without interruption. When true,
+            the next start begins a fresh full rescan (so newly imported books get covered);
+            when false, the next start resumes right after LastProcessedTitleBucketKey.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateDetectionState.LastProcessedTitleBucketKey">
+            <summary>
+            title buckets are processed in ascending (ordinal) order of their bucket key; this
+            is the last one fully finished. Null means either never started, or a completed run
+            (about to start fresh).
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateDetectionState.TotalTitleBuckets">
+            <summary>
+            total number of title buckets computed for the current/last run (informational)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateDetectionState.ProcessedTitleBuckets">
+            <summary>
+            number of title buckets processed so far in the current/last run (informational)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateDetectionState.LastRunStarted">
+            <summary>
+            when the current/last run started (fresh runs reset this; resumed runs keep it)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateDetectionState.LastRunUpdated">
+            <summary>
+            last time this row was checkpointed
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.PDFLibrary.PDFPage">
             <summary>
             PDF Page
@@ -11807,6 +11877,13 @@
             minimum normalized Levenshtein title similarity (0..1) even to be scored at all
             </summary>
         </member>
+        <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupCheckpointEveryNBuckets">
+            <summary>
+            how many title buckets to process between DB checkpoints. Lower = safer against
+            abrupt interruption (process kill / app-pool recycle) but more DB round trips;
+            higher = faster but risks redoing more work after an interruption.
+            </summary>
+        </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.StartDetectingDuplicatePDFBooksAsync">
             <summary>
             start the duplicate PDFBook detection background job
@@ -11834,6 +11911,11 @@
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService._ComputeTitleSimilarity(System.String,System.String)">
             <summary>
             normalized Levenshtein similarity between two already-normalized strings, in the 0..1 range
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetPDFBookDuplicateDetectionStateAsync">
+            <summary>
+            current duplicate-detection progress/resume state (title-fuzzy-matching pass)
             </summary>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetPDFBookDuplicateCandidatesAsync(RSecurityBackend.Models.Generic.PagingParameterModel,RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidateStatus[])">
@@ -13248,6 +13330,12 @@
             <summary>
             start scanning PDFBooks for possible duplicates and queue the findings for human review
             </summary>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetPDFBookDuplicateDetectionStateAsync">
+            <summary>
+            current duplicate-detection progress/resume state (title-fuzzy-matching pass)
+            </summary>
+            <returns></returns>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.GetPDFBookDuplicateCandidatesAsync(RSecurityBackend.Models.Generic.PagingParameterModel,RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidateStatus[])">
             <summary>

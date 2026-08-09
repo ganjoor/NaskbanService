@@ -2044,6 +2044,25 @@ namespace RMuseum.Controllers
         }
 
         /// <summary>
+        /// current duplicate-detection progress/resume state (title-fuzzy-matching pass)
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("duplicates/detect/state")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.ModifyOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(PDFBookDuplicateDetectionState))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetPDFBookDuplicateDetectionStateAsync()
+        {
+            var res = await _pdfService.GetPDFBookDuplicateDetectionStateAsync();
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+            {
+                return BadRequest(res.ExceptionString);
+            }
+            return Ok(res.Result);
+        }
+
+        /// <summary>
         /// get duplicate candidates queue - check paging-headers for paging info
         /// </summary>
         /// <param name="paging"></param>
