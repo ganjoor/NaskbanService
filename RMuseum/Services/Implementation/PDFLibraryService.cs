@@ -595,7 +595,7 @@ namespace RMuseum.Services.Implementation
                     return new RServiceResult<bool>(false, "PDFBook not found.");
                 }
 
-                await _QueuePDFBookRemovalAsync(record);
+                await _QueuePDFBookRemovalAsync(_context, record);
 
                 await _context.SaveChangesAsync();
             }
@@ -614,8 +614,11 @@ namespace RMuseum.Services.Implementation
         /// cleanup. Does NOT call SaveChangesAsync - the caller controls the transaction boundary,
         /// so a caller that first moves some of record's Tags/Contributers/references elsewhere
         /// (as the merge flow does, onto a survivor) only has the leftovers cleaned up here.
+        /// Takes `context` explicitly (rather than always using the instance's own _context) so it
+        /// can be called from a background job running against its own RMuseumDbContext, not just
+        /// from a request-scoped call.
         /// </summary>
-        private async Task _QueuePDFBookRemovalAsync(PDFBook record)
+        private async Task _QueuePDFBookRemovalAsync(RMuseumDbContext context, PDFBook record)
         {
             int pdfBookId = record.Id;
             var pageIds = record.Pages.Select(p => p.Id).ToArray();
@@ -625,38 +628,38 @@ namespace RMuseum.Services.Implementation
 
             // user bookmarks pointing at this book directly, or at any of its pages
             var bookmarksToRemove =
-                await _context.PDFUserBookmarks
+                await context.PDFUserBookmarks
                 .Where(bm => bm.PDFBookId == pdfBookId || (bm.PageId != null && pageIds.Contains(bm.PageId.Value)))
                 .ToArrayAsync();
-            _context.PDFUserBookmarks.RemoveRange(bookmarksToRemove);
+            context.PDFUserBookmarks.RemoveRange(bookmarksToRemove);
 
             // author/contributor links still attached to record (a caller may have already moved
             // some of these onto a survivor before calling this method)
-            _context.RemoveRange(record.Contributers);
+            context.RemoveRange(record.Contributers);
 
             // --- dependent records that do NOT have a database-level foreign key constraint
             //     (so they would not block the delete), but would be left as orphaned rows
             //     silently pointing at a PDFBookId that no longer exists otherwise ---
 
-            _context.AIQueuedItems.RemoveRange(_context.AIQueuedItems.Where(q => q.PDFBookId == pdfBookId));
-            _context.OCRQueuedItems.RemoveRange(_context.OCRQueuedItems.Where(q => q.PDFBookId == pdfBookId));
-            _context.PDFGanjoorLinks.RemoveRange(_context.PDFGanjoorLinks.Where(l => l.PDFBookId == pdfBookId));
-            _context.PinterestLinks.RemoveRange(_context.PinterestLinks.Where(l => l.PDFBookId == pdfBookId));
-            _context.PDFVisitRecords.RemoveRange(_context.PDFVisitRecords.Where(v => v.PDFBookId == pdfBookId));
-            _context.PDFBookDuplicateCandidates.RemoveRange(_context.PDFBookDuplicateCandidates.Where(c => c.PDFBookId1 == pdfBookId || c.PDFBookId2 == pdfBookId));
+            context.AIQueuedItems.RemoveRange(context.AIQueuedItems.Where(q => q.PDFBookId == pdfBookId));
+            context.OCRQueuedItems.RemoveRange(context.OCRQueuedItems.Where(q => q.PDFBookId == pdfBookId));
+            context.PDFGanjoorLinks.RemoveRange(context.PDFGanjoorLinks.Where(l => l.PDFBookId == pdfBookId));
+            context.PinterestLinks.RemoveRange(context.PinterestLinks.Where(l => l.PDFBookId == pdfBookId));
+            context.PDFVisitRecords.RemoveRange(context.PDFVisitRecords.Where(v => v.PDFBookId == pdfBookId));
+            context.PDFBookDuplicateCandidates.RemoveRange(context.PDFBookDuplicateCandidates.Where(c => c.PDFBookId1 == pdfBookId || c.PDFBookId2 == pdfBookId));
 
             foreach (PDFPage page in record.Pages)
             {
-                _context.TagValues.RemoveRange(page.Tags);
+                context.TagValues.RemoveRange(page.Tags);
             }
 
-            _context.RemoveRange(record.Pages);
-            _context.TagValues.RemoveRange(record.Tags);
-            _context.Remove(record);
+            context.RemoveRange(record.Pages);
+            context.TagValues.RemoveRange(record.Tags);
+            context.Remove(record);
 
             if (!string.IsNullOrEmpty(record.StorageFolderName))
             {
-                _context.PendingPDFStorageCleanups.Add
+                context.PendingPDFStorageCleanups.Add
                 (
                     new PendingPDFStorageCleanup()
                     {

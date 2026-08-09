@@ -605,6 +605,12 @@ namespace RMuseum.Services
         Task<RServiceResult<bool>> MergePDFBookDuplicateAsync(Guid candidateId, Guid reviewerUserId);
 
         /// <summary>
+        /// start merging EVERY Confirmed duplicate candidate in a single background job, instead
+        /// of one at a time.
+        /// </summary>
+        void StartMergingConfirmedPDFBookDuplicatesAsync();
+
+        /// <summary>
         /// delete a duplicate candidate row (e.g. a false positive)
         /// </summary>
         /// <param name="id"></param>

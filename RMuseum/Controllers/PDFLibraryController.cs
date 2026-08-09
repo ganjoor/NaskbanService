@@ -2143,6 +2143,23 @@ namespace RMuseum.Controllers
         }
 
         /// <summary>
+        /// start merging EVERY Confirmed duplicate candidate in a single background job, instead
+        /// of one at a time via PUT duplicates/{id}/merge. Each candidate is still merged in its
+        /// own transaction; a candidate whose merge fails is skipped for this run (recorded in its
+        /// ReviewNote, left as Confirmed) rather than blocking the rest of the batch.
+        /// </summary>
+        /// <returns></returns>
+        [HttpPut]
+        [Route("duplicates/merge-all-confirmed")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.ModifyOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        public IActionResult MergeAllConfirmedPDFBookDuplicatesAsync()
+        {
+            _pdfService.StartMergingConfirmedPDFBookDuplicatesAsync();
+            return Ok();
+        }
+
+        /// <summary>
         /// delete a duplicate candidate row (e.g. a false positive)
         /// </summary>
         /// <param name="id"></param>

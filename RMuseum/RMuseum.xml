@@ -733,6 +733,15 @@
             <param name="id">duplicate candidate id</param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.MergeAllConfirmedPDFBookDuplicatesAsync">
+            <summary>
+            start merging EVERY Confirmed duplicate candidate in a single background job, instead
+            of one at a time via PUT duplicates/{id}/merge. Each candidate is still merged in its
+            own transaction; a candidate whose merge fails is skipped for this run (recorded in its
+            ReviewNote, left as Confirmed) rather than blocking the rest of the batch.
+            </summary>
+            <returns></returns>
+        </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.DeletePDFBookDuplicateCandidateAsync(System.Guid)">
             <summary>
             delete a duplicate candidate row (e.g. a false positive)
@@ -12194,17 +12203,36 @@
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.MergePDFBookDuplicateAsync(System.Guid,System.Guid)">
             <summary>
+            execute a single confirmed duplicate-candidate merge (request-scoped entry point - uses
+            this instance's own _context). See _MergePDFBookDuplicateAsync for what it actually does.
+            </summary>
+            <param name="candidateId"></param>
+            <param name="reviewerUserId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.StartMergingConfirmedPDFBookDuplicatesAsync">
+            <summary>
+            start merging EVERY Confirmed duplicate candidate in a single background job, not one
+            at a time. Processes them one merge per iteration (each its own transaction, same as a
+            single merge), re-querying for the next Confirmed candidate each time so it naturally
+            picks up changes earlier merges in the same run make to other pending candidates (e.g.
+            A absorbing B also repoints any other candidate that mentioned B onto A). A candidate
+            whose merge fails is skipped for the rest of THIS run (recorded in its ReviewNote, left
+            as Confirmed) rather than retried forever or silently rejected - it'll be picked up
+            again the next time this job runs, after you've had a chance to look at why it failed.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._MergePDFBookDuplicateAsync(RMuseum.DbContext.RMuseumDbContext,System.Guid,System.Guid)">
+            <summary>
             execute a confirmed duplicate-candidate merge: fills gaps in the survivor's metadata
             from the duplicate, repoints every reference (bookmarks, Ganjoor/Pinterest links, visit
             records) from the duplicate to the survivor, creates a PDFBookRedirect so future API
             calls for the duplicate's id transparently serve the survivor, and removes the
             duplicate's own PDFBook row (reusing the same dependent-cleanup + storage-cleanup
             queuing that RemovePDFBookAsync uses). All in a single SaveChangesAsync, so a failure
-            partway through leaves nothing half-applied.
+            partway through leaves nothing half-applied. Takes `context` explicitly so it can run
+            either request-scoped (single merge) or against a background job's own context (batch).
             </summary>
-            <param name="candidateId"></param>
-            <param name="reviewerUserId"></param>
-            <returns></returns>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService._FillPDFBookMetadataGaps(RMuseum.Models.PDFLibrary.PDFBook,RMuseum.Models.PDFLibrary.PDFBook)">
             <summary>
@@ -12227,7 +12255,7 @@
             an equivalent of (same author + role) onto the survivor
             </summary>
         </member>
-        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._RepointPDFBookReferencesAsync(RMuseum.Models.PDFLibrary.PDFBook,RMuseum.Models.PDFLibrary.PDFBook)">
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._RepointPDFBookReferencesAsync(RMuseum.DbContext.RMuseumDbContext,RMuseum.Models.PDFLibrary.PDFBook,RMuseum.Models.PDFLibrary.PDFBook)">
             <summary>
             repoint every table that references the duplicate PDFBook onto the survivor.
             PDFUserBookmark's PageId gets remapped to the survivor's page with the same page
@@ -12239,13 +12267,15 @@
             dropped for the duplicate (via _QueuePDFBookRemovalAsync) rather than repointed.
             </summary>
         </member>
-        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._RepointOtherDuplicateCandidatesAsync(System.Guid,System.Int32,System.Int32)">
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._RepointOtherDuplicateCandidatesAsync(RMuseum.DbContext.RMuseumDbContext,System.Guid,System.Int32,System.Int32)">
             <summary>
             other pending duplicate-candidate rows that mention the just-merged-away duplicate get
             repointed onto the survivor instead of left dangling: if that would make a row refer to
             the survivor on both sides, it's removed (no longer meaningful); if an equivalent
             survivor-vs-other-side row already exists, the repointed one is removed to avoid a
-            duplicate pair.
+            duplicate pair. This is also what lets a batch run correctly cluster three-or-more-way
+            duplicates: merging (A,B) repoints a pending (B,C) row onto (A,C), still Confirmed, so
+            the batch loop picks it up next and folds C into A too.
             </summary>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetQueuedPDFBooksAsync(RSecurityBackend.Models.Generic.PagingParameterModel)">
@@ -12388,7 +12418,7 @@
             <param name="pdfBookId"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._QueuePDFBookRemovalAsync(RMuseum.Models.PDFLibrary.PDFBook)">
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._QueuePDFBookRemovalAsync(RMuseum.DbContext.RMuseumDbContext,RMuseum.Models.PDFLibrary.PDFBook)">
             <summary>
             shared dependent-record cleanup + storage-cleanup queuing used by both
             RemovePDFBookAsync and the duplicate-merge flow. Removes whatever is still attached to
@@ -12397,6 +12427,9 @@
             cleanup. Does NOT call SaveChangesAsync - the caller controls the transaction boundary,
             so a caller that first moves some of record's Tags/Contributers/references elsewhere
             (as the merge flow does, onto a survivor) only has the leftovers cleaned up here.
+            Takes `context` explicitly (rather than always using the instance's own _context) so it
+            can be called from a background job running against its own RMuseumDbContext, not just
+            from a request-scoped call.
             </summary>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetPDFBookByTagValueAsync(System.String,System.String,RMuseum.Models.Artifact.PublishStatus[])">
@@ -13662,6 +13695,12 @@
             <param name="candidateId"></param>
             <param name="reviewerUserId"></param>
             <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.StartMergingConfirmedPDFBookDuplicatesAsync">
+            <summary>
+            start merging EVERY Confirmed duplicate candidate in a single background job, instead
+            of one at a time.
+            </summary>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.DeletePDFBookDuplicateCandidateAsync(System.Guid)">
             <summary>
