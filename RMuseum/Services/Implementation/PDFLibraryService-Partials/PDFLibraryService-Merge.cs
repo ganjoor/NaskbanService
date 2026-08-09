@@ -47,7 +47,7 @@ namespace RMuseum.Services.Implementation
 
                                                try
                                                {
-                                                   await _MergeAllConfirmedPDFBookDuplicatesAsync(context, jobProgressServiceEF, job.Id);
+                                                   await _MergeAllConfirmedPDFBookDuplicatesAsync(jobProgressServiceEF, job.Id);
 
                                                    await jobProgressServiceEF.UpdateJob(job.Id, 100, "", true);
 
@@ -64,11 +64,28 @@ namespace RMuseum.Services.Implementation
                                    );
         }
 
-        private async Task _MergeAllConfirmedPDFBookDuplicatesAsync(RMuseumDbContext context, LongRunningJobProgressServiceEF jobProgressServiceEF, Guid jobId)
+        /// <summary>
+        /// drives the batch: a fresh RMuseumDbContext per merge (and per "find next" query),
+        /// disposed immediately after use. This is deliberate, not an oversight - reusing one
+        /// long-lived context across hundreds/thousands of merges lets EF Core's change tracker
+        /// grow unboundedly (every survivor/duplicate/bookmark/link touched stays tracked for the
+        /// rest of the run), which makes every later merge progressively slower with nothing to
+        /// show for it in the job log - exactly the "no progress, no exception, just stuck" symptom
+        /// a long-running single-context loop produces. A fresh context per item costs a bit more
+        /// connection overhead (cheap, pooled) in exchange for genuinely constant per-item work.
+        /// </summary>
+        private async Task _MergeAllConfirmedPDFBookDuplicatesAsync(LongRunningJobProgressServiceEF jobProgressServiceEF, Guid jobId)
         {
             var skippedThisRun = new HashSet<Guid>();
             int merged = 0;
             int failed = 0;
+
+            int totalConfirmedAtStart;
+            using (var countContext = new RMuseumDbContext(new DbContextOptions<RMuseumDbContext>()))
+            {
+                totalConfirmedAtStart = await countContext.PDFBookDuplicateCandidates.AsNoTracking().CountAsync(c => c.Status == PDFBookDuplicateCandidateStatus.Confirmed);
+            }
+            await jobProgressServiceEF.UpdateJob(jobId, 1, $"{totalConfirmedAtStart} confirmed candidates to merge");
 
             // safety cap so a bug that somehow keeps producing new Confirmed rows can't spin
             // forever - comfortably above any realistic batch size
@@ -76,41 +93,58 @@ namespace RMuseum.Services.Implementation
 
             for (int i = 0; i < maxIterations; i++)
             {
-                var next =
-                    await context.PDFBookDuplicateCandidates
-                    .Where(c => c.Status == PDFBookDuplicateCandidateStatus.Confirmed && !skippedThisRun.Contains(c.Id))
-                    .OrderBy(c => c.QueueTime)
-                    .FirstOrDefaultAsync();
+                Guid? nextId = null;
+                Guid? nextReviewerId = null;
 
-                if (next == null)
-                    break;
-
-                Guid reviewerUserId = next.ReviewerId ?? Guid.Empty;
-                var res = await _MergePDFBookDuplicateAsync(context, next.Id, reviewerUserId);
-
-                if (res.Result)
+                using (var queryContext = new RMuseumDbContext(new DbContextOptions<RMuseumDbContext>()))
                 {
-                    merged++;
-                }
-                else
-                {
-                    failed++;
-                    skippedThisRun.Add(next.Id);
+                    var next =
+                        await queryContext.PDFBookDuplicateCandidates
+                        .AsNoTracking()
+                        .Where(c => c.Status == PDFBookDuplicateCandidateStatus.Confirmed && !skippedThisRun.Contains(c.Id))
+                        .OrderBy(c => c.QueueTime)
+                        .Select(c => new { c.Id, c.ReviewerId })
+                        .FirstOrDefaultAsync();
 
-                    // leave it as Confirmed (so it's retried on a future run once whatever's
-                    // wrong is fixed) but record why this attempt failed
-                    var stillThere = await context.PDFBookDuplicateCandidates.Where(c => c.Id == next.Id).SingleOrDefaultAsync();
-                    if (stillThere != null)
+                    if (next != null)
                     {
-                        stillThere.ReviewNote = $"merge failed on {DateTime.Now:yyyy-MM-dd HH:mm}: {res.ExceptionString}";
-                        context.Update(stillThere);
-                        await context.SaveChangesAsync();
+                        nextId = next.Id;
+                        nextReviewerId = next.ReviewerId;
                     }
                 }
 
-                if ((merged + failed) % 10 == 0)
+                if (nextId == null)
+                    break;
+
+                // report BEFORE attempting the merge, not after - if this specific merge is what
+                // hangs or is slow, the job log shows exactly which candidate, instead of sitting
+                // at a stale "so far" count from several items ago
+                int percentSoFar = totalConfirmedAtStart > 0 ? 1 + (int)(97.0 * (merged + failed) / totalConfirmedAtStart) : 50;
+                await jobProgressServiceEF.UpdateJob(jobId, Math.Min(percentSoFar, 98), $"merging candidate {nextId} ({merged} merged, {failed} failed so far)");
+
+                using (var mergeContext = new RMuseumDbContext(new DbContextOptions<RMuseumDbContext>()))
                 {
-                    await jobProgressServiceEF.UpdateJob(jobId, Math.Min(5 + (merged + failed), 95), $"merged {merged}, failed {failed} so far");
+                    var res = await _MergePDFBookDuplicateAsync(mergeContext, nextId.Value, nextReviewerId ?? Guid.Empty);
+
+                    if (res.Result)
+                    {
+                        merged++;
+                    }
+                    else
+                    {
+                        failed++;
+                        skippedThisRun.Add(nextId.Value);
+
+                        // leave it as Confirmed (so it's retried on a future run once whatever's
+                        // wrong is fixed) but record why this attempt failed
+                        var stillThere = await mergeContext.PDFBookDuplicateCandidates.Where(c => c.Id == nextId.Value).SingleOrDefaultAsync();
+                        if (stillThere != null)
+                        {
+                            stillThere.ReviewNote = $"merge failed on {DateTime.Now:yyyy-MM-dd HH:mm}: {res.ExceptionString}";
+                            mergeContext.Update(stillThere);
+                            await mergeContext.SaveChangesAsync();
+                        }
+                    }
                 }
             }
 
