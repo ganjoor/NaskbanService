@@ -56,6 +56,7 @@ namespace RMuseum.Services.Implementation
 
             AsyncFtpClient ftpClient = null;
             bool ftpAvailable = false;
+            string ftpConnectError = null;
             if (pending.Any(p => p.NeedsFtpDelete))
             {
                 try
@@ -69,17 +70,29 @@ namespace RMuseum.Services.Implementation
                     ftpClient.ValidateCertificate += FtpClient_ValidateCertificate;
                     await ftpClient.AutoConnect();
                     ftpClient.Config.RetryAttempts = 3;
+                    // some already-uploaded files in this corpus have odd names containing ".."
+                    // (e.g. "00010922-eliteraturebook..pdf") that FluentFTP's path sanitizer
+                    // otherwise refuses to touch, treating any ".." as a possible directory-
+                    // traversal attempt. Safe to disable here specifically: this path is built
+                    // entirely from our own DB's StorageFolderName, never from request input, so
+                    // there's no injection risk - we're just deleting a folder we already own.
+                    ftpClient.Config.SanitizeTraversal = false;
                     ftpAvailable = true;
                 }
                 catch (Exception exp)
                 {
                     // couldn't connect at all this run - every FTP-needing item will be skipped and
-                    // retried on the next invocation; items that only need local cleanup still proceed below
-                    await jobProgressServiceEF.UpdateJob(jobId, 2, $"could not connect to FTP this run, will retry FTP items later: {exp.Message}");
+                    // retried on the next invocation; items that only need local cleanup still
+                    // proceed below. Record the reason on every affected row (not just the job log,
+                    // which would otherwise get overwritten by the final summary below and lose it)
+                    // so it's diagnosable from the row itself.
+                    ftpConnectError = exp.Message;
+                    await jobProgressServiceEF.UpdateJob(jobId, 2, $"could not connect to FTP this run, will retry FTP items later: {ftpConnectError}");
                 }
             }
 
             int done = 0;
+            int skippedNoFtp = 0;
             for (int i = 0; i < pending.Length; i++)
             {
                 var item = pending[i];
@@ -88,7 +101,15 @@ namespace RMuseum.Services.Implementation
                     if (item.NeedsFtpDelete)
                     {
                         if (!ftpAvailable)
+                        {
+                            skippedNoFtp++;
+                            item.AttemptCount++;
+                            item.LastAttempt = DateTime.Now;
+                            item.LastError = $"FTP server unreachable this run: {ftpConnectError}";
+                            context.Update(item);
+                            await context.SaveChangesAsync();
                             continue; // leave for next run
+                        }
 
                         string remoteDir = $"{Configuration.GetSection("ExternalFTPServer")["RootPath"]}/pdf/{item.StorageFolderName}";
                         if (await ftpClient.DirectoryExists(remoteDir))
@@ -129,7 +150,12 @@ namespace RMuseum.Services.Implementation
                 await ftpClient.Disconnect();
             }
 
-            await jobProgressServiceEF.UpdateJob(jobId, 99, $"{done} of {pending.Length} storage folders cleaned up this run");
+            string summary = $"{done} of {pending.Length} storage folders cleaned up this run";
+            if (skippedNoFtp > 0)
+            {
+                summary += $" ({skippedNoFtp} skipped - FTP unreachable: {ftpConnectError})";
+            }
+            await jobProgressServiceEF.UpdateJob(jobId, 99, summary);
         }
     }
 }
