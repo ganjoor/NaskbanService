@@ -21,18 +21,20 @@ namespace RMuseum.Services.Implementation
         /// <returns></returns>
         public async Task<RServiceResult<bool>> MergePDFBookDuplicateAsync(Guid candidateId, Guid reviewerUserId)
         {
-            return await _MergePDFBookDuplicateAsync(_context, candidateId, reviewerUserId);
+            return await _MergePDFBookDuplicateAsync(_context, candidateId, reviewerUserId, null);
         }
 
         /// <summary>
         /// start merging EVERY Confirmed duplicate candidate in a single background job, not one
-        /// at a time. Processes them one merge per iteration (each its own transaction, same as a
-        /// single merge), re-querying for the next Confirmed candidate each time so it naturally
-        /// picks up changes earlier merges in the same run make to other pending candidates (e.g.
-        /// A absorbing B also repoints any other candidate that mentioned B onto A). A candidate
-        /// whose merge fails is skipped for the rest of THIS run (recorded in its ReviewNote, left
-        /// as Confirmed) rather than retried forever or silently rejected - it'll be picked up
-        /// again the next time this job runs, after you've had a chance to look at why it failed.
+        /// at a time. The full list of Confirmed candidate ids is read ONCE up front (not
+        /// re-queried per iteration with a growing exclusion list) - safe because nothing else
+        /// modifies the Confirmed set while this runs, and repointing effects from earlier merges
+        /// in the same batch (see _RepointOtherDuplicateCandidatesAsync) still apply correctly
+        /// because each merge re-reads its own candidate row fresh by id regardless of what the
+        /// outer list looked like when it was captured. A candidate whose merge fails is recorded
+        /// in its ReviewNote and left as Confirmed (retried on a future run) rather than blocking
+        /// the rest of the batch; a candidate that another merge earlier in this same run already
+        /// repointed away or removed is silently skipped, not counted as a failure.
         /// </summary>
         public void StartMergingConfirmedPDFBookDuplicatesAsync()
         {
@@ -65,79 +67,64 @@ namespace RMuseum.Services.Implementation
         }
 
         /// <summary>
-        /// drives the batch: a fresh RMuseumDbContext per merge (and per "find next" query),
-        /// disposed immediately after use. This is deliberate, not an oversight - reusing one
-        /// long-lived context across hundreds/thousands of merges lets EF Core's change tracker
-        /// grow unboundedly (every survivor/duplicate/bookmark/link touched stays tracked for the
-        /// rest of the run), which makes every later merge progressively slower with nothing to
-        /// show for it in the job log - exactly the "no progress, no exception, just stuck" symptom
-        /// a long-running single-context loop produces. A fresh context per item costs a bit more
-        /// connection overhead (cheap, pooled) in exchange for genuinely constant per-item work.
+        /// drives the batch: a fresh RMuseumDbContext per merge, disposed immediately after use,
+        /// to keep EF Core's change tracker from growing unboundedly across a long run. The list
+        /// of candidate ids to attempt is captured once at the start with a single lightweight
+        /// query (per your point: nothing else touches the Confirmed set mid-run, so there is no
+        /// need to keep re-querying it).
         /// </summary>
         private async Task _MergeAllConfirmedPDFBookDuplicatesAsync(LongRunningJobProgressServiceEF jobProgressServiceEF, Guid jobId)
         {
-            var skippedThisRun = new HashSet<Guid>();
+            List<Guid> candidateIds;
+            using (var listContext = new RMuseumDbContext(new DbContextOptions<RMuseumDbContext>()))
+            {
+                candidateIds =
+                    await listContext.PDFBookDuplicateCandidates
+                    .AsNoTracking()
+                    .Where(c => c.Status == PDFBookDuplicateCandidateStatus.Confirmed)
+                    .OrderBy(c => c.QueueTime)
+                    .Select(c => c.Id)
+                    .ToListAsync();
+            }
+
+            int total = candidateIds.Count;
+            await jobProgressServiceEF.UpdateJob(jobId, 1, $"{total} confirmed candidates to merge");
+
             int merged = 0;
             int failed = 0;
+            int alreadyResolved = 0;
 
-            int totalConfirmedAtStart;
-            using (var countContext = new RMuseumDbContext(new DbContextOptions<RMuseumDbContext>()))
+            for (int i = 0; i < candidateIds.Count; i++)
             {
-                totalConfirmedAtStart = await countContext.PDFBookDuplicateCandidates.AsNoTracking().CountAsync(c => c.Status == PDFBookDuplicateCandidateStatus.Confirmed);
-            }
-            await jobProgressServiceEF.UpdateJob(jobId, 1, $"{totalConfirmedAtStart} confirmed candidates to merge");
+                Guid candidateId = candidateIds[i];
+                int index = i + 1;
 
-            // safety cap so a bug that somehow keeps producing new Confirmed rows can't spin
-            // forever - comfortably above any realistic batch size
-            const int maxIterations = 200000;
-
-            for (int i = 0; i < maxIterations; i++)
-            {
-                Guid? nextId = null;
-                Guid? nextReviewerId = null;
-
-                using (var queryContext = new RMuseumDbContext(new DbContextOptions<RMuseumDbContext>()))
+                async Task ReportStep(string step)
                 {
-                    var next =
-                        await queryContext.PDFBookDuplicateCandidates
-                        .AsNoTracking()
-                        .Where(c => c.Status == PDFBookDuplicateCandidateStatus.Confirmed && !skippedThisRun.Contains(c.Id))
-                        .OrderBy(c => c.QueueTime)
-                        .Select(c => new { c.Id, c.ReviewerId })
-                        .FirstOrDefaultAsync();
-
-                    if (next != null)
-                    {
-                        nextId = next.Id;
-                        nextReviewerId = next.ReviewerId;
-                    }
+                    int percent = total > 0 ? 1 + (int)(97.0 * i / total) : 50;
+                    await jobProgressServiceEF.UpdateJob(jobId, Math.Min(percent, 98), $"[{index}/{total}] candidate {candidateId}: {step} (merged {merged}, failed {failed}, already resolved {alreadyResolved})");
                 }
-
-                if (nextId == null)
-                    break;
-
-                // report BEFORE attempting the merge, not after - if this specific merge is what
-                // hangs or is slow, the job log shows exactly which candidate, instead of sitting
-                // at a stale "so far" count from several items ago
-                int percentSoFar = totalConfirmedAtStart > 0 ? 1 + (int)(97.0 * (merged + failed) / totalConfirmedAtStart) : 50;
-                await jobProgressServiceEF.UpdateJob(jobId, Math.Min(percentSoFar, 98), $"merging candidate {nextId} ({merged} merged, {failed} failed so far)");
 
                 using (var mergeContext = new RMuseumDbContext(new DbContextOptions<RMuseumDbContext>()))
                 {
-                    var res = await _MergePDFBookDuplicateAsync(mergeContext, nextId.Value, nextReviewerId ?? Guid.Empty);
+                    var res = await _MergePDFBookDuplicateAsync(mergeContext, candidateId, null, ReportStep);
 
                     if (res.Result)
                     {
                         merged++;
                     }
+                    else if (res.ExceptionString == "duplicate candidate not found" || res.ExceptionString == "only a Confirmed candidate can be merged - review and confirm it first")
+                    {
+                        // same "already handled earlier in this batch" case, just caught a step
+                        // later (candidate existed when we listed ids, changed status/vanished by
+                        // the time we got to it)
+                        alreadyResolved++;
+                    }
                     else
                     {
                         failed++;
-                        skippedThisRun.Add(nextId.Value);
 
-                        // leave it as Confirmed (so it's retried on a future run once whatever's
-                        // wrong is fixed) but record why this attempt failed
-                        var stillThere = await mergeContext.PDFBookDuplicateCandidates.Where(c => c.Id == nextId.Value).SingleOrDefaultAsync();
+                        var stillThere = await mergeContext.PDFBookDuplicateCandidates.Where(c => c.Id == candidateId).SingleOrDefaultAsync();
                         if (stillThere != null)
                         {
                             stillThere.ReviewNote = $"merge failed on {DateTime.Now:yyyy-MM-dd HH:mm}: {res.ExceptionString}";
@@ -148,7 +135,7 @@ namespace RMuseum.Services.Implementation
                 }
             }
 
-            await jobProgressServiceEF.UpdateJob(jobId, 99, $"done: merged {merged}, failed {failed}");
+            await jobProgressServiceEF.UpdateJob(jobId, 99, $"done: merged {merged}, failed {failed}, already resolved {alreadyResolved}");
         }
 
         /// <summary>
@@ -160,11 +147,25 @@ namespace RMuseum.Services.Implementation
         /// queuing that RemovePDFBookAsync uses). All in a single SaveChangesAsync, so a failure
         /// partway through leaves nothing half-applied. Takes `context` explicitly so it can run
         /// either request-scoped (single merge) or against a background job's own context (batch).
+        /// `reviewerUserIdOverride`, if given, is recorded as who performed the merge (the
+        /// interactive single-merge path: whoever is logged in and clicks merge right now); if
+        /// null (the batch path - no interactive user), the candidate's own ReviewerId (whoever
+        /// confirmed it) is used instead, read directly off the row already being loaded rather
+        /// than requiring the caller to fetch it separately first.
+        /// `reportStep`, if given, is called before each major phase so a batch run can surface
+        /// exactly where a slow or stuck merge is spending its time - pass null to skip.
         /// </summary>
-        private async Task<RServiceResult<bool>> _MergePDFBookDuplicateAsync(RMuseumDbContext context, Guid candidateId, Guid reviewerUserId)
+        private async Task<RServiceResult<bool>> _MergePDFBookDuplicateAsync(RMuseumDbContext context, Guid candidateId, Guid? reviewerUserIdOverride, Func<string, Task> reportStep)
         {
+            async Task Report(string step)
+            {
+                if (reportStep != null)
+                    await reportStep(step);
+            }
+
             try
             {
+                await Report("loading candidate");
                 var candidate = await context.PDFBookDuplicateCandidates.Where(c => c.Id == candidateId).SingleOrDefaultAsync();
                 if (candidate == null)
                 {
@@ -175,6 +176,8 @@ namespace RMuseum.Services.Implementation
                     return new RServiceResult<bool>(false, "only a Confirmed candidate can be merged - review and confirm it first");
                 }
 
+                Guid reviewerUserId = reviewerUserIdOverride ?? candidate.ReviewerId ?? Guid.Empty;
+
                 int survivorId = candidate.SurvivorPDFBookId;
                 int duplicateId = candidate.PDFBookId1 == survivorId ? candidate.PDFBookId2 : candidate.PDFBookId1;
                 if (survivorId != candidate.PDFBookId1 && survivorId != candidate.PDFBookId2)
@@ -182,13 +185,23 @@ namespace RMuseum.Services.Implementation
                     return new RServiceResult<bool>(false, $"SurvivorPDFBookId must be either {candidate.PDFBookId1} or {candidate.PDFBookId2}");
                 }
 
+                await Report($"loading survivor {survivorId}");
+                // AsSplitQuery: Pages is a to-many collection with its own to-many collection
+                // (Tags) included underneath it - combining that with another Include in a single
+                // (default) query multiplies each page row by its tag count, ballooning the result
+                // set for any book with many pages. Splitting into separate queries per collection
+                // avoids that Cartesian-join blowup.
                 PDFBook survivor = await context.PDFBooks
+                    .AsSplitQuery()
                     .Include(b => b.Tags)
                     .Include(b => b.Contributers).ThenInclude(c => c.Author)
                     .Include(b => b.Pages)
                     .Where(b => b.Id == survivorId)
                     .SingleOrDefaultAsync();
+
+                await Report($"loading duplicate {duplicateId} (including its pages)");
                 PDFBook duplicate = await context.PDFBooks
+                    .AsSplitQuery()
                     .Include(b => b.Tags)
                     .Include(b => b.Contributers).ThenInclude(c => c.Author)
                     .Include(b => b.Pages).ThenInclude(p => p.ThumbnailImage)
@@ -205,12 +218,15 @@ namespace RMuseum.Services.Implementation
                     return new RServiceResult<bool>(false, $"duplicate PDFBook {duplicateId} not found");
                 }
 
+                await Report("filling metadata gaps, merging tags and contributers");
                 _FillPDFBookMetadataGaps(survivor, duplicate);
                 _MergeTags(survivor, duplicate);
                 _MergeContributers(survivor, duplicate);
 
+                await Report($"repointing bookmarks/Ganjoor+Pinterest links/visit records ({duplicate.Pages.Count} pages)");
                 await _RepointPDFBookReferencesAsync(context, survivor, duplicate);
 
+                await Report("updating redirect chain");
                 // flatten any existing redirects that pointed at the duplicate onto the survivor,
                 // so a lookup is always a single row read no matter how many merges deep it is
                 var chainedRedirects = await context.PDFBookRedirects.Where(r => r.SurvivorPDFBookId == duplicateId).ToArrayAsync();
@@ -232,6 +248,7 @@ namespace RMuseum.Services.Implementation
                     }
                 );
 
+                await Report("repointing other pending duplicate candidates");
                 await _RepointOtherDuplicateCandidatesAsync(context, candidateId, duplicateId, survivorId);
 
                 candidate.Status = PDFBookDuplicateCandidateStatus.Merged;
@@ -239,8 +256,10 @@ namespace RMuseum.Services.Implementation
                 candidate.ReviewDate = DateTime.Now;
                 context.Update(candidate);
 
+                await Report("queuing duplicate's PDFBook row for removal");
                 await _QueuePDFBookRemovalAsync(context, duplicate);
 
+                await Report("saving changes");
                 await context.SaveChangesAsync();
                 return new RServiceResult<bool>(true);
             }
