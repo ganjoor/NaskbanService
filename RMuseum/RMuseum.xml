@@ -695,6 +695,34 @@
             </summary>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.StartDetectingDuplicatePDFBooksAsync">
+            <summary>
+            start scanning PDFBooks for possible duplicates and queue the findings for human review
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetPDFBookDuplicateCandidatesAsync(RSecurityBackend.Models.Generic.PagingParameterModel,RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidateStatus[])">
+            <summary>
+            get duplicate candidates queue - check paging-headers for paging info
+            </summary>
+            <param name="paging"></param>
+            <param name="status">defaults to New if not specified</param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.UpdatePDFBookDuplicateCandidateAsync(RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate)">
+            <summary>
+            update a duplicate candidate's review decision (survivor choice / status / note)
+            </summary>
+            <param name="model"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.DeletePDFBookDuplicateCandidateAsync(System.Guid)">
+            <summary>
+            delete a duplicate candidate row (e.g. a false positive)
+            </summary>
+            <param name="id"></param>
+            <returns></returns>
+        </member>
         <member name="F:RMuseum.Controllers.PDFLibraryController._pdfService">
             <summary>
             PDF Service
@@ -1155,6 +1183,11 @@
             unrevised texts
             </summary>
         </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.PDFBookDuplicateCandidates">
+            <summary>
+            PDFBook duplicate candidates awaiting/undergone human review
+            </summary>
+        </member>
         <member name="T:RMuseum.Migrations.PictureFileExtUrl">
             <inheritdoc />
         </member>
@@ -1561,6 +1594,18 @@
             <inheritdoc />
         </member>
         <member name="M:RMuseum.Migrations.ChangeEmail.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:RMuseum.Migrations.PDFBookDuplicateCandidates">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.PDFBookDuplicateCandidates.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.PDFBookDuplicateCandidates.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.PDFBookDuplicateCandidates.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
         <member name="T:RMuseum.Models.Accounting.DonationExpenditure">
@@ -10547,6 +10592,105 @@
             OCR AI revised
             </summary>
         </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate">
+            <summary>
+            a pair of PDFBook records the duplicate-detection job believes might be the same book,
+            waiting for a human operator to verify before an actual merge happens
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate.Id">
+            <summary>
+            Id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate.PDFBookId1">
+            <summary>
+            first (lower) PDFBook Id of the pair - immutable, set at detection time
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate.Title1">
+            <summary>
+            title of PDFBookId1 at detection time (denormalized for the review table)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate.PDFBookId2">
+            <summary>
+            second (higher) PDFBook Id of the pair - immutable, set at detection time
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate.Title2">
+            <summary>
+            title of PDFBookId2 at detection time (denormalized for the review table)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate.SurvivorPDFBookId">
+            <summary>
+            which one of PDFBookId1 / PDFBookId2 should survive the merge (the other one is the duplicate
+            to be removed and redirected). Defaults to the lowest of the two ids at detection time, but
+            the human operator reviewing the candidate can change this before confirming.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate.Score">
+            <summary>
+            confidence score of the detection algorithm (0-100)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate.MatchReasons">
+            <summary>
+            human readable explanation of why these two were matched (title similarity, same page count, same
+            checksum, ...) - purely informational, helps the reviewer decide quickly
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate.Status">
+            <summary>
+            review status
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate.QueueTime">
+            <summary>
+            detection queue time
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate.ReviewerId">
+            <summary>
+            user id of the operator who reviewed this candidate
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate.ReviewDate">
+            <summary>
+            review date/time
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate.ReviewNote">
+            <summary>
+            optional note left by the reviewer
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidateStatus">
+            <summary>
+            PDFBook duplicate candidate review status
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidateStatus.New">
+            <summary>
+            detected but not reviewed by a human operator yet
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidateStatus.Confirmed">
+            <summary>
+            reviewed and confirmed as a real duplicate (ready to be merged)
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidateStatus.Rejected">
+            <summary>
+            reviewed and rejected (not actually a duplicate)
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidateStatus.Merged">
+            <summary>
+            already merged
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.PDFLibrary.PDFPage">
             <summary>
             PDF Page
@@ -11637,6 +11781,74 @@
         <member name="T:RMuseum.Services.Implementation.PDFLibraryService">
             <summary>
             PDF Library Services
+            </summary>
+        </member>
+        <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupMinTitleLengthForFuzzyMatch">
+            <summary>
+            minimum normalized-title length to be considered for fuzzy comparison (very short
+            titles produce unreliable similarity scores)
+            </summary>
+        </member>
+        <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupTitleBucketKeyLength">
+            <summary>
+            how many leading characters of the normalized (space-stripped) title are used to
+            bucket books together before doing the O(n^2) pairwise comparison. Lowering this
+            finds more candidates but is slower; raising it is faster but can miss matches
+            whose titles diverge early (e.g. one has a subtitle prefix the other doesn't)
+            </summary>
+        </member>
+        <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupMinCandidateScore">
+            <summary>
+            minimum overall score (0-100) for a title-similarity based match to be queued for review
+            </summary>
+        </member>
+        <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupMinTitleSimilarity">
+            <summary>
+            minimum normalized Levenshtein title similarity (0..1) even to be scored at all
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.StartDetectingDuplicatePDFBooksAsync">
+            <summary>
+            start the duplicate PDFBook detection background job
+            </summary>
+        </member>
+        <member name="T:RMuseum.Services.Implementation.PDFLibraryService._PDFBookDupInfo">
+            <summary>
+            lightweight projection used while scanning for duplicates (avoids loading full PDFBook
+            rows - Pages, BookText, etc. - into memory for the whole table)
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._DetectDuplicatePDFBooksAsync(RMuseum.DbContext.RMuseumDbContext,RSecurityBackend.Services.Implementation.LongRunningJobProgressServiceEF,System.Guid)">
+            <summary>
+            actual detection logic, isolated so it can be unit-tested/tuned independently of the
+            background-job plumbing around it
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._NormalizeTitleForDupComparison(System.String)">
+            <summary>
+            normalize a (Persian) book title for duplicate comparison: unify Arabic/Persian
+            letter variants and digits, strip zero-width/invisible characters and punctuation,
+            collapse whitespace
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._ComputeTitleSimilarity(System.String,System.String)">
+            <summary>
+            normalized Levenshtein similarity between two already-normalized strings, in the 0..1 range
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetPDFBookDuplicateCandidatesAsync(RSecurityBackend.Models.Generic.PagingParameterModel,RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidateStatus[])">
+            <summary>
+            paginated list of duplicate candidates awaiting/undergone review
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.UpdatePDFBookDuplicateCandidateAsync(RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate)">
+            <summary>
+            update a duplicate candidate's review decision (survivor choice / status / note)
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.DeletePDFBookDuplicateCandidateAsync(System.Guid)">
+            <summary>
+            delete a duplicate candidate row (e.g. a false positive the operator wants gone from the list)
             </summary>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.BatchImportELiteratureBookLibraryAsync(System.Int32,System.Int32,System.Boolean)">
@@ -13031,6 +13243,33 @@
             <summary>
             put first verse to ganjoor toc titles
             </summary>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.StartDetectingDuplicatePDFBooksAsync">
+            <summary>
+            start scanning PDFBooks for possible duplicates and queue the findings for human review
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetPDFBookDuplicateCandidatesAsync(RSecurityBackend.Models.Generic.PagingParameterModel,RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidateStatus[])">
+            <summary>
+            paginated list of duplicate candidates awaiting/undergone review
+            </summary>
+            <param name="paging"></param>
+            <param name="statusArray"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.UpdatePDFBookDuplicateCandidateAsync(RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate)">
+            <summary>
+            update a duplicate candidate's review decision (survivor choice / status / note)
+            </summary>
+            <param name="model"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.DeletePDFBookDuplicateCandidateAsync(System.Guid)">
+            <summary>
+            delete a duplicate candidate row (e.g. a false positive)
+            </summary>
+            <param name="id"></param>
+            <returns></returns>
         </member>
         <member name="T:RMuseum.Services.IPictureFileService">
             <summary>

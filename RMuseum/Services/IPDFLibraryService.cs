@@ -562,5 +562,32 @@ namespace RMuseum.Services
         /// put first verse to ganjoor toc titles
         /// </summary>
         void StartCompletingGanjoorTOCVersesAsync();
+
+        /// <summary>
+        /// start scanning PDFBooks for possible duplicates and queue the findings for human review
+        /// </summary>
+        void StartDetectingDuplicatePDFBooksAsync();
+
+        /// <summary>
+        /// paginated list of duplicate candidates awaiting/undergone review
+        /// </summary>
+        /// <param name="paging"></param>
+        /// <param name="statusArray"></param>
+        /// <returns></returns>
+        Task<RServiceResult<(PaginationMetadata PagingMeta, PDFBookDuplicateCandidate[] Items)>> GetPDFBookDuplicateCandidatesAsync(PagingParameterModel paging, PDFBookDuplicateCandidateStatus[] statusArray);
+
+        /// <summary>
+        /// update a duplicate candidate's review decision (survivor choice / status / note)
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> UpdatePDFBookDuplicateCandidateAsync(PDFBookDuplicateCandidate model);
+
+        /// <summary>
+        /// delete a duplicate candidate row (e.g. a false positive)
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> DeletePDFBookDuplicateCandidateAsync(Guid id);
     }
 }

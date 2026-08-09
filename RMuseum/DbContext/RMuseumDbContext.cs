@@ -588,5 +588,10 @@ namespace RMuseum.DbContext
         /// </summary>
         public DbSet<PDFPageUnrevisedText> PDFPageUnrevisedTexts { get; set; }
 
+        /// <summary>
+        /// PDFBook duplicate candidates awaiting/undergone human review
+        /// </summary>
+        public DbSet<PDFBookDuplicateCandidate> PDFBookDuplicateCandidates { get; set; }
+
     }
 }

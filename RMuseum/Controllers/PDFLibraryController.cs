@@ -2027,6 +2027,91 @@ namespace RMuseum.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// start scanning PDFBooks for possible duplicates and queue the findings for human review
+        /// </summary>
+        /// <returns></returns>
+        [HttpPut]
+        [Route("duplicates/detect")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.ModifyOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        public IActionResult StartDetectingDuplicatePDFBooksAsync()
+        {
+            _pdfService.StartDetectingDuplicatePDFBooksAsync();
+            return Ok();
+        }
+
+        /// <summary>
+        /// get duplicate candidates queue - check paging-headers for paging info
+        /// </summary>
+        /// <param name="paging"></param>
+        /// <param name="status">defaults to New if not specified</param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("duplicates")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.ModifyOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFBookDuplicateCandidate>))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetPDFBookDuplicateCandidatesAsync([FromQuery] PagingParameterModel paging, [FromQuery] PDFBookDuplicateCandidateStatus[] status)
+        {
+            var statusArray = (status == null || status.Length == 0) ? new[] { PDFBookDuplicateCandidateStatus.New } : status;
+            var res = await _pdfService.GetPDFBookDuplicateCandidatesAsync(paging, statusArray);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+            {
+                return BadRequest(res.ExceptionString);
+            }
+
+            // Paging Header
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
+
+            return Ok(res.Result.Items);
+        }
+
+        /// <summary>
+        /// update a duplicate candidate's review decision (survivor choice / status / note)
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        [HttpPut]
+        [Route("duplicates")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.ModifyOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        public async Task<IActionResult> UpdatePDFBookDuplicateCandidateAsync([FromBody] PDFBookDuplicateCandidate model)
+        {
+            model.ReviewerId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.UpdatePDFBookDuplicateCandidateAsync(model);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+            {
+                return BadRequest(res.ExceptionString);
+            }
+            return Ok();
+        }
+
+        /// <summary>
+        /// delete a duplicate candidate row (e.g. a false positive)
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpDelete]
+        [Route("duplicates/{id}")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.ModifyOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        public async Task<IActionResult> DeletePDFBookDuplicateCandidateAsync(Guid id)
+        {
+            var res = await _pdfService.DeletePDFBookDuplicateCandidateAsync(id);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+            {
+                return BadRequest(res.ExceptionString);
+            }
+            return Ok();
+        }
+
 
         /// <summary>
         /// PDF Service
