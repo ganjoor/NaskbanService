@@ -555,7 +555,15 @@ namespace RMuseum.Services.Implementation
         }
 
         /// <summary>
-        /// an incomplete prototype for removing PDF books
+        /// remove a PDF book: cleans up every dependent record that could otherwise block the
+        /// delete (author/contributor links, user bookmarks pointing at the book or any of its
+        /// pages) or be left orphaned by it (AI/OCR queue entries, Ganjoor/Pinterest links, visit
+        /// records, pending duplicate-candidate rows), then queues the slow, failure-prone part -
+        /// deleting the actual file from the external FTP server and local disk - as a
+        /// PendingPDFStorageCleanup row instead of doing it inline. This method itself never talks
+        /// to FTP, so it can no longer time out or fail because of it; run
+        /// StartCleaningUpPendingPDFStorageAsync to actually reclaim the storage, retryable
+        /// indefinitely and independent of this call succeeding.
         /// </summary>
         /// <param name="pdfBookId"></param>
         /// <returns></returns>
@@ -574,52 +582,57 @@ namespace RMuseum.Services.Implementation
                 {
                     return new RServiceResult<bool>(false, "PDFBook not found.");
                 }
-                if (record.Status == PublishStatus.Published)
+
+                var pageIds = record.Pages.Select(p => p.Id).ToArray();
+
+                // --- dependent records that WILL block the delete with a foreign key violation
+                //     if left in place (verified against the actual FK constraints in the schema) ---
+
+                // user bookmarks pointing at this book directly, or at any of its pages
+                var bookmarksToRemove =
+                    await _context.PDFUserBookmarks
+                    .Where(bm => bm.PDFBookId == pdfBookId || (bm.PageId != null && pageIds.Contains(bm.PageId.Value)))
+                    .ToArrayAsync();
+                _context.PDFUserBookmarks.RemoveRange(bookmarksToRemove);
+
+                // author/contributor links (record.Contributers is already loaded via Include above)
+                _context.RemoveRange(record.Contributers);
+
+                // --- dependent records that do NOT have a database-level foreign key constraint
+                //     (so they would not block the delete), but would be left as orphaned rows
+                //     silently pointing at a PDFBookId that no longer exists otherwise ---
+
+                _context.AIQueuedItems.RemoveRange(_context.AIQueuedItems.Where(q => q.PDFBookId == pdfBookId));
+                _context.OCRQueuedItems.RemoveRange(_context.OCRQueuedItems.Where(q => q.PDFBookId == pdfBookId));
+                _context.PDFGanjoorLinks.RemoveRange(_context.PDFGanjoorLinks.Where(l => l.PDFBookId == pdfBookId));
+                _context.PinterestLinks.RemoveRange(_context.PinterestLinks.Where(l => l.PDFBookId == pdfBookId));
+                _context.PDFVisitRecords.RemoveRange(_context.PDFVisitRecords.Where(v => v.PDFBookId == pdfBookId));
+                _context.PDFBookDuplicateCandidates.RemoveRange(_context.PDFBookDuplicateCandidates.Where(c => c.PDFBookId1 == pdfBookId || c.PDFBookId2 == pdfBookId));
+
+                foreach (PDFPage page in record.Pages)
                 {
-                    var ftpClient = new AsyncFtpClient
-                    (
-                        Configuration.GetSection("ExternalFTPServer")["Host"],
-                        Configuration.GetSection("ExternalFTPServer")["Username"],
-                        Configuration.GetSection("ExternalFTPServer")["Password"]
-                    );
-                    ftpClient.ValidateCertificate += FtpClient_ValidateCertificate;
-                    await ftpClient.AutoConnect();
-                    ftpClient.Config.RetryAttempts = 3;
-
-
-                    if (true == await ftpClient.DirectoryExists($"{Configuration.GetSection("ExternalFTPServer")["RootPath"]}/pdf/{record.StorageFolderName}"))
-                    {
-                        await ftpClient.DeleteDirectory($"{Configuration.GetSection("ExternalFTPServer")["RootPath"]}/pdf/{record.StorageFolderName}");
-                    }
-
-                    await ftpClient.Disconnect();
-                }
-
-
-
-                string artifactFolder = Path.Combine(_imageFileService.ImageStoragePath, record.StorageFolderName);
-
-                foreach (PDFPage pages in record.Pages)
-                {
-                    _context.TagValues.RemoveRange(pages.Tags);
+                    _context.TagValues.RemoveRange(page.Tags);
                 }
 
                 _context.RemoveRange(record.Pages);
                 _context.TagValues.RemoveRange(record.Tags);
                 _context.Remove(record);
-                await _context.SaveChangesAsync();
 
-                if (!string.IsNullOrEmpty(artifactFolder) && Directory.Exists(artifactFolder))
+                if (!string.IsNullOrEmpty(record.StorageFolderName))
                 {
-                    try
-                    {
-                        Directory.Delete(artifactFolder, true);
-                    }
-                    catch
-                    {
-                        //ignore errors
-                    }
+                    _context.PendingPDFStorageCleanups.Add
+                    (
+                        new PendingPDFStorageCleanup()
+                        {
+                            Id = Guid.NewGuid(),
+                            StorageFolderName = record.StorageFolderName,
+                            NeedsFtpDelete = record.Status == PublishStatus.Published,
+                            QueueTime = DateTime.Now
+                        }
+                    );
                 }
+
+                await _context.SaveChangesAsync();
             }
             catch (Exception exp)
             {

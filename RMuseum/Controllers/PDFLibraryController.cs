@@ -544,6 +544,9 @@ namespace RMuseum.Controllers
             {
                 return BadRequest(res.ExceptionString);
             }
+            // opportunistically reclaim storage right away; safe/cheap to call even if there's
+            // nothing pending, and safe to call again later if this particular run doesn't finish
+            _pdfService.StartCleaningUpPendingPDFStorageAsync();
             return Ok(res.Result);
         }
 
@@ -2129,6 +2132,21 @@ namespace RMuseum.Controllers
             {
                 return BadRequest(res.ExceptionString);
             }
+            return Ok();
+        }
+
+        /// <summary>
+        /// start physically cleaning up storage folders (FTP + local disk) queued by removed/merged
+        /// PDFBooks. Safe to call repeatedly / after an interruption.
+        /// </summary>
+        /// <returns></returns>
+        [HttpPut]
+        [Route("storage-cleanup")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.ModifyOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        public IActionResult StartCleaningUpPendingPDFStorageAsync()
+        {
+            _pdfService.StartCleaningUpPendingPDFStorageAsync();
             return Ok();
         }
 

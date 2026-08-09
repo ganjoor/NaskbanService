@@ -598,5 +598,11 @@ namespace RMuseum.DbContext
         /// </summary>
         public DbSet<PDFBookDuplicateDetectionState> PDFBookDuplicateDetectionStates { get; set; }
 
+        /// <summary>
+        /// storage folders (FTP + local disk) still waiting on physical cleanup after their
+        /// PDFBook's database row was removed
+        /// </summary>
+        public DbSet<PendingPDFStorageCleanup> PendingPDFStorageCleanups { get; set; }
+
     }
 }

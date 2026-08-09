@@ -730,6 +730,13 @@
             <param name="id"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.StartCleaningUpPendingPDFStorageAsync">
+            <summary>
+            start physically cleaning up storage folders (FTP + local disk) queued by removed/merged
+            PDFBooks. Safe to call repeatedly / after an interruption.
+            </summary>
+            <returns></returns>
+        </member>
         <member name="F:RMuseum.Controllers.PDFLibraryController._pdfService">
             <summary>
             PDF Service
@@ -1200,6 +1207,12 @@
             PDFBook duplicate detection progress (for resumable detection runs)
             </summary>
         </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.PendingPDFStorageCleanups">
+            <summary>
+            storage folders (FTP + local disk) still waiting on physical cleanup after their
+            PDFBook's database row was removed
+            </summary>
+        </member>
         <member name="T:RMuseum.Migrations.PictureFileExtUrl">
             <inheritdoc />
         </member>
@@ -1630,6 +1643,18 @@
             <inheritdoc />
         </member>
         <member name="M:RMuseum.Migrations.PDFBookDuplicateDetectionState.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:RMuseum.Migrations.PendingPDFStorageCleanup">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.PendingPDFStorageCleanup.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.PendingPDFStorageCleanup.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.PendingPDFStorageCleanup.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
         <member name="T:RMuseum.Models.Accounting.DonationExpenditure">
@@ -10947,6 +10972,52 @@
             DateTime
             </summary>
         </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PendingPDFStorageCleanup">
+            <summary>
+            tracks a storage folder (FTP + local disk) that still needs to be physically deleted after
+            its owning PDFBook's database row is already gone. Deleting the DB rows is fast and
+            transactional; deleting from FTP can time out or fail transiently, so it's handled by a
+            separate resumable background job instead of blocking the delete/merge request itself -
+            this row is how that job knows what's still left to clean up, and survives a crash mid-run
+            since it isn't removed until the physical cleanup actually succeeds.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PendingPDFStorageCleanup.Id">
+            <summary>
+            Id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PendingPDFStorageCleanup.StorageFolderName">
+            <summary>
+            storage folder name (matches PDFBook.StorageFolderName at the time it was queued)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PendingPDFStorageCleanup.NeedsFtpDelete">
+            <summary>
+            whether an FTP delete is needed (only PDFBooks that were Published get uploaded to the
+            external FTP server in the first place, mirroring the original check in RemovePDFBookAsync)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PendingPDFStorageCleanup.QueueTime">
+            <summary>
+            when this cleanup was queued
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PendingPDFStorageCleanup.AttemptCount">
+            <summary>
+            how many cleanup attempts have been made so far
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PendingPDFStorageCleanup.LastAttempt">
+            <summary>
+            last attempt time, if any
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PendingPDFStorageCleanup.LastError">
+            <summary>
+            last error, if the most recent attempt failed
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.PDFLibrary.QueuedPDFBook">
             <summary>
             a fake PDFBook for scheduling downloads
@@ -11915,18 +11986,14 @@
             higher = faster but risks redoing more work after an interruption.
             </summary>
         </member>
-        <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupLeftoverWordsShareRatioMin">
-            <summary>
-            minimum fraction of shared words (relative to the shorter title's word count) required
-            before the "leftover words" dissimilarity check (below) kicks in at all - guards against
-            triggering on titles that only coincidentally share one or two common words
-            </summary>
-        </member>
         <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupLeftoverWordsMaxSimilarity">
             <summary>
             after removing the words two titles have in common, if what's left on both sides is
             itself this dissimilar (0..1 normalized Levenshtein), the pair is treated as different
-            volumes/issues/subtitles of the same series rather than a duplicate, and is skipped
+            volumes/issues/subtitles of the same series rather than a duplicate, and is skipped.
+            Checked whenever both sides have any leftover at all - no minimum shared-word-ratio
+            gate (there used to be one; removed after real data showed it let through pairs with
+            as little as 43% word overlap whose differing parts were obviously unrelated).
             </summary>
         </member>
         <member name="F:RMuseum.Services.Implementation.PDFLibraryService._dupOrdinalWords">
@@ -11968,11 +12035,15 @@
             collapse whitespace
             </summary>
         </member>
-        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._ExtractDigitRuns(System.String[])">
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._ExtractDigitRuns(System.String)">
             <summary>
-            extract the set of digit runs (e.g. volume numbers, issue numbers, years) present in an
-            already-tokenized normalized title, with Persian digits normalized to plain ASCII digit
-            strings so "۳" and "3" compare equal
+            extract the set of digit runs (e.g. volume numbers, issue numbers, years) present
+            anywhere in an already-normalized title, with Persian digits normalized to plain ASCII
+            digit strings so "۳" and "3" compare equal. Scans the raw character stream rather than
+            token-by-token so a number glued directly onto a word with no space - e.g. "ج۱۲" (a
+            common no-space abbreviation for "volume 12"), or "فرماندهان۲" vs "فرماندهان۱۰" as two
+            different installments in a story series - is still recognized, not just numbers that
+            stand alone as their own token.
             </summary>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService._ExtractOrdinalWords(System.String[])">
@@ -12102,6 +12173,15 @@
             <param name="end"></param>
             <param name="finalizeDownload"></param>
         </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.StartCleaningUpPendingPDFStorageAsync">
+            <summary>
+            start physically cleaning up storage folders queued in PendingPDFStorageCleanup
+            (FTP + local disk). Safe to call repeatedly / after an interruption - each row is only
+            removed from the queue once its cleanup actually succeeds, so a crash mid-run just
+            leaves fewer rows for the next invocation to pick up. One failing item never blocks the
+            rest of the batch.
+            </summary>
+        </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.CheckKnownSourceAsync(System.String)">
             <summary>
             check known source before download (0 means no problem, -1 problem, greater than zero id for downloaed pdf)
@@ -12178,7 +12258,15 @@
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.RemovePDFBookAsync(System.Int32)">
             <summary>
-            an incomplete prototype for removing PDF books
+            remove a PDF book: cleans up every dependent record that could otherwise block the
+            delete (author/contributor links, user bookmarks pointing at the book or any of its
+            pages) or be left orphaned by it (AI/OCR queue entries, Ganjoor/Pinterest links, visit
+            records, pending duplicate-candidate rows), then queues the slow, failure-prone part -
+            deleting the actual file from the external FTP server and local disk - as a
+            PendingPDFStorageCleanup row instead of doing it inline. This method itself never talks
+            to FTP, so it can no longer time out or fail because of it; run
+            StartCleaningUpPendingPDFStorageAsync to actually reclaim the storage, retryable
+            indefinitely and independent of this call succeeding.
             </summary>
             <param name="pdfBookId"></param>
             <returns></returns>
@@ -13443,6 +13531,12 @@
             </summary>
             <param name="id"></param>
             <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.StartCleaningUpPendingPDFStorageAsync">
+            <summary>
+            start physically cleaning up storage folders (FTP + local disk) queued by
+            RemovePDFBookAsync. Safe to call repeatedly / after an interruption.
+            </summary>
         </member>
         <member name="T:RMuseum.Services.IPictureFileService">
             <summary>

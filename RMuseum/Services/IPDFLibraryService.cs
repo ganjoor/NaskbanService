@@ -600,5 +600,11 @@ namespace RMuseum.Services
         /// <param name="id"></param>
         /// <returns></returns>
         Task<RServiceResult<bool>> DeletePDFBookDuplicateCandidateAsync(Guid id);
+
+        /// <summary>
+        /// start physically cleaning up storage folders (FTP + local disk) queued by
+        /// RemovePDFBookAsync. Safe to call repeatedly / after an interruption.
+        /// </summary>
+        void StartCleaningUpPendingPDFStorageAsync();
     }
 }
