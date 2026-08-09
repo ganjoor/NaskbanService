@@ -695,6 +695,33 @@ namespace RMuseum.Controllers
         }
 
         /// <summary>
+        /// list authors with a computed count of distinct books they're credited on, optionally
+        /// filtered to a single role (e.g. "مترجم"/"نویسنده"/"مصحح" - see the distinct values in
+        /// AuthorRole.Role), sortable by name (ascending) or by book count (descending), paginated.
+        /// </summary>
+        /// <param name="paging"></param>
+        /// <param name="role">exact AuthorRole.Role to filter to; omit for all roles combined</param>
+        /// <param name="sortByBookCount">true: sort by book count descending; false (default): sort by name ascending</param>
+        /// <returns></returns>
+        [HttpGet("authors")]
+        [AllowAnonymous]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<AuthorWithBookCount>))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetAuthorsWithBookCountAsync([FromQuery] PagingParameterModel paging, string role = null, bool sortByBookCount = false)
+        {
+            var authorsRes = await _pdfService.GetAuthorsWithBookCountAsync(paging, role, sortByBookCount);
+            if (!string.IsNullOrEmpty(authorsRes.ExceptionString))
+            {
+                return BadRequest(authorsRes.ExceptionString);
+            }
+
+            // Paging Header
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(authorsRes.Result.PagingMeta));
+
+            return Ok(authorsRes.Result.Authors);
+        }
+
+        /// <summary>
         /// get author by id
         /// </summary>
         /// <param name="id"></param>
