@@ -42,6 +42,36 @@ namespace RMuseum.Services.Implementation
         private const int DupMinCandidateScore = 65;
 
         /// <summary>
+        /// the largest page-count difference tolerated between two candidates before they're
+        /// disqualified outright, expressed as an absolute page count floor...
+        /// </summary>
+        private const int DupMaxPageCountDiffAbsolute = 5;
+
+        /// <summary>
+        /// ...and as a fraction of the larger book's page count - whichever allowance is larger
+        /// wins, so short pamphlets aren't unfairly strict (5 pages is a lot for a 20-page book but
+        /// the absolute floor still lets small scanning variance through) while long books get a
+        /// proportionally generous allowance (5% of 900 pages is still a meaningful cross-check).
+        /// Real duplicates (different scans of the same book) can differ slightly - a missing
+        /// blank/cover page, an appendix included or not - but not by a large margin.
+        /// </summary>
+        private const double DupMaxPageCountDiffRatio = 0.05;
+
+        /// <summary>
+        /// the largest PDF file-size difference (in bytes) tolerated between two candidates before
+        /// they're disqualified, expressed as an absolute floor (covers an added cover-page image,
+        /// different PDF compression settings, etc. between two scans of the same book)...
+        /// </summary>
+        private const long DupMaxFileSizeDiffAbsoluteBytes = 2 * 1024 * 1024; // 2 MB
+
+        /// <summary>
+        /// ...and as a fraction of the larger file's size - whichever allowance is larger wins,
+        /// same reasoning as the page-count tolerance above. Only compared when both PDFBooks have
+        /// a locally-stored PDFFile (externally-hosted-only PDFs have no FileSizeInBytes to compare).
+        /// </summary>
+        private const double DupMaxFileSizeDiffRatio = 0.15;
+
+        /// <summary>
         /// minimum normalized Levenshtein title similarity (0..1) even to be scored at all
         /// </summary>
         private const double DupMinTitleSimilarity = 0.55;
@@ -137,6 +167,7 @@ namespace RMuseum.Services.Implementation
             public string AuthorsLine { get; set; }
             public string ISBN { get; set; }
             public int PageCount { get; set; }
+            public long? FileSizeInBytes { get; set; }
             public int? ClaimedPageCount { get; set; }
             public int? PDFSourceId { get; set; }
             public int? MultiVolumePDFCollectionId { get; set; }
@@ -159,6 +190,7 @@ namespace RMuseum.Services.Implementation
                     b.AuthorsLine,
                     b.ISBN,
                     b.PageCount,
+                    FileSizeInBytes = b.PDFFile == null ? (long?)null : b.PDFFile.FileSizeInBytes,
                     b.ClaimedPageCount,
                     b.PDFSourceId,
                     b.MultiVolumePDFCollectionId,
@@ -185,6 +217,7 @@ namespace RMuseum.Services.Implementation
                     AuthorsLine = string.IsNullOrWhiteSpace(b.AuthorsLine) ? null : b.AuthorsLine.ToPersianNumbers().ApplyCorrectYeKe().Trim(),
                     ISBN = string.IsNullOrWhiteSpace(b.ISBN) ? null : Regex.Replace(b.ISBN, "[^0-9Xx]", "").ToUpperInvariant(),
                     PageCount = b.PageCount,
+                    FileSizeInBytes = b.FileSizeInBytes,
                     ClaimedPageCount = b.ClaimedPageCount,
                     PDFSourceId = b.PDFSourceId,
                     MultiVolumePDFCollectionId = b.MultiVolumePDFCollectionId,
@@ -332,7 +365,35 @@ namespace RMuseum.Services.Implementation
                         //     regardless of how similar the rest of the title looks. They target
                         //     exactly the false-positive patterns seen in review data: different
                         //     volumes/parts of the same book, different issues of the same
-                        //     magazine, and different specific items in the same named series. ---
+                        //     magazine, different specific items in the same named series, and
+                        //     books that just happen to have similar-looking titles but are
+                        //     obviously not the same physical book by page count. ---
+
+                        // wildly different page counts (e.g. 168 vs 499 pages) - two scans of the
+                        // same book can differ slightly (different cover/blank-page handling,
+                        // missing a page, etc.) but not by this much. Only compares actual scanned
+                        // PageCount (not the self-reported ClaimedPageCount, which is less
+                        // reliable) and only when both sides have one.
+                        if (a.PageCount > 0 && b.PageCount > 0)
+                        {
+                            int pageDiff = Math.Abs(a.PageCount - b.PageCount);
+                            int allowedPageDiff = Math.Max(DupMaxPageCountDiffAbsolute, (int)Math.Round(DupMaxPageCountDiffRatio * Math.Max(a.PageCount, b.PageCount)));
+                            if (pageDiff > allowedPageDiff)
+                                continue;
+                        }
+
+                        // wildly different PDF file sizes - real duplicates are often literally the
+                        // same underlying file (or a re-scan of it) and land within a small
+                        // tolerance of each other; a large difference means they're not the same
+                        // file even if the titles look similar. Only compared when both sides have
+                        // a locally-stored PDFFile (externally-hosted-only books have none).
+                        if (a.FileSizeInBytes.HasValue && b.FileSizeInBytes.HasValue)
+                        {
+                            long sizeDiff = Math.Abs(a.FileSizeInBytes.Value - b.FileSizeInBytes.Value);
+                            long allowedSizeDiff = Math.Max(DupMaxFileSizeDiffAbsoluteBytes, (long)Math.Round(DupMaxFileSizeDiffRatio * Math.Max(a.FileSizeInBytes.Value, b.FileSizeInBytes.Value)));
+                            if (sizeDiff > allowedSizeDiff)
+                                continue;
+                        }
 
                         // different volume/issue/year numbers embedded in the titles (e.g. "ج ۳" vs
                         // "ج ۱۰", or a magazine issue's publication year)
@@ -390,6 +451,17 @@ namespace RMuseum.Services.Implementation
                         {
                             score += 8;
                             reasons.Add($"same claimed page count ({a.ClaimedPageCount})");
+                        }
+
+                        if (a.FileSizeInBytes.HasValue && b.FileSizeInBytes.HasValue)
+                        {
+                            long closeSizeDiff = Math.Abs(a.FileSizeInBytes.Value - b.FileSizeInBytes.Value);
+                            long closeSizeAllowance = (long)Math.Round(0.02 * Math.Max(a.FileSizeInBytes.Value, b.FileSizeInBytes.Value));
+                            if (closeSizeDiff <= closeSizeAllowance)
+                            {
+                                score += 10;
+                                reasons.Add("very close file size");
+                            }
                         }
 
                         if (a.PDFSourceId.HasValue && a.PDFSourceId == b.PDFSourceId)

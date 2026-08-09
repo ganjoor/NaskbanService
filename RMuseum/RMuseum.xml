@@ -11873,6 +11873,36 @@
             minimum overall score (0-100) for a title-similarity based match to be queued for review
             </summary>
         </member>
+        <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupMaxPageCountDiffAbsolute">
+            <summary>
+            the largest page-count difference tolerated between two candidates before they're
+            disqualified outright, expressed as an absolute page count floor...
+            </summary>
+        </member>
+        <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupMaxPageCountDiffRatio">
+            <summary>
+            ...and as a fraction of the larger book's page count - whichever allowance is larger
+            wins, so short pamphlets aren't unfairly strict (5 pages is a lot for a 20-page book but
+            the absolute floor still lets small scanning variance through) while long books get a
+            proportionally generous allowance (5% of 900 pages is still a meaningful cross-check).
+            Real duplicates (different scans of the same book) can differ slightly - a missing
+            blank/cover page, an appendix included or not - but not by a large margin.
+            </summary>
+        </member>
+        <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupMaxFileSizeDiffAbsoluteBytes">
+            <summary>
+            the largest PDF file-size difference (in bytes) tolerated between two candidates before
+            they're disqualified, expressed as an absolute floor (covers an added cover-page image,
+            different PDF compression settings, etc. between two scans of the same book)...
+            </summary>
+        </member>
+        <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupMaxFileSizeDiffRatio">
+            <summary>
+            ...and as a fraction of the larger file's size - whichever allowance is larger wins,
+            same reasoning as the page-count tolerance above. Only compared when both PDFBooks have
+            a locally-stored PDFFile (externally-hosted-only PDFs have no FileSizeInBytes to compare).
+            </summary>
+        </member>
         <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupMinTitleSimilarity">
             <summary>
             minimum normalized Levenshtein title similarity (0..1) even to be scored at all
