@@ -605,6 +605,17 @@ namespace RMuseum.Services
         Task<RServiceResult<bool>> MergePDFBookDuplicateAsync(Guid candidateId, Guid reviewerUserId);
 
         /// <summary>
+        /// manually merge two PDFBooks by id directly, without needing a pre-existing duplicate-
+        /// candidate row - for an operator who spots a duplicate directly (e.g. while browsing)
+        /// rather than through the automated detection queue.
+        /// </summary>
+        /// <param name="survivorPDFBookId">the PDFBook id that stays and receives the merged data</param>
+        /// <param name="duplicatePDFBookId">the PDFBook id that gets merged away and removed</param>
+        /// <param name="reviewerUserId"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> MergePDFBooksByIdAsync(int survivorPDFBookId, int duplicatePDFBookId, Guid reviewerUserId);
+
+        /// <summary>
         /// start merging EVERY Confirmed duplicate candidate in a single background job, instead
         /// of one at a time.
         /// </summary>

@@ -2160,6 +2160,35 @@ namespace RMuseum.Controllers
         }
 
         /// <summary>
+        /// manually merge two PDFBooks by id directly, without needing a pre-existing duplicate-
+        /// candidate row - for an operator who spots a duplicate directly (e.g. while browsing)
+        /// rather than through the automated detection queue. Requires PDFBook delete permission,
+        /// matching RemovePDFBookAsync, since duplicatePDFBookId ends up removed either way.
+        /// </summary>
+        /// <param name="survivorPDFBookId">the PDFBook id that stays and receives the merged data</param>
+        /// <param name="duplicatePDFBookId">the PDFBook id that gets merged away and removed</param>
+        /// <returns></returns>
+        [HttpPut]
+        [Route("merge/{survivorPDFBookId}/{duplicatePDFBookId}")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.DeleteOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        public async Task<IActionResult> MergePDFBooksByIdAsync(int survivorPDFBookId, int duplicatePDFBookId)
+        {
+            var reviewerId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.MergePDFBooksByIdAsync(survivorPDFBookId, duplicatePDFBookId, reviewerId);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+            {
+                return BadRequest(res.ExceptionString);
+            }
+            // reclaim the merged-away duplicate's storage right away; safe/cheap to call, and
+            // safe to call again later (via storage-cleanup) if this run doesn't finish
+            _pdfService.StartCleaningUpPendingPDFStorageAsync();
+            return Ok();
+        }
+
+        /// <summary>
         /// delete a duplicate candidate row (e.g. a false positive)
         /// </summary>
         /// <param name="id"></param>

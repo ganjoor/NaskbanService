@@ -155,7 +155,86 @@ namespace RMuseum.Services.Implementation
         /// `reportStep`, if given, is called before each major phase so a batch run can surface
         /// exactly where a slow or stuck merge is spending its time - pass null to skip.
         /// </summary>
+        /// <summary>
+        /// manually merge two PDFBooks by id directly, without needing a pre-existing duplicate-
+        /// candidate row - for an operator (with PDFBook delete permission) who spots a duplicate
+        /// directly, e.g. while browsing, rather than through the automated detection queue. Runs
+        /// the exact same merge mechanics as the candidate-driven flow (metadata fill, reference
+        /// repointing, redirect creation, duplicate removal); it just has no candidate to check a
+        /// Confirmed status against, since there isn't one.
+        /// </summary>
+        /// <param name="survivorPDFBookId">the PDFBook id that stays and receives the merged data</param>
+        /// <param name="duplicatePDFBookId">the PDFBook id that gets merged away and removed</param>
+        /// <param name="reviewerUserId"></param>
+        /// <returns></returns>
+        public async Task<RServiceResult<bool>> MergePDFBooksByIdAsync(int survivorPDFBookId, int duplicatePDFBookId, Guid reviewerUserId)
+        {
+            if (survivorPDFBookId == duplicatePDFBookId)
+            {
+                return new RServiceResult<bool>(false, "survivorPDFBookId and duplicatePDFBookId must be different");
+            }
+            return await _MergePDFBooksAsync(_context, survivorPDFBookId, duplicatePDFBookId, reviewerUserId, Guid.Empty, null, null);
+        }
+
+        /// <summary>
+        /// candidate-driven merge: resolves survivor/duplicate ids from a Confirmed
+        /// PDFBookDuplicateCandidate row, then delegates the actual merge work to
+        /// _MergePDFBooksAsync (shared with the manual-by-id path above), additionally marking the
+        /// candidate itself as Merged in the same transaction.
+        /// </summary>
         private async Task<RServiceResult<bool>> _MergePDFBookDuplicateAsync(RMuseumDbContext context, Guid candidateId, Guid? reviewerUserIdOverride, Func<string, Task> reportStep)
+        {
+            async Task Report(string step)
+            {
+                if (reportStep != null)
+                    await reportStep(step);
+            }
+
+            await Report("loading candidate");
+            var candidate = await context.PDFBookDuplicateCandidates.Where(c => c.Id == candidateId).SingleOrDefaultAsync();
+            if (candidate == null)
+            {
+                return new RServiceResult<bool>(false, "duplicate candidate not found");
+            }
+            if (candidate.Status != PDFBookDuplicateCandidateStatus.Confirmed)
+            {
+                return new RServiceResult<bool>(false, "only a Confirmed candidate can be merged - review and confirm it first");
+            }
+
+            Guid reviewerUserId = reviewerUserIdOverride ?? candidate.ReviewerId ?? Guid.Empty;
+
+            int survivorId = candidate.SurvivorPDFBookId;
+            int duplicateId = candidate.PDFBookId1 == survivorId ? candidate.PDFBookId2 : candidate.PDFBookId1;
+            if (survivorId != candidate.PDFBookId1 && survivorId != candidate.PDFBookId2)
+            {
+                return new RServiceResult<bool>(false, $"SurvivorPDFBookId must be either {candidate.PDFBookId1} or {candidate.PDFBookId2}");
+            }
+
+            return await _MergePDFBooksAsync(context, survivorId, duplicateId, reviewerUserId, candidateId, reportStep, ctx =>
+            {
+                candidate.Status = PDFBookDuplicateCandidateStatus.Merged;
+                candidate.ReviewerId = reviewerUserId;
+                candidate.ReviewDate = DateTime.Now;
+                ctx.Update(candidate);
+            });
+        }
+
+        /// <summary>
+        /// the actual merge mechanics, shared by both entry points above: fills gaps in the
+        /// survivor's metadata from the duplicate, repoints every reference (bookmarks,
+        /// Ganjoor/Pinterest links, visit records) from the duplicate to the survivor, creates a
+        /// PDFBookRedirect so future API calls for the duplicate's id transparently serve the
+        /// survivor, repoints/cleans up any other pending duplicate-candidate rows that mentioned
+        /// the duplicate, and removes the duplicate's own PDFBook row (reusing the same
+        /// dependent-cleanup + storage-cleanup queuing that RemovePDFBookAsync uses). All in a
+        /// single SaveChangesAsync, so a failure partway through leaves nothing half-applied.
+        /// `excludeCandidateId` is the candidate row to exclude from the "repoint other pending
+        /// candidates" step (pass Guid.Empty for the manual-by-id path, which has none of its own).
+        /// `extraWorkBeforeSave`, if given, runs just before the final SaveChangesAsync so a caller
+        /// can make additional changes (e.g. marking a candidate Merged) as part of the same
+        /// transaction. `reportStep`, if given, is called before each major phase.
+        /// </summary>
+        private async Task<RServiceResult<bool>> _MergePDFBooksAsync(RMuseumDbContext context, int survivorId, int duplicateId, Guid reviewerUserId, Guid excludeCandidateId, Func<string, Task> reportStep, Action<RMuseumDbContext> extraWorkBeforeSave)
         {
             async Task Report(string step)
             {
@@ -165,26 +244,6 @@ namespace RMuseum.Services.Implementation
 
             try
             {
-                await Report("loading candidate");
-                var candidate = await context.PDFBookDuplicateCandidates.Where(c => c.Id == candidateId).SingleOrDefaultAsync();
-                if (candidate == null)
-                {
-                    return new RServiceResult<bool>(false, "duplicate candidate not found");
-                }
-                if (candidate.Status != PDFBookDuplicateCandidateStatus.Confirmed)
-                {
-                    return new RServiceResult<bool>(false, "only a Confirmed candidate can be merged - review and confirm it first");
-                }
-
-                Guid reviewerUserId = reviewerUserIdOverride ?? candidate.ReviewerId ?? Guid.Empty;
-
-                int survivorId = candidate.SurvivorPDFBookId;
-                int duplicateId = candidate.PDFBookId1 == survivorId ? candidate.PDFBookId2 : candidate.PDFBookId1;
-                if (survivorId != candidate.PDFBookId1 && survivorId != candidate.PDFBookId2)
-                {
-                    return new RServiceResult<bool>(false, $"SurvivorPDFBookId must be either {candidate.PDFBookId1} or {candidate.PDFBookId2}");
-                }
-
                 await Report($"loading survivor {survivorId}");
                 // AsSplitQuery: Pages is a to-many collection with its own to-many collection
                 // (Tags) included underneath it - combining that with another Include in a single
@@ -249,12 +308,9 @@ namespace RMuseum.Services.Implementation
                 );
 
                 await Report("repointing other pending duplicate candidates");
-                await _RepointOtherDuplicateCandidatesAsync(context, candidateId, duplicateId, survivorId);
+                await _RepointOtherDuplicateCandidatesAsync(context, excludeCandidateId, duplicateId, survivorId);
 
-                candidate.Status = PDFBookDuplicateCandidateStatus.Merged;
-                candidate.ReviewerId = reviewerUserId;
-                candidate.ReviewDate = DateTime.Now;
-                context.Update(candidate);
+                extraWorkBeforeSave?.Invoke(context);
 
                 await Report("queuing duplicate's PDFBook row for removal");
                 await _QueuePDFBookRemovalAsync(context, duplicate);
