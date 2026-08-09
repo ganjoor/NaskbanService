@@ -695,10 +695,11 @@
             </summary>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Controllers.PDFLibraryController.StartDetectingDuplicatePDFBooksAsync">
+        <member name="M:RMuseum.Controllers.PDFLibraryController.StartDetectingDuplicatePDFBooksAsync(System.Boolean)">
             <summary>
             start scanning PDFBooks for possible duplicates and queue the findings for human review
             </summary>
+            <param name="forceRestart">if true, restart the title-comparison pass from scratch instead of resuming an interrupted run (use after manually clearing PDFBookDuplicateCandidates)</param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.GetPDFBookDuplicateDetectionStateAsync">
@@ -11884,10 +11885,39 @@
             higher = faster but risks redoing more work after an interruption.
             </summary>
         </member>
-        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.StartDetectingDuplicatePDFBooksAsync">
+        <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupLeftoverWordsShareRatioMin">
+            <summary>
+            minimum fraction of shared words (relative to the shorter title's word count) required
+            before the "leftover words" dissimilarity check (below) kicks in at all - guards against
+            triggering on titles that only coincidentally share one or two common words
+            </summary>
+        </member>
+        <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupLeftoverWordsMaxSimilarity">
+            <summary>
+            after removing the words two titles have in common, if what's left on both sides is
+            itself this dissimilar (0..1 normalized Levenshtein), the pair is treated as different
+            volumes/issues/subtitles of the same series rather than a duplicate, and is skipped
+            </summary>
+        </member>
+        <member name="F:RMuseum.Services.Implementation.PDFLibraryService._dupOrdinalWords">
+            <summary>
+            Persian ordinal words recognized as volume/issue/part markers (جلد دوم, شماره سوم, ...).
+            Character-level similarity is unreliable for these because they are short (e.g. "دوم"
+            vs "سوم" is still ~67% similar letter-for-letter despite being different numbers), so
+            they get their own exact-set-membership check instead of relying on Levenshtein.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.StartDetectingDuplicatePDFBooksAsync(System.Boolean)">
             <summary>
             start the duplicate PDFBook detection background job
             </summary>
+            <param name="forceRestart">
+            if true, ignore any interrupted/in-progress run and start the title-comparison pass
+            completely from scratch (the resume checkpoint is reset). Use this after manually
+            clearing PDFBookDuplicateCandidates so old candidates don't block re-detection of the
+            same pairs. If false (default) and a previous run was interrupted, it resumes from
+            where it left off instead of rescanning everything.
+            </param>
         </member>
         <member name="T:RMuseum.Services.Implementation.PDFLibraryService._PDFBookDupInfo">
             <summary>
@@ -11895,7 +11925,7 @@
             rows - Pages, BookText, etc. - into memory for the whole table)
             </summary>
         </member>
-        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._DetectDuplicatePDFBooksAsync(RMuseum.DbContext.RMuseumDbContext,RSecurityBackend.Services.Implementation.LongRunningJobProgressServiceEF,System.Guid)">
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._DetectDuplicatePDFBooksAsync(RMuseum.DbContext.RMuseumDbContext,RSecurityBackend.Services.Implementation.LongRunningJobProgressServiceEF,System.Guid,System.Boolean)">
             <summary>
             actual detection logic, isolated so it can be unit-tested/tuned independently of the
             background-job plumbing around it
@@ -11906,6 +11936,26 @@
             normalize a (Persian) book title for duplicate comparison: unify Arabic/Persian
             letter variants and digits, strip zero-width/invisible characters and punctuation,
             collapse whitespace
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._ExtractDigitRuns(System.String[])">
+            <summary>
+            extract the set of digit runs (e.g. volume numbers, issue numbers, years) present in an
+            already-tokenized normalized title, with Persian digits normalized to plain ASCII digit
+            strings so "۳" and "3" compare equal
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._ExtractOrdinalWords(System.String[])">
+            <summary>
+            extract the set of recognized Persian ordinal words (اول/دوم/سوم/... and بیست و یکم style
+            compounds) present in an already-tokenized normalized title
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._OrderPreservingTokenDiff(System.String[],System.String[])">
+            <summary>
+            order-preserving multiset diff between two token sequences: returns how many tokens they
+            have in common (each occurrence matched at most once) plus, for each side, the tokens
+            left over after removing the matched ones (in their original relative order)
             </summary>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService._ComputeTitleSimilarity(System.String,System.String)">
@@ -13326,10 +13376,15 @@
             put first verse to ganjoor toc titles
             </summary>
         </member>
-        <member name="M:RMuseum.Services.IPDFLibraryService.StartDetectingDuplicatePDFBooksAsync">
+        <member name="M:RMuseum.Services.IPDFLibraryService.StartDetectingDuplicatePDFBooksAsync(System.Boolean)">
             <summary>
             start scanning PDFBooks for possible duplicates and queue the findings for human review
             </summary>
+            <param name="forceRestart">
+            if true, ignore any interrupted/in-progress run and restart the title-comparison pass
+            from scratch instead of resuming. Use after manually clearing
+            PDFBookDuplicateCandidates.
+            </param>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.GetPDFBookDuplicateDetectionStateAsync">
             <summary>

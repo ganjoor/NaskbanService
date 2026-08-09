@@ -2030,6 +2030,7 @@ namespace RMuseum.Controllers
         /// <summary>
         /// start scanning PDFBooks for possible duplicates and queue the findings for human review
         /// </summary>
+        /// <param name="forceRestart">if true, restart the title-comparison pass from scratch instead of resuming an interrupted run (use after manually clearing PDFBookDuplicateCandidates)</param>
         /// <returns></returns>
         [HttpPut]
         [Route("duplicates/detect")]
@@ -2037,9 +2038,9 @@ namespace RMuseum.Controllers
         [ProducesResponseType((int)HttpStatusCode.OK)]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
-        public IActionResult StartDetectingDuplicatePDFBooksAsync()
+        public IActionResult StartDetectingDuplicatePDFBooksAsync(bool forceRestart = false)
         {
-            _pdfService.StartDetectingDuplicatePDFBooksAsync();
+            _pdfService.StartDetectingDuplicatePDFBooksAsync(forceRestart);
             return Ok();
         }
 

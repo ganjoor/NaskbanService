@@ -54,9 +54,48 @@ namespace RMuseum.Services.Implementation
         private const int DupCheckpointEveryNBuckets = 50;
 
         /// <summary>
+        /// minimum fraction of shared words (relative to the shorter title's word count) required
+        /// before the "leftover words" dissimilarity check (below) kicks in at all - guards against
+        /// triggering on titles that only coincidentally share one or two common words
+        /// </summary>
+        private const double DupLeftoverWordsShareRatioMin = 0.5;
+
+        /// <summary>
+        /// after removing the words two titles have in common, if what's left on both sides is
+        /// itself this dissimilar (0..1 normalized Levenshtein), the pair is treated as different
+        /// volumes/issues/subtitles of the same series rather than a duplicate, and is skipped
+        /// </summary>
+        private const double DupLeftoverWordsMaxSimilarity = 0.55;
+
+        /// <summary>
+        /// Persian ordinal words recognized as volume/issue/part markers (جلد دوم, شماره سوم, ...).
+        /// Character-level similarity is unreliable for these because they are short (e.g. "دوم"
+        /// vs "سوم" is still ~67% similar letter-for-letter despite being different numbers), so
+        /// they get their own exact-set-membership check instead of relying on Levenshtein.
+        /// </summary>
+        private static readonly HashSet<string> _dupOrdinalWords = new HashSet<string>(
+            new[] { "اول", "یکم", "دوم", "سوم", "چهارم", "پنجم", "ششم", "هفتم", "هشتم", "نهم", "نخست" }
+            .Concat(new[] { "دهم", "یازدهم", "دوازدهم", "سیزدهم", "چهاردهم", "پانزدهم", "شانزدهم", "هفدهم", "هجدهم", "نوزدهم" })
+            .Concat(new[] { "بیستم", "سی ام", "سیام", "چهلم", "پنجاهم", "شصتم", "هفتادم", "هشتادم", "نودم", "صدم" })
+            .Concat(new[] { "نخست", "دوم", "سوم", "چهارم", "پنجم", "ششم", "هفتم", "هشتم", "نهم", "دهم" }.Select(w => w + "ین"))
+        );
+
+        private static readonly HashSet<string> _dupOrdinalTensBase = new HashSet<string>
+        {
+            "بیست", "سی", "چهل", "پنجاه", "شصت", "هفتاد", "هشتاد", "نود"
+        };
+
+        /// <summary>
         /// start the duplicate PDFBook detection background job
         /// </summary>
-        public void StartDetectingDuplicatePDFBooksAsync()
+        /// <param name="forceRestart">
+        /// if true, ignore any interrupted/in-progress run and start the title-comparison pass
+        /// completely from scratch (the resume checkpoint is reset). Use this after manually
+        /// clearing PDFBookDuplicateCandidates so old candidates don't block re-detection of the
+        /// same pairs. If false (default) and a previous run was interrupted, it resumes from
+        /// where it left off instead of rescanning everything.
+        /// </param>
+        public void StartDetectingDuplicatePDFBooksAsync(bool forceRestart = false)
         {
             _backgroundTaskQueue.QueueBackgroundWorkItem
                                    (
@@ -69,7 +108,7 @@ namespace RMuseum.Services.Implementation
 
                                                try
                                                {
-                                                   await _DetectDuplicatePDFBooksAsync(context, jobProgressServiceEF, job.Id);
+                                                   await _DetectDuplicatePDFBooksAsync(context, jobProgressServiceEF, job.Id, forceRestart);
 
                                                    await jobProgressServiceEF.UpdateJob(job.Id, 100, "", true);
                                                }
@@ -91,6 +130,9 @@ namespace RMuseum.Services.Implementation
             public int Id { get; set; }
             public string Title { get; set; }
             public string NormalizedTitle { get; set; }
+            public string[] TitleTokens { get; set; }
+            public HashSet<string> DigitRuns { get; set; }
+            public HashSet<string> OrdinalWords { get; set; }
             public string BucketKey { get; set; }
             public string AuthorsLine { get; set; }
             public string ISBN { get; set; }
@@ -105,7 +147,7 @@ namespace RMuseum.Services.Implementation
         /// actual detection logic, isolated so it can be unit-tested/tuned independently of the
         /// background-job plumbing around it
         /// </summary>
-        private async Task _DetectDuplicatePDFBooksAsync(RMuseumDbContext context, LongRunningJobProgressServiceEF jobProgressServiceEF, Guid jobId)
+        private async Task _DetectDuplicatePDFBooksAsync(RMuseumDbContext context, LongRunningJobProgressServiceEF jobProgressServiceEF, Guid jobId, bool forceRestart)
         {
             var rawBooks =
                 await context.PDFBooks.AsNoTracking()
@@ -128,11 +170,15 @@ namespace RMuseum.Services.Implementation
             foreach (var b in rawBooks)
             {
                 var normalizedTitle = _NormalizeTitleForDupComparison(b.Title);
+                var titleTokens = normalizedTitle.Length == 0 ? Array.Empty<string>() : normalizedTitle.Split(' ');
                 books.Add(new _PDFBookDupInfo()
                 {
                     Id = b.Id,
                     Title = b.Title,
                     NormalizedTitle = normalizedTitle,
+                    TitleTokens = titleTokens,
+                    DigitRuns = _ExtractDigitRuns(titleTokens),
+                    OrdinalWords = _ExtractOrdinalWords(titleTokens),
                     BucketKey = normalizedTitle.Replace(" ", "").Length >= DupTitleBucketKeyLength
                                     ? normalizedTitle.Replace(" ", "").Substring(0, DupTitleBucketKeyLength)
                                     : normalizedTitle.Replace(" ", ""),
@@ -242,13 +288,13 @@ namespace RMuseum.Services.Implementation
                 context.PDFBookDuplicateDetectionStates.Add(state);
             }
 
-            string resumeAfterKey = (!state.Completed && !string.IsNullOrEmpty(state.LastProcessedTitleBucketKey))
+            string resumeAfterKey = (!forceRestart && !state.Completed && !string.IsNullOrEmpty(state.LastProcessedTitleBucketKey))
                                         ? state.LastProcessedTitleBucketKey
                                         : null;
 
             if (resumeAfterKey == null)
             {
-                // fresh run: either first ever run, or the previous run completed fully
+                // fresh run: either first ever run, previous run completed fully, or forceRestart was requested
                 state.LastRunStarted = DateTime.Now;
                 state.LastProcessedTitleBucketKey = null;
             }
@@ -260,6 +306,10 @@ namespace RMuseum.Services.Implementation
             if (resumeAfterKey != null)
             {
                 await jobProgressServiceEF.UpdateJob(jobId, 20, $"resuming title comparison after bucket '{resumeAfterKey}'");
+            }
+            else if (forceRestart)
+            {
+                await jobProgressServiceEF.UpdateJob(jobId, 20, "forceRestart requested: starting title comparison from scratch");
             }
 
             int bucketIndex = 0;
@@ -278,9 +328,52 @@ namespace RMuseum.Services.Implementation
                         var a = arr[i];
                         var b = arr[j];
 
+                        // --- disqualifiers: these are checked first and skip the pair outright,
+                        //     regardless of how similar the rest of the title looks. They target
+                        //     exactly the false-positive patterns seen in review data: different
+                        //     volumes/parts of the same book, different issues of the same
+                        //     magazine, and different specific items in the same named series. ---
+
+                        // different volume/issue/year numbers embedded in the titles (e.g. "ج ۳" vs
+                        // "ج ۱۰", or a magazine issue's publication year)
+                        if (a.DigitRuns.Count > 0 || b.DigitRuns.Count > 0)
+                        {
+                            if (!a.DigitRuns.SetEquals(b.DigitRuns))
+                                continue;
+                        }
+
+                        // different Persian ordinal words used as volume/part/issue markers (e.g.
+                        // "جلد دوم" vs "جلد سوم", "شماره اول" vs "شماره دوم"). Checked as an exact
+                        // set (not Levenshtein) because these words are short enough that plain
+                        // character similarity between them is misleadingly high.
+                        if (a.OrdinalWords.Count > 0 && b.OrdinalWords.Count > 0)
+                        {
+                            if (!a.OrdinalWords.SetEquals(b.OrdinalWords))
+                                continue;
+                        }
+
                         double similarity = _ComputeTitleSimilarity(a.NormalizedTitle, b.NormalizedTitle);
                         if (similarity < DupMinTitleSimilarity)
                             continue;
+
+                        // after removing the words the two titles have in common (in order), what's
+                        // left on each side is the part that actually distinguishes them. If both
+                        // sides have substantial leftover content and that leftover content is
+                        // itself dissimilar, this is most likely a different subtitle/topic/person
+                        // within the same series (e.g. "...؛ ادبیات ایران" vs "...؛ نسخه شناسی و
+                        // کتاب شناسی") rather than a duplicate - even though the shared prefix makes
+                        // the *overall* title similarity look high.
+                        int minTokenCount = Math.Min(a.TitleTokens.Length, b.TitleTokens.Length);
+                        if (minTokenCount > 0)
+                        {
+                            var (sharedCount, leftoverA, leftoverB) = _OrderPreservingTokenDiff(a.TitleTokens, b.TitleTokens);
+                            if ((double)sharedCount / minTokenCount >= DupLeftoverWordsShareRatioMin && leftoverA.Count > 0 && leftoverB.Count > 0)
+                            {
+                                double leftoverSimilarity = _ComputeTitleSimilarity(string.Join(" ", leftoverA), string.Join(" ", leftoverB));
+                                if (leftoverSimilarity < DupLeftoverWordsMaxSimilarity)
+                                    continue;
+                            }
+                        }
 
                         var reasons = new List<string>
                         {
@@ -387,6 +480,121 @@ namespace RMuseum.Services.Implementation
             }
 
             return Regex.Replace(sb.ToString(), @"\s+", " ").Trim();
+        }
+
+        /// <summary>
+        /// extract the set of digit runs (e.g. volume numbers, issue numbers, years) present in an
+        /// already-tokenized normalized title, with Persian digits normalized to plain ASCII digit
+        /// strings so "۳" and "3" compare equal
+        /// </summary>
+        private static HashSet<string> _ExtractDigitRuns(string[] titleTokens)
+        {
+            var result = new HashSet<string>();
+            foreach (var token in titleTokens)
+            {
+                if (token.Length == 0)
+                    continue;
+
+                bool allDigits = true;
+                foreach (char ch in token)
+                {
+                    if (!char.IsDigit(ch))
+                    {
+                        allDigits = false;
+                        break;
+                    }
+                }
+                if (!allDigits)
+                    continue;
+
+                var sb = new StringBuilder(token.Length);
+                foreach (char ch in token)
+                {
+                    // normalize any digit (Persian ۰-۹ or ASCII 0-9) to its ASCII digit value
+                    int digitValue = (int)char.GetNumericValue(ch);
+                    sb.Append(digitValue >= 0 && digitValue <= 9 ? (char)('0' + digitValue) : ch);
+                }
+                result.Add(sb.ToString());
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// extract the set of recognized Persian ordinal words (اول/دوم/سوم/... and بیست و یکم style
+        /// compounds) present in an already-tokenized normalized title
+        /// </summary>
+        private static HashSet<string> _ExtractOrdinalWords(string[] titleTokens)
+        {
+            var result = new HashSet<string>();
+            int i = 0;
+            while (i < titleTokens.Length)
+            {
+                string tok = titleTokens[i];
+                if (_dupOrdinalTensBase.Contains(tok) && i + 2 < titleTokens.Length && titleTokens[i + 1] == "و" && _dupOrdinalWords.Contains(titleTokens[i + 2]))
+                {
+                    result.Add(tok + " و " + titleTokens[i + 2]);
+                    i += 3;
+                    continue;
+                }
+                if (_dupOrdinalWords.Contains(tok))
+                {
+                    result.Add(tok);
+                }
+                i++;
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// order-preserving multiset diff between two token sequences: returns how many tokens they
+        /// have in common (each occurrence matched at most once) plus, for each side, the tokens
+        /// left over after removing the matched ones (in their original relative order)
+        /// </summary>
+        private static (int SharedCount, List<string> LeftoverA, List<string> LeftoverB) _OrderPreservingTokenDiff(string[] tokensA, string[] tokensB)
+        {
+            var remainingB = new Dictionary<string, int>();
+            foreach (var t in tokensB)
+            {
+                remainingB.TryGetValue(t, out int c);
+                remainingB[t] = c + 1;
+            }
+
+            var leftoverA = new List<string>();
+            int sharedCount = 0;
+            foreach (var t in tokensA)
+            {
+                if (remainingB.TryGetValue(t, out int c) && c > 0)
+                {
+                    remainingB[t] = c - 1;
+                    sharedCount++;
+                }
+                else
+                {
+                    leftoverA.Add(t);
+                }
+            }
+
+            var remainingA = new Dictionary<string, int>();
+            foreach (var t in tokensA)
+            {
+                remainingA.TryGetValue(t, out int c);
+                remainingA[t] = c + 1;
+            }
+
+            var leftoverB = new List<string>();
+            foreach (var t in tokensB)
+            {
+                if (remainingA.TryGetValue(t, out int c) && c > 0)
+                {
+                    remainingA[t] = c - 1;
+                }
+                else
+                {
+                    leftoverB.Add(t);
+                }
+            }
+
+            return (sharedCount, leftoverA, leftoverB);
         }
 
         /// <summary>

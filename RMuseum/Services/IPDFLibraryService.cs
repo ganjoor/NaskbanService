@@ -566,7 +566,12 @@ namespace RMuseum.Services
         /// <summary>
         /// start scanning PDFBooks for possible duplicates and queue the findings for human review
         /// </summary>
-        void StartDetectingDuplicatePDFBooksAsync();
+        /// <param name="forceRestart">
+        /// if true, ignore any interrupted/in-progress run and restart the title-comparison pass
+        /// from scratch instead of resuming. Use after manually clearing
+        /// PDFBookDuplicateCandidates.
+        /// </param>
+        void StartDetectingDuplicatePDFBooksAsync(bool forceRestart = false);
 
         /// <summary>
         /// current duplicate-detection progress/resume state (title-fuzzy-matching pass)
