@@ -2115,6 +2115,34 @@ namespace RMuseum.Controllers
         }
 
         /// <summary>
+        /// execute a Confirmed duplicate candidate's merge - fills metadata gaps, repoints
+        /// references, redirects the merged-away duplicate's id to the survivor, and removes the
+        /// duplicate's PDFBook row (queuing its storage for cleanup). The candidate must already
+        /// be in Confirmed status (set via PUT duplicates) before this will do anything.
+        /// </summary>
+        /// <param name="id">duplicate candidate id</param>
+        /// <returns></returns>
+        [HttpPut]
+        [Route("duplicates/{id}/merge")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.ModifyOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        public async Task<IActionResult> MergePDFBookDuplicateAsync(Guid id)
+        {
+            var reviewerId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.MergePDFBookDuplicateAsync(id, reviewerId);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+            {
+                return BadRequest(res.ExceptionString);
+            }
+            // reclaim the merged-away duplicate's storage right away; safe/cheap to call, and
+            // safe to call again later (via storage-cleanup) if this run doesn't finish
+            _pdfService.StartCleaningUpPendingPDFStorageAsync();
+            return Ok();
+        }
+
+        /// <summary>
         /// delete a duplicate candidate row (e.g. a false positive)
         /// </summary>
         /// <param name="id"></param>

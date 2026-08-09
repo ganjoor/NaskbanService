@@ -150,6 +150,18 @@ namespace RMuseum.Services.Implementation
         {
             try
             {
+                // if this id was merged away as a duplicate, transparently serve the survivor's
+                // data instead of a 404. Both GetPDFBookByIdAsync and GetUserVisiblePDFBookAsync
+                // (which calls this) are covered; other id-based lookups (search, TOC, admin/tag
+                // tools) query PDFBooks directly and would need the same check added separately
+                // if old ids need to resolve there too - see GetPDFBookTableOfContentsAsync for
+                // the same pattern, already added since it's the other main public GET-by-id route
+                var redirect = await _context.PDFBookRedirects.AsNoTracking().Where(r => r.OldPDFBookId == id).SingleOrDefaultAsync();
+                if (redirect != null)
+                {
+                    id = redirect.SurvivorPDFBookId;
+                }
+
                 var pdfBook =
                     includePages ?
                     await _context.PDFBooks.AsNoTracking()
@@ -583,54 +595,7 @@ namespace RMuseum.Services.Implementation
                     return new RServiceResult<bool>(false, "PDFBook not found.");
                 }
 
-                var pageIds = record.Pages.Select(p => p.Id).ToArray();
-
-                // --- dependent records that WILL block the delete with a foreign key violation
-                //     if left in place (verified against the actual FK constraints in the schema) ---
-
-                // user bookmarks pointing at this book directly, or at any of its pages
-                var bookmarksToRemove =
-                    await _context.PDFUserBookmarks
-                    .Where(bm => bm.PDFBookId == pdfBookId || (bm.PageId != null && pageIds.Contains(bm.PageId.Value)))
-                    .ToArrayAsync();
-                _context.PDFUserBookmarks.RemoveRange(bookmarksToRemove);
-
-                // author/contributor links (record.Contributers is already loaded via Include above)
-                _context.RemoveRange(record.Contributers);
-
-                // --- dependent records that do NOT have a database-level foreign key constraint
-                //     (so they would not block the delete), but would be left as orphaned rows
-                //     silently pointing at a PDFBookId that no longer exists otherwise ---
-
-                _context.AIQueuedItems.RemoveRange(_context.AIQueuedItems.Where(q => q.PDFBookId == pdfBookId));
-                _context.OCRQueuedItems.RemoveRange(_context.OCRQueuedItems.Where(q => q.PDFBookId == pdfBookId));
-                _context.PDFGanjoorLinks.RemoveRange(_context.PDFGanjoorLinks.Where(l => l.PDFBookId == pdfBookId));
-                _context.PinterestLinks.RemoveRange(_context.PinterestLinks.Where(l => l.PDFBookId == pdfBookId));
-                _context.PDFVisitRecords.RemoveRange(_context.PDFVisitRecords.Where(v => v.PDFBookId == pdfBookId));
-                _context.PDFBookDuplicateCandidates.RemoveRange(_context.PDFBookDuplicateCandidates.Where(c => c.PDFBookId1 == pdfBookId || c.PDFBookId2 == pdfBookId));
-
-                foreach (PDFPage page in record.Pages)
-                {
-                    _context.TagValues.RemoveRange(page.Tags);
-                }
-
-                _context.RemoveRange(record.Pages);
-                _context.TagValues.RemoveRange(record.Tags);
-                _context.Remove(record);
-
-                if (!string.IsNullOrEmpty(record.StorageFolderName))
-                {
-                    _context.PendingPDFStorageCleanups.Add
-                    (
-                        new PendingPDFStorageCleanup()
-                        {
-                            Id = Guid.NewGuid(),
-                            StorageFolderName = record.StorageFolderName,
-                            NeedsFtpDelete = record.Status == PublishStatus.Published,
-                            QueueTime = DateTime.Now
-                        }
-                    );
-                }
+                await _QueuePDFBookRemovalAsync(record);
 
                 await _context.SaveChangesAsync();
             }
@@ -639,6 +604,69 @@ namespace RMuseum.Services.Implementation
                 return new RServiceResult<bool>(false, exp.ToString());
             }
             return new RServiceResult<bool>(true);
+        }
+
+        /// <summary>
+        /// shared dependent-record cleanup + storage-cleanup queuing used by both
+        /// RemovePDFBookAsync and the duplicate-merge flow. Removes whatever is still attached to
+        /// `record` at call time (Pages, Tags, Contributers) and the book row itself, cleans up
+        /// same-id references in tables with no FK constraint, and queues physical storage
+        /// cleanup. Does NOT call SaveChangesAsync - the caller controls the transaction boundary,
+        /// so a caller that first moves some of record's Tags/Contributers/references elsewhere
+        /// (as the merge flow does, onto a survivor) only has the leftovers cleaned up here.
+        /// </summary>
+        private async Task _QueuePDFBookRemovalAsync(PDFBook record)
+        {
+            int pdfBookId = record.Id;
+            var pageIds = record.Pages.Select(p => p.Id).ToArray();
+
+            // --- dependent records that WILL block the delete with a foreign key violation
+            //     if left in place (verified against the actual FK constraints in the schema) ---
+
+            // user bookmarks pointing at this book directly, or at any of its pages
+            var bookmarksToRemove =
+                await _context.PDFUserBookmarks
+                .Where(bm => bm.PDFBookId == pdfBookId || (bm.PageId != null && pageIds.Contains(bm.PageId.Value)))
+                .ToArrayAsync();
+            _context.PDFUserBookmarks.RemoveRange(bookmarksToRemove);
+
+            // author/contributor links still attached to record (a caller may have already moved
+            // some of these onto a survivor before calling this method)
+            _context.RemoveRange(record.Contributers);
+
+            // --- dependent records that do NOT have a database-level foreign key constraint
+            //     (so they would not block the delete), but would be left as orphaned rows
+            //     silently pointing at a PDFBookId that no longer exists otherwise ---
+
+            _context.AIQueuedItems.RemoveRange(_context.AIQueuedItems.Where(q => q.PDFBookId == pdfBookId));
+            _context.OCRQueuedItems.RemoveRange(_context.OCRQueuedItems.Where(q => q.PDFBookId == pdfBookId));
+            _context.PDFGanjoorLinks.RemoveRange(_context.PDFGanjoorLinks.Where(l => l.PDFBookId == pdfBookId));
+            _context.PinterestLinks.RemoveRange(_context.PinterestLinks.Where(l => l.PDFBookId == pdfBookId));
+            _context.PDFVisitRecords.RemoveRange(_context.PDFVisitRecords.Where(v => v.PDFBookId == pdfBookId));
+            _context.PDFBookDuplicateCandidates.RemoveRange(_context.PDFBookDuplicateCandidates.Where(c => c.PDFBookId1 == pdfBookId || c.PDFBookId2 == pdfBookId));
+
+            foreach (PDFPage page in record.Pages)
+            {
+                _context.TagValues.RemoveRange(page.Tags);
+            }
+
+            _context.RemoveRange(record.Pages);
+            _context.TagValues.RemoveRange(record.Tags);
+            _context.Remove(record);
+
+            if (!string.IsNullOrEmpty(record.StorageFolderName))
+            {
+                _context.PendingPDFStorageCleanups.Add
+                (
+                    new PendingPDFStorageCleanup()
+                    {
+                        Id = Guid.NewGuid(),
+                        StorageFolderName = record.StorageFolderName,
+                        NeedsFtpDelete = record.Status == PublishStatus.Published,
+                        QueueTime = DateTime.Now
+                    }
+                );
+            }
         }
 
         /// <summary>
@@ -2526,6 +2554,12 @@ namespace RMuseum.Services.Implementation
         {
             try
             {
+                var redirect = await _context.PDFBookRedirects.AsNoTracking().Where(r => r.OldPDFBookId == id).SingleOrDefaultAsync();
+                if (redirect != null)
+                {
+                    id = redirect.SurvivorPDFBookId;
+                }
+
                 List<RTitleInContents> contents = new List<RTitleInContents>();
 
                 var pages = await _context.PDFPages.AsNoTracking().Include(p => p.Tags).ThenInclude(p => p.RTag).Where(p => p.PDFBookId == id).ToListAsync();

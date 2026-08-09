@@ -723,6 +723,16 @@
             <param name="model"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.MergePDFBookDuplicateAsync(System.Guid)">
+            <summary>
+            execute a Confirmed duplicate candidate's merge - fills metadata gaps, repoints
+            references, redirects the merged-away duplicate's id to the survivor, and removes the
+            duplicate's PDFBook row (queuing its storage for cleanup). The candidate must already
+            be in Confirmed status (set via PUT duplicates) before this will do anything.
+            </summary>
+            <param name="id">duplicate candidate id</param>
+            <returns></returns>
+        </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.DeletePDFBookDuplicateCandidateAsync(System.Guid)">
             <summary>
             delete a duplicate candidate row (e.g. a false positive)
@@ -1213,6 +1223,11 @@
             PDFBook's database row was removed
             </summary>
         </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.PDFBookRedirects">
+            <summary>
+            redirects from merged-away PDFBook ids to their living survivor
+            </summary>
+        </member>
         <member name="T:RMuseum.Migrations.PictureFileExtUrl">
             <inheritdoc />
         </member>
@@ -1655,6 +1670,18 @@
             <inheritdoc />
         </member>
         <member name="M:RMuseum.Migrations.PendingPDFStorageCleanup.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:RMuseum.Migrations.PDFBookRedirect">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.PDFBookRedirect.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.PDFBookRedirect.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.PDFBookRedirect.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
         <member name="T:RMuseum.Models.Accounting.DonationExpenditure">
@@ -10787,6 +10814,40 @@
             last time this row was checkpointed
             </summary>
         </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFBookRedirect">
+            <summary>
+            a redirect from a PDFBook id that no longer exists (merged away as a duplicate) to the
+            survivor id that now holds its data - API calls for the old id transparently serve the
+            survivor's data instead of a 404. Flattened, not chained: if the survivor itself later gets
+            merged into a third book, every existing redirect pointing at it is updated to point
+            straight at the new final survivor, so a lookup is always a single row read.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookRedirect.Id">
+            <summary>
+            Id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookRedirect.OldPDFBookId">
+            <summary>
+            the merged-away PDFBook id that no longer has its own row
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookRedirect.SurvivorPDFBookId">
+            <summary>
+            the current living PDFBook id that now holds the data
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookRedirect.MergeDate">
+            <summary>
+            when the merge happened
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookRedirect.MergedByUserId">
+            <summary>
+            user id of the operator who confirmed the merge
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.PDFLibrary.PDFPage">
             <summary>
             PDF Page
@@ -12131,6 +12192,62 @@
             طول تصویر بندانگشتی
             </summary>
         </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.MergePDFBookDuplicateAsync(System.Guid,System.Guid)">
+            <summary>
+            execute a confirmed duplicate-candidate merge: fills gaps in the survivor's metadata
+            from the duplicate, repoints every reference (bookmarks, Ganjoor/Pinterest links, visit
+            records) from the duplicate to the survivor, creates a PDFBookRedirect so future API
+            calls for the duplicate's id transparently serve the survivor, and removes the
+            duplicate's own PDFBook row (reusing the same dependent-cleanup + storage-cleanup
+            queuing that RemovePDFBookAsync uses). All in a single SaveChangesAsync, so a failure
+            partway through leaves nothing half-applied.
+            </summary>
+            <param name="candidateId"></param>
+            <param name="reviewerUserId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._FillPDFBookMetadataGaps(RMuseum.Models.PDFLibrary.PDFBook,RMuseum.Models.PDFLibrary.PDFBook)">
+            <summary>
+            fill blank/null metadata fields on the survivor from the duplicate. Never overwrites a
+            field the survivor already has a value for. Fields describing the physical file itself
+            (PageCount, FileMD5CheckSum, StorageFolderName, PDFFile, OCR state, BookText) are left
+            untouched - they must stay accurate to whichever file the survivor is actually serving.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._MergeTags(RMuseum.Models.PDFLibrary.PDFBook,RMuseum.Models.PDFLibrary.PDFBook)">
+            <summary>
+            move any of the duplicate's tags the survivor doesn't already have an equivalent of
+            (same RTagId + FriendlyUrl) onto the survivor; the rest stay on the duplicate and are
+            discarded along with it by _QueuePDFBookRemovalAsync
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._MergeContributers(RMuseum.Models.PDFLibrary.PDFBook,RMuseum.Models.PDFLibrary.PDFBook)">
+            <summary>
+            move any of the duplicate's author/contributor links the survivor doesn't already have
+            an equivalent of (same author + role) onto the survivor
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._RepointPDFBookReferencesAsync(RMuseum.Models.PDFLibrary.PDFBook,RMuseum.Models.PDFLibrary.PDFBook)">
+            <summary>
+            repoint every table that references the duplicate PDFBook onto the survivor.
+            PDFUserBookmark's PageId gets remapped to the survivor's page with the same page
+            number (nearest fallback, since the two books are only guaranteed close in page count,
+            not identical - see the page-count disqualifier tolerance in duplicate detection).
+            PDFGanjoorLink stores a plain PageNumber (not a page id FK) so it needs no remapping,
+            just a repointed PDFBookId. AIQueue/OCRQueue are per-file processing-queue artifacts
+            tied to the duplicate's specific PDFFile, not user-facing data, so they're simply
+            dropped for the duplicate (via _QueuePDFBookRemovalAsync) rather than repointed.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._RepointOtherDuplicateCandidatesAsync(System.Guid,System.Int32,System.Int32)">
+            <summary>
+            other pending duplicate-candidate rows that mention the just-merged-away duplicate get
+            repointed onto the survivor instead of left dangling: if that would make a row refer to
+            the survivor on both sides, it's removed (no longer meaningful); if an equivalent
+            survivor-vs-other-side row already exists, the repointed one is removed to avoid a
+            duplicate pair.
+            </summary>
+        </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetQueuedPDFBooksAsync(RSecurityBackend.Models.Generic.PagingParameterModel)">
             <summary>
             queued downloding pdf books
@@ -12270,6 +12387,17 @@
             </summary>
             <param name="pdfBookId"></param>
             <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._QueuePDFBookRemovalAsync(RMuseum.Models.PDFLibrary.PDFBook)">
+            <summary>
+            shared dependent-record cleanup + storage-cleanup queuing used by both
+            RemovePDFBookAsync and the duplicate-merge flow. Removes whatever is still attached to
+            `record` at call time (Pages, Tags, Contributers) and the book row itself, cleans up
+            same-id references in tables with no FK constraint, and queues physical storage
+            cleanup. Does NOT call SaveChangesAsync - the caller controls the transaction boundary,
+            so a caller that first moves some of record's Tags/Contributers/references elsewhere
+            (as the merge flow does, onto a survivor) only has the leftovers cleaned up here.
+            </summary>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetPDFBookByTagValueAsync(System.String,System.String,RMuseum.Models.Artifact.PublishStatus[])">
             <summary>
@@ -13523,6 +13651,16 @@
             update a duplicate candidate's review decision (survivor choice / status / note)
             </summary>
             <param name="model"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.MergePDFBookDuplicateAsync(System.Guid,System.Guid)">
+            <summary>
+            execute a Confirmed duplicate-candidate merge: fills metadata gaps, repoints
+            references, creates a redirect from the merged-away duplicate's id to the survivor,
+            and removes the duplicate's PDFBook row (queuing its storage for cleanup).
+            </summary>
+            <param name="candidateId"></param>
+            <param name="reviewerUserId"></param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.DeletePDFBookDuplicateCandidateAsync(System.Guid)">

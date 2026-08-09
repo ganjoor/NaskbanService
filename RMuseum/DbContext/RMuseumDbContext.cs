@@ -604,5 +604,10 @@ namespace RMuseum.DbContext
         /// </summary>
         public DbSet<PendingPDFStorageCleanup> PendingPDFStorageCleanups { get; set; }
 
+        /// <summary>
+        /// redirects from merged-away PDFBook ids to their living survivor
+        /// </summary>
+        public DbSet<PDFBookRedirect> PDFBookRedirects { get; set; }
+
     }
 }

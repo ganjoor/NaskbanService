@@ -595,6 +595,16 @@ namespace RMuseum.Services
         Task<RServiceResult<bool>> UpdatePDFBookDuplicateCandidateAsync(PDFBookDuplicateCandidate model);
 
         /// <summary>
+        /// execute a Confirmed duplicate-candidate merge: fills metadata gaps, repoints
+        /// references, creates a redirect from the merged-away duplicate's id to the survivor,
+        /// and removes the duplicate's PDFBook row (queuing its storage for cleanup).
+        /// </summary>
+        /// <param name="candidateId"></param>
+        /// <param name="reviewerUserId"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> MergePDFBookDuplicateAsync(Guid candidateId, Guid reviewerUserId);
+
+        /// <summary>
         /// delete a duplicate candidate row (e.g. a false positive)
         /// </summary>
         /// <param name="id"></param>
