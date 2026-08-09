@@ -209,7 +209,7 @@ namespace RMuseum.Services.Implementation
                     Title = b.Title,
                     NormalizedTitle = normalizedTitle,
                     TitleTokens = titleTokens,
-                    DigitRuns = _ExtractDigitRuns(titleTokens),
+                    DigitRuns = _ExtractDigitRuns(normalizedTitle),
                     OrdinalWords = _ExtractOrdinalWords(titleTokens),
                     BucketKey = normalizedTitle.Replace(" ", "").Length >= DupTitleBucketKeyLength
                                     ? normalizedTitle.Replace(" ", "").Substring(0, DupTitleBucketKeyLength)
@@ -406,8 +406,12 @@ namespace RMuseum.Services.Implementation
                         // different Persian ordinal words used as volume/part/issue markers (e.g.
                         // "جلد دوم" vs "جلد سوم", "شماره اول" vs "شماره دوم"). Checked as an exact
                         // set (not Levenshtein) because these words are short enough that plain
-                        // character similarity between them is misleadingly high.
-                        if (a.OrdinalWords.Count > 0 && b.OrdinalWords.Count > 0)
+                        // character similarity between them is misleadingly high. Symmetric like
+                        // the digit-run check above: a title with NO volume marker at all is not
+                        // assumed to mean "any volume" - real data showed base titles with no
+                        // marker getting matched as a duplicate of BOTH "(جلد اول)" and "(جلد دوم)"
+                        // of the same series at once, which can't both be right.
+                        if (a.OrdinalWords.Count > 0 || b.OrdinalWords.Count > 0)
                         {
                             if (!a.OrdinalWords.SetEquals(b.OrdinalWords))
                                 continue;
@@ -555,39 +559,33 @@ namespace RMuseum.Services.Implementation
         }
 
         /// <summary>
-        /// extract the set of digit runs (e.g. volume numbers, issue numbers, years) present in an
-        /// already-tokenized normalized title, with Persian digits normalized to plain ASCII digit
-        /// strings so "۳" and "3" compare equal
+        /// extract the set of digit runs (e.g. volume numbers, issue numbers, years) present
+        /// anywhere in an already-normalized title, with Persian digits normalized to plain ASCII
+        /// digit strings so "۳" and "3" compare equal. Scans the raw character stream rather than
+        /// token-by-token so a number glued directly onto a word with no space - e.g. "ج۱۲" (a
+        /// common no-space abbreviation for "volume 12"), or "فرماندهان۲" vs "فرماندهان۱۰" as two
+        /// different installments in a story series - is still recognized, not just numbers that
+        /// stand alone as their own token.
         /// </summary>
-        private static HashSet<string> _ExtractDigitRuns(string[] titleTokens)
+        private static HashSet<string> _ExtractDigitRuns(string normalizedTitle)
         {
             var result = new HashSet<string>();
-            foreach (var token in titleTokens)
+            var current = new StringBuilder();
+            foreach (char ch in normalizedTitle)
             {
-                if (token.Length == 0)
-                    continue;
-
-                bool allDigits = true;
-                foreach (char ch in token)
+                if (char.IsDigit(ch))
                 {
-                    if (!char.IsDigit(ch))
-                    {
-                        allDigits = false;
-                        break;
-                    }
-                }
-                if (!allDigits)
-                    continue;
-
-                var sb = new StringBuilder(token.Length);
-                foreach (char ch in token)
-                {
-                    // normalize any digit (Persian ۰-۹ or ASCII 0-9) to its ASCII digit value
                     int digitValue = (int)char.GetNumericValue(ch);
-                    sb.Append(digitValue >= 0 && digitValue <= 9 ? (char)('0' + digitValue) : ch);
+                    current.Append(digitValue >= 0 && digitValue <= 9 ? (char)('0' + digitValue) : ch);
                 }
-                result.Add(sb.ToString());
+                else if (current.Length > 0)
+                {
+                    result.Add(current.ToString());
+                    current.Clear();
+                }
             }
+            if (current.Length > 0)
+                result.Add(current.ToString());
             return result;
         }
 
