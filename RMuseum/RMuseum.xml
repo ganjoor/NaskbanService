@@ -289,6 +289,17 @@
             <param name="authorName"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetAuthorsWithBookCountAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.String,System.Boolean)">
+            <summary>
+            list authors with a computed count of distinct books they're credited on, optionally
+            filtered to a single role (e.g. "مترجم"/"نویسنده"/"مصحح" - see the distinct values in
+            AuthorRole.Role), sortable by name (ascending) or by book count (descending), paginated.
+            </summary>
+            <param name="paging"></param>
+            <param name="role">exact AuthorRole.Role to filter to; omit for all roles combined</param>
+            <param name="sortByBookCount">true: sort by book count descending; false (default): sort by name ascending</param>
+            <returns></returns>
+        </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.GetAuthorByIdAsync(System.Int32)">
             <summary>
             get author by id
@@ -740,6 +751,17 @@
             own transaction; a candidate whose merge fails is skipped for this run (recorded in its
             ReviewNote, left as Confirmed) rather than blocking the rest of the batch.
             </summary>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.MergePDFBooksByIdAsync(System.Int32,System.Int32)">
+            <summary>
+            manually merge two PDFBooks by id directly, without needing a pre-existing duplicate-
+            candidate row - for an operator who spots a duplicate directly (e.g. while browsing)
+            rather than through the automated detection queue. Requires PDFBook delete permission,
+            matching RemovePDFBookAsync, since duplicatePDFBookId ends up removed either way.
+            </summary>
+            <param name="survivorPDFBookId">the PDFBook id that stays and receives the merged data</param>
+            <param name="duplicatePDFBookId">the PDFBook id that gets merged away and removed</param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.DeletePDFBookDuplicateCandidateAsync(System.Guid)">
@@ -11178,6 +11200,55 @@
             Counts
             </summary>
         </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.AuthorWithBookCount">
+            <summary>
+            an Author plus the number of distinct books they're credited on (optionally filtered to a
+            single role, e.g. "مترجم"/"نویسنده"/"مصحح") - counted at the Book level (the entity that
+            groups different PDFBook scans/editions of the same work together), not the PDFBook level,
+            so multiple scans of the same work don't inflate the count
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.AuthorWithBookCount.Id">
+            <summary>
+            Id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.AuthorWithBookCount.Name">
+            <summary>
+            Name
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.AuthorWithBookCount.NameInOriginalLanguage">
+            <summary>
+            Name in original language
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.AuthorWithBookCount.Bio">
+            <summary>
+            bio
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.AuthorWithBookCount.ImageId">
+            <summary>
+            Cover Image Id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.AuthorWithBookCount.ExtenalImageUrl">
+            <summary>
+            external image url
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.AuthorWithBookCount.LastModified">
+            <summary>
+            Last Modified
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.AuthorWithBookCount.BookCount">
+            <summary>
+            number of distinct books this author is credited on (in the given role, if a role
+            filter was applied - across all roles otherwise)
+            </summary>
+        </member>
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.GanjoorPoemMatchViewModel.GanjoorCatId">
             <summary>
             cat id
@@ -12213,16 +12284,27 @@
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.StartMergingConfirmedPDFBookDuplicatesAsync">
             <summary>
             start merging EVERY Confirmed duplicate candidate in a single background job, not one
-            at a time. Processes them one merge per iteration (each its own transaction, same as a
-            single merge), re-querying for the next Confirmed candidate each time so it naturally
-            picks up changes earlier merges in the same run make to other pending candidates (e.g.
-            A absorbing B also repoints any other candidate that mentioned B onto A). A candidate
-            whose merge fails is skipped for the rest of THIS run (recorded in its ReviewNote, left
-            as Confirmed) rather than retried forever or silently rejected - it'll be picked up
-            again the next time this job runs, after you've had a chance to look at why it failed.
+            at a time. The full list of Confirmed candidate ids is read ONCE up front (not
+            re-queried per iteration with a growing exclusion list) - safe because nothing else
+            modifies the Confirmed set while this runs, and repointing effects from earlier merges
+            in the same batch (see _RepointOtherDuplicateCandidatesAsync) still apply correctly
+            because each merge re-reads its own candidate row fresh by id regardless of what the
+            outer list looked like when it was captured. A candidate whose merge fails is recorded
+            in its ReviewNote and left as Confirmed (retried on a future run) rather than blocking
+            the rest of the batch; a candidate that another merge earlier in this same run already
+            repointed away or removed is silently skipped, not counted as a failure.
             </summary>
         </member>
-        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._MergePDFBookDuplicateAsync(RMuseum.DbContext.RMuseumDbContext,System.Guid,System.Guid)">
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._MergeAllConfirmedPDFBookDuplicatesAsync(RSecurityBackend.Services.Implementation.LongRunningJobProgressServiceEF,System.Guid)">
+            <summary>
+            drives the batch: a fresh RMuseumDbContext per merge, disposed immediately after use,
+            to keep EF Core's change tracker from growing unboundedly across a long run. The list
+            of candidate ids to attempt is captured once at the start with a single lightweight
+            query (per your point: nothing else touches the Confirmed set mid-run, so there is no
+            need to keep re-querying it).
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.MergePDFBooksByIdAsync(System.Int32,System.Int32,System.Guid)">
             <summary>
             execute a confirmed duplicate-candidate merge: fills gaps in the survivor's metadata
             from the duplicate, repoints every reference (bookmarks, Ganjoor/Pinterest links, visit
@@ -12232,6 +12314,50 @@
             queuing that RemovePDFBookAsync uses). All in a single SaveChangesAsync, so a failure
             partway through leaves nothing half-applied. Takes `context` explicitly so it can run
             either request-scoped (single merge) or against a background job's own context (batch).
+            `reviewerUserIdOverride`, if given, is recorded as who performed the merge (the
+            interactive single-merge path: whoever is logged in and clicks merge right now); if
+            null (the batch path - no interactive user), the candidate's own ReviewerId (whoever
+            confirmed it) is used instead, read directly off the row already being loaded rather
+            than requiring the caller to fetch it separately first.
+            `reportStep`, if given, is called before each major phase so a batch run can surface
+            exactly where a slow or stuck merge is spending its time - pass null to skip.
+            </summary>
+            <summary>
+            manually merge two PDFBooks by id directly, without needing a pre-existing duplicate-
+            candidate row - for an operator (with PDFBook delete permission) who spots a duplicate
+            directly, e.g. while browsing, rather than through the automated detection queue. Runs
+            the exact same merge mechanics as the candidate-driven flow (metadata fill, reference
+            repointing, redirect creation, duplicate removal); it just has no candidate to check a
+            Confirmed status against, since there isn't one.
+            </summary>
+            <param name="survivorPDFBookId">the PDFBook id that stays and receives the merged data</param>
+            <param name="duplicatePDFBookId">the PDFBook id that gets merged away and removed</param>
+            <param name="reviewerUserId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._MergePDFBookDuplicateAsync(RMuseum.DbContext.RMuseumDbContext,System.Guid,System.Nullable{System.Guid},System.Func{System.String,System.Threading.Tasks.Task})">
+            <summary>
+            candidate-driven merge: resolves survivor/duplicate ids from a Confirmed
+            PDFBookDuplicateCandidate row, then delegates the actual merge work to
+            _MergePDFBooksAsync (shared with the manual-by-id path above), additionally marking the
+            candidate itself as Merged in the same transaction.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._MergePDFBooksAsync(RMuseum.DbContext.RMuseumDbContext,System.Int32,System.Int32,System.Guid,System.Guid,System.Func{System.String,System.Threading.Tasks.Task},System.Action{RMuseum.DbContext.RMuseumDbContext})">
+            <summary>
+            the actual merge mechanics, shared by both entry points above: fills gaps in the
+            survivor's metadata from the duplicate, repoints every reference (bookmarks,
+            Ganjoor/Pinterest links, visit records) from the duplicate to the survivor, creates a
+            PDFBookRedirect so future API calls for the duplicate's id transparently serve the
+            survivor, repoints/cleans up any other pending duplicate-candidate rows that mentioned
+            the duplicate, and removes the duplicate's own PDFBook row (reusing the same
+            dependent-cleanup + storage-cleanup queuing that RemovePDFBookAsync uses). All in a
+            single SaveChangesAsync, so a failure partway through leaves nothing half-applied.
+            `excludeCandidateId` is the candidate row to exclude from the "repoint other pending
+            candidates" step (pass Guid.Empty for the manual-by-id path, which has none of its own).
+            `extraWorkBeforeSave`, if given, runs just before the final SaveChangesAsync so a caller
+            can make additional changes (e.g. marking a candidate Merged) as part of the same
+            transaction. `reportStep`, if given, is called before each major phase.
             </summary>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService._FillPDFBookMetadataGaps(RMuseum.Models.PDFLibrary.PDFBook,RMuseum.Models.PDFLibrary.PDFBook)">
@@ -12500,6 +12626,17 @@
             </summary>
             <param name="paging"></param>
             <param name="authorName"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetAuthorsWithBookCountAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.String,System.Boolean)">
+            <summary>
+            list authors (optionally filtered to a single AuthorRole.Role, e.g. "مترجم"), each with
+            a computed count of distinct books they're credited on, sortable by name (ascending) or
+            by that book count (descending), paginated.
+            </summary>
+            <param name="paging"></param>
+            <param name="role">exact AuthorRole.Role to filter to (e.g. "نویسنده"); null/empty for all roles combined</param>
+            <param name="sortByBookCountDesc">true: sort by book count descending; false: sort by name ascending</param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.AddPDFBookContributerAsync(System.Int32,System.Int32,System.String)">
@@ -13212,6 +13349,17 @@
             <param name="authorName"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetAuthorsWithBookCountAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.String,System.Boolean)">
+            <summary>
+            list authors (optionally filtered to a single AuthorRole.Role), each with a computed
+            count of distinct books they're credited on, sortable by name (ascending) or by that
+            book count (descending), paginated.
+            </summary>
+            <param name="paging"></param>
+            <param name="role">exact AuthorRole.Role to filter to; null/empty for all roles combined</param>
+            <param name="sortByBookCountDesc">true: sort by book count descending; false: sort by name ascending</param>
+            <returns></returns>
+        </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.UpdateAuthorAsync(RMuseum.Models.PDFLibrary.Author)">
             <summary>
             update author
@@ -13693,6 +13841,17 @@
             and removes the duplicate's PDFBook row (queuing its storage for cleanup).
             </summary>
             <param name="candidateId"></param>
+            <param name="reviewerUserId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.MergePDFBooksByIdAsync(System.Int32,System.Int32,System.Guid)">
+            <summary>
+            manually merge two PDFBooks by id directly, without needing a pre-existing duplicate-
+            candidate row - for an operator who spots a duplicate directly (e.g. while browsing)
+            rather than through the automated detection queue.
+            </summary>
+            <param name="survivorPDFBookId">the PDFBook id that stays and receives the merged data</param>
+            <param name="duplicatePDFBookId">the PDFBook id that gets merged away and removed</param>
             <param name="reviewerUserId"></param>
             <returns></returns>
         </member>
