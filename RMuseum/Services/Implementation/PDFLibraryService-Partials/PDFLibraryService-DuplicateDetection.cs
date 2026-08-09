@@ -84,16 +84,12 @@ namespace RMuseum.Services.Implementation
         private const int DupCheckpointEveryNBuckets = 50;
 
         /// <summary>
-        /// minimum fraction of shared words (relative to the shorter title's word count) required
-        /// before the "leftover words" dissimilarity check (below) kicks in at all - guards against
-        /// triggering on titles that only coincidentally share one or two common words
-        /// </summary>
-        private const double DupLeftoverWordsShareRatioMin = 0.5;
-
-        /// <summary>
         /// after removing the words two titles have in common, if what's left on both sides is
         /// itself this dissimilar (0..1 normalized Levenshtein), the pair is treated as different
-        /// volumes/issues/subtitles of the same series rather than a duplicate, and is skipped
+        /// volumes/issues/subtitles of the same series rather than a duplicate, and is skipped.
+        /// Checked whenever both sides have any leftover at all - no minimum shared-word-ratio
+        /// gate (there used to be one; removed after real data showed it let through pairs with
+        /// as little as 43% word overlap whose differing parts were obviously unrelated).
         /// </summary>
         private const double DupLeftoverWordsMaxSimilarity = 0.55;
 
@@ -423,21 +419,25 @@ namespace RMuseum.Services.Implementation
 
                         // after removing the words the two titles have in common (in order), what's
                         // left on each side is the part that actually distinguishes them. If both
-                        // sides have substantial leftover content and that leftover content is
-                        // itself dissimilar, this is most likely a different subtitle/topic/person
-                        // within the same series (e.g. "...؛ ادبیات ایران" vs "...؛ نسخه شناسی و
-                        // کتاب شناسی") rather than a duplicate - even though the shared prefix makes
-                        // the *overall* title similarity look high.
-                        int minTokenCount = Math.Min(a.TitleTokens.Length, b.TitleTokens.Length);
-                        if (minTokenCount > 0)
+                        // sides have leftover content and that leftover content is itself
+                        // dissimilar, this is most likely a different subtitle/topic/person within
+                        // the same series (e.g. "...؛ ادبیات ایران" vs "...؛ نسخه شناسی و کتاب
+                        // شناسی", or "ماتیکان علمی (سی گفتار...)" vs "ماتیکان تاریخی (پنجاه
+                        // گفتار...)" - "thirty" vs "fifty" spelled out, which neither the digit-run
+                        // nor the ordinal-word check catches) rather than a duplicate - even though
+                        // the shared words elsewhere make the *overall* title similarity look high.
+                        // No minimum-shared-word-ratio gate here (there used to be one, requiring
+                        // >=50% shared) - real data showed that gate let through pairs with as
+                        // little as 43% word overlap whose differing parts were obviously
+                        // unrelated (spelled-out cardinal numbers, different institution/document
+                        // names), because the overall *character*-level similarity can look
+                        // deceptively high even when word-level overlap is modest.
+                        var (_, leftoverA, leftoverB) = _OrderPreservingTokenDiff(a.TitleTokens, b.TitleTokens);
+                        if (leftoverA.Count > 0 && leftoverB.Count > 0)
                         {
-                            var (sharedCount, leftoverA, leftoverB) = _OrderPreservingTokenDiff(a.TitleTokens, b.TitleTokens);
-                            if ((double)sharedCount / minTokenCount >= DupLeftoverWordsShareRatioMin && leftoverA.Count > 0 && leftoverB.Count > 0)
-                            {
-                                double leftoverSimilarity = _ComputeTitleSimilarity(string.Join(" ", leftoverA), string.Join(" ", leftoverB));
-                                if (leftoverSimilarity < DupLeftoverWordsMaxSimilarity)
-                                    continue;
-                            }
+                            double leftoverSimilarity = _ComputeTitleSimilarity(string.Join(" ", leftoverA), string.Join(" ", leftoverB));
+                            if (leftoverSimilarity < DupLeftoverWordsMaxSimilarity)
+                                continue;
                         }
 
                         var reasons = new List<string>
