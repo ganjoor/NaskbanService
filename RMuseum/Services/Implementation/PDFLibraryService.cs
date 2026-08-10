@@ -1180,11 +1180,11 @@ namespace RMuseum.Services.Implementation
                         {
                             if (roleCount.ContainsKey(contributer.Role))
                             {
-                                roleCount[contributer.Role] = 1;
+                                roleCount[contributer.Role]++;                                
                             }
                             else
                             {
-                                roleCount[contributer.Role]++;
+                                roleCount[contributer.Role] = 1;
                             }
                         }
                     }
