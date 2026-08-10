@@ -844,7 +844,7 @@ namespace RMuseum.Controllers
         /// <param name="role"></param>
         /// <returns></returns>
         [HttpGet("pdfbook/by/contributer/{authorId}")]
-        [Authorize]
+        [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFBook>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
