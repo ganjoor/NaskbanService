@@ -973,15 +973,16 @@ namespace RMuseum.Services.Implementation
         }
 
         /// <summary>
-        /// list authors (optionally filtered to a single AuthorRole.Role, e.g. "مترجم"), each with
-        /// a computed count of distinct books they're credited on, sortable by name (ascending) or
-        /// by that book count (descending), paginated.
+        /// list authors (optionally filtered to a single AuthorRole.Role, e.g. "مترجم", and/or by
+        /// part of their name), each with a computed count of distinct books they're credited on,
+        /// sortable by name (ascending) or by that book count (descending), paginated.
         /// </summary>
         /// <param name="paging"></param>
         /// <param name="role">exact AuthorRole.Role to filter to (e.g. "نویسنده"); null/empty for all roles combined</param>
         /// <param name="sortByBookCountDesc">true: sort by book count descending; false: sort by name ascending</param>
+        /// <param name="authorName">part of the author's name (Name or NameInOriginalLanguage); null/empty for no name filter</param>
         /// <returns></returns>
-        public async Task<RServiceResult<(PaginationMetadata PagingMeta, AuthorWithBookCount[] Authors)>> GetAuthorsWithBookCountAsync(PagingParameterModel paging, string role, bool sortByBookCountDesc)
+        public async Task<RServiceResult<(PaginationMetadata PagingMeta, AuthorWithBookCount[] Authors)>> GetAuthorsWithBookCountAsync(PagingParameterModel paging, string role, bool sortByBookCountDesc, string authorName = null)
         {
             try
             {
@@ -991,15 +992,6 @@ namespace RMuseum.Services.Implementation
                 // AuthorRole itself), hence EF.Property<>() below. "number of books" is counted at
                 // the Book level - resolving PDFBookId-attached rows to their owning Book - so
                 // multiple scans/editions of the same work don't inflate an author's count.
-                //
-                // Deliberately kept as its own simple, self-contained query (LEFT JOIN + GROUP BY
-                // + COUNT DISTINCT, nothing else mixed in) and materialized immediately, rather
-                // than composed further with the Authors query below in one large LINQ expression.
-                // A single deeply-nested query combining this grouping with another join back to
-                // Authors and an order-by on the computed count is a common source of "could not
-                // be translated" failures in EF Core, and I have no way to test that translation
-                // here - safer to do the aggregation in SQL (where it belongs) and the final
-                // combine/sort/paginate over an already-materialized, small, in-memory list.
                 var authorBookLinks =
                     from ar in _context.Set<AuthorRole>()
                     where string.IsNullOrEmpty(role) || ar.Role == role
@@ -1011,47 +1003,66 @@ namespace RMuseum.Services.Implementation
                         ResolvedBookId = EF.Property<int?>(ar, "BookId") ?? (pb == null ? (int?)null : (int?)pb.BookId)
                     };
 
-                var bookCountRows =
-                    await (
-                        from x in authorBookLinks
-                        where x.ResolvedBookId != null
-                        group x by x.AuthorId into g
-                        select new { AuthorId = g.Key, BookCount = g.Select(y => y.ResolvedBookId).Distinct().Count() }
-                    ).ToListAsync();
+                var bookCounts =
+                    from x in authorBookLinks
+                    where x.ResolvedBookId != null
+                    group x by x.AuthorId into g
+                    select new { AuthorId = g.Key, BookCount = g.Select(y => y.ResolvedBookId).Distinct().Count() };
 
-                var bookCountByAuthorId = bookCountRows.ToDictionary(r => r.AuthorId, r => r.BookCount);
+                var authorsBase =
+                    _context.Authors
+                    .Where(a => string.IsNullOrEmpty(authorName)
+                                || a.Name.Contains(authorName)
+                                || (!string.IsNullOrEmpty(a.NameInOriginalLanguage) && a.NameInOriginalLanguage.Contains(authorName)));
 
-                // role filter: only authors who actually have at least one book in that role.
-                // no filter: every author (0 if they happen to have none at all).
-                var authorsQuery = _context.Authors.AsNoTracking().AsQueryable();
-                if (!string.IsNullOrEmpty(role))
+                // QueryablePaginator needs a real, EF-backed IQueryable (it calls ToListAsync
+                // internally) - so this whole thing, including the aggregation above, has to stay
+                // one composed query rather than being materialized into memory partway through.
+                IQueryable<AuthorWithBookCount> source;
+                if (string.IsNullOrEmpty(role))
                 {
-                    var idsInRole = bookCountByAuthorId.Keys.ToArray();
-                    authorsQuery = authorsQuery.Where(a => idsInRole.Contains(a.Id));
+                    // no role filter: include every matching author, 0 if they happen to have no books at all
+                    source =
+                        from a in authorsBase
+                        join bc in bookCounts on a.Id equals bc.AuthorId into bcGroup
+                        from bc in bcGroup.DefaultIfEmpty()
+                        select new AuthorWithBookCount
+                        {
+                            Id = a.Id,
+                            Name = a.Name,
+                            NameInOriginalLanguage = a.NameInOriginalLanguage,
+                            Bio = a.Bio,
+                            ImageId = a.ImageId,
+                            ExtenalImageUrl = a.ExtenalImageUrl,
+                            LastModified = a.LastModified,
+                            BookCount = bc != null ? bc.BookCount : 0
+                        };
+                }
+                else
+                {
+                    // role filter: only authors who actually have at least one book in that role
+                    source =
+                        from a in authorsBase
+                        join bc in bookCounts on a.Id equals bc.AuthorId
+                        select new AuthorWithBookCount
+                        {
+                            Id = a.Id,
+                            Name = a.Name,
+                            NameInOriginalLanguage = a.NameInOriginalLanguage,
+                            Bio = a.Bio,
+                            ImageId = a.ImageId,
+                            ExtenalImageUrl = a.ExtenalImageUrl,
+                            LastModified = a.LastModified,
+                            BookCount = bc.BookCount
+                        };
                 }
 
-                var authors = await authorsQuery.ToListAsync();
-
-                var withCounts =
-                    authors
-                    .Select(a => new AuthorWithBookCount
-                    {
-                        Id = a.Id,
-                        Name = a.Name,
-                        NameInOriginalLanguage = a.NameInOriginalLanguage,
-                        Bio = a.Bio,
-                        ImageId = a.ImageId,
-                        ExtenalImageUrl = a.ExtenalImageUrl,
-                        LastModified = a.LastModified,
-                        BookCount = bookCountByAuthorId.TryGetValue(a.Id, out int c) ? c : 0
-                    });
-
-                withCounts = sortByBookCountDesc
-                    ? withCounts.OrderByDescending(a => a.BookCount).ThenBy(a => a.Name)
-                    : withCounts.OrderBy(a => a.Name);
+                source = sortByBookCountDesc
+                    ? source.OrderByDescending(a => a.BookCount).ThenBy(a => a.Name)
+                    : source.OrderBy(a => a.Name);
 
                 (PaginationMetadata PagingMeta, AuthorWithBookCount[] Items) paginatedResult =
-                    await QueryablePaginator<AuthorWithBookCount>.Paginate(withCounts.AsQueryable(), paging);
+                    await QueryablePaginator<AuthorWithBookCount>.Paginate(source, paging);
                 return new RServiceResult<(PaginationMetadata PagingMeta, AuthorWithBookCount[] Authors)>(paginatedResult);
             }
             catch (Exception exp)

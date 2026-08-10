@@ -116,15 +116,16 @@ namespace RMuseum.Services
         Task<RServiceResult<(PaginationMetadata PagingMeta, Author[] Authors)>> GetAuthorsAsync(PagingParameterModel paging, string authorName);
 
         /// <summary>
-        /// list authors (optionally filtered to a single AuthorRole.Role), each with a computed
-        /// count of distinct books they're credited on, sortable by name (ascending) or by that
-        /// book count (descending), paginated.
+        /// list authors (optionally filtered to a single AuthorRole.Role and/or by part of their
+        /// name), each with a computed count of distinct books they're credited on, sortable by
+        /// name (ascending) or by that book count (descending), paginated.
         /// </summary>
         /// <param name="paging"></param>
         /// <param name="role">exact AuthorRole.Role to filter to; null/empty for all roles combined</param>
         /// <param name="sortByBookCountDesc">true: sort by book count descending; false: sort by name ascending</param>
+        /// <param name="authorName">part of the author's name (Name or NameInOriginalLanguage); null/empty for no name filter</param>
         /// <returns></returns>
-        Task<RServiceResult<(PaginationMetadata PagingMeta, AuthorWithBookCount[] Authors)>> GetAuthorsWithBookCountAsync(PagingParameterModel paging, string role, bool sortByBookCountDesc);
+        Task<RServiceResult<(PaginationMetadata PagingMeta, AuthorWithBookCount[] Authors)>> GetAuthorsWithBookCountAsync(PagingParameterModel paging, string role, bool sortByBookCountDesc, string authorName = null);
 
         /// <summary>
         /// update author

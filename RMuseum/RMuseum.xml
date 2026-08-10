@@ -289,15 +289,17 @@
             <param name="authorName"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Controllers.PDFLibraryController.GetAuthorsWithBookCountAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.String,System.Boolean)">
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetAuthorsWithBookCountAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.String,System.Boolean,System.String)">
             <summary>
             list authors with a computed count of distinct books they're credited on, optionally
             filtered to a single role (e.g. "مترجم"/"نویسنده"/"مصحح" - see the distinct values in
-            AuthorRole.Role), sortable by name (ascending) or by book count (descending), paginated.
+            AuthorRole.Role) and/or by part of the author's name, sortable by name (ascending) or
+            by book count (descending), paginated.
             </summary>
             <param name="paging"></param>
             <param name="role">exact AuthorRole.Role to filter to; omit for all roles combined</param>
             <param name="sortByBookCount">true: sort by book count descending; false (default): sort by name ascending</param>
+            <param name="authorName">part of the author's name; omit for no name filter</param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.GetAuthorByIdAsync(System.Int32)">
@@ -12628,15 +12630,16 @@
             <param name="authorName"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetAuthorsWithBookCountAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.String,System.Boolean)">
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetAuthorsWithBookCountAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.String,System.Boolean,System.String)">
             <summary>
-            list authors (optionally filtered to a single AuthorRole.Role, e.g. "مترجم"), each with
-            a computed count of distinct books they're credited on, sortable by name (ascending) or
-            by that book count (descending), paginated.
+            list authors (optionally filtered to a single AuthorRole.Role, e.g. "مترجم", and/or by
+            part of their name), each with a computed count of distinct books they're credited on,
+            sortable by name (ascending) or by that book count (descending), paginated.
             </summary>
             <param name="paging"></param>
             <param name="role">exact AuthorRole.Role to filter to (e.g. "نویسنده"); null/empty for all roles combined</param>
             <param name="sortByBookCountDesc">true: sort by book count descending; false: sort by name ascending</param>
+            <param name="authorName">part of the author's name (Name or NameInOriginalLanguage); null/empty for no name filter</param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.AddPDFBookContributerAsync(System.Int32,System.Int32,System.String)">
@@ -13349,15 +13352,16 @@
             <param name="authorName"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Services.IPDFLibraryService.GetAuthorsWithBookCountAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.String,System.Boolean)">
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetAuthorsWithBookCountAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.String,System.Boolean,System.String)">
             <summary>
-            list authors (optionally filtered to a single AuthorRole.Role), each with a computed
-            count of distinct books they're credited on, sortable by name (ascending) or by that
-            book count (descending), paginated.
+            list authors (optionally filtered to a single AuthorRole.Role and/or by part of their
+            name), each with a computed count of distinct books they're credited on, sortable by
+            name (ascending) or by that book count (descending), paginated.
             </summary>
             <param name="paging"></param>
             <param name="role">exact AuthorRole.Role to filter to; null/empty for all roles combined</param>
             <param name="sortByBookCountDesc">true: sort by book count descending; false: sort by name ascending</param>
+            <param name="authorName">part of the author's name (Name or NameInOriginalLanguage); null/empty for no name filter</param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.UpdateAuthorAsync(RMuseum.Models.PDFLibrary.Author)">

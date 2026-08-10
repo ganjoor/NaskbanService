@@ -697,19 +697,21 @@ namespace RMuseum.Controllers
         /// <summary>
         /// list authors with a computed count of distinct books they're credited on, optionally
         /// filtered to a single role (e.g. "مترجم"/"نویسنده"/"مصحح" - see the distinct values in
-        /// AuthorRole.Role), sortable by name (ascending) or by book count (descending), paginated.
+        /// AuthorRole.Role) and/or by part of the author's name, sortable by name (ascending) or
+        /// by book count (descending), paginated.
         /// </summary>
         /// <param name="paging"></param>
         /// <param name="role">exact AuthorRole.Role to filter to; omit for all roles combined</param>
         /// <param name="sortByBookCount">true: sort by book count descending; false (default): sort by name ascending</param>
+        /// <param name="authorName">part of the author's name; omit for no name filter</param>
         /// <returns></returns>
         [HttpGet("authors")]
         [AllowAnonymous]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<AuthorWithBookCount>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
-        public async Task<IActionResult> GetAuthorsWithBookCountAsync([FromQuery] PagingParameterModel paging, string role = null, bool sortByBookCount = false)
+        public async Task<IActionResult> GetAuthorsWithBookCountAsync([FromQuery] PagingParameterModel paging, string role = null, bool sortByBookCount = false, string authorName = null)
         {
-            var authorsRes = await _pdfService.GetAuthorsWithBookCountAsync(paging, role, sortByBookCount);
+            var authorsRes = await _pdfService.GetAuthorsWithBookCountAsync(paging, role, sortByBookCount, authorName);
             if (!string.IsNullOrEmpty(authorsRes.ExceptionString))
             {
                 return BadRequest(authorsRes.ExceptionString);
@@ -842,7 +844,7 @@ namespace RMuseum.Controllers
         /// <param name="role"></param>
         /// <returns></returns>
         [HttpGet("pdfbook/by/contributer/{authorId}")]
-        [AllowAnonymous]
+        [Authorize]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFBook>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
