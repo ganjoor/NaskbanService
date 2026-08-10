@@ -123,7 +123,7 @@ namespace RMuseum.Services
         /// <param name="paging"></param>
         /// <param name="role">exact AuthorRole.Role to filter to; null/empty for all roles combined</param>
         /// <param name="sortByBookCountDesc">true: sort by book count descending; false: sort by name ascending</param>
-        /// <param name="authorName">part of the author's name (Name or NameInOriginalLanguage); null/empty for no name filter</param>
+        /// <param name="authorName">part of the author's name; null/empty for no name filter</param>
         /// <returns></returns>
         Task<RServiceResult<(PaginationMetadata PagingMeta, AuthorWithBookCount[] Authors)>> GetAuthorsWithBookCountAsync(PagingParameterModel paging, string role, bool sortByBookCountDesc, string authorName = null);
 

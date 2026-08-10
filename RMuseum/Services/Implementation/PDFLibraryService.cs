@@ -980,82 +980,76 @@ namespace RMuseum.Services.Implementation
         /// <param name="paging"></param>
         /// <param name="role">exact AuthorRole.Role to filter to (e.g. "نویسنده"); null/empty for all roles combined</param>
         /// <param name="sortByBookCountDesc">true: sort by book count descending; false: sort by name ascending</param>
-        /// <param name="authorName">part of the author's name (Name or NameInOriginalLanguage); null/empty for no name filter</param>
+        /// <param name="authorName">part of the author's name; null/empty for no name filter</param>
         /// <returns></returns>
         public async Task<RServiceResult<(PaginationMetadata PagingMeta, AuthorWithBookCount[] Authors)>> GetAuthorsWithBookCountAsync(PagingParameterModel paging, string role, bool sortByBookCountDesc, string authorName = null)
         {
             try
             {
+                // NameInOriginalLanguage is unused and, in this dataset, always null - so a
+                // Contains() check against it can never match anything. Filtering on Name alone
+                // both matches actual data and keeps the generated WHERE clause simpler.
+                var authorsFiltered =
+                    _context.Authors
+                    .Where(a => string.IsNullOrEmpty(authorName) || a.Name.Contains(authorName));
+
+                if (!string.IsNullOrEmpty(role))
+                {
+                    // only authors who actually have at least one book in that role - a plain
+                    // EXISTS-style filter, translated straightforwardly regardless of how BookCount
+                    // itself ends up being computed below
+                    authorsFiltered = authorsFiltered.Where(a =>
+                        _context.Set<AuthorRole>().Any(ar => EF.Property<int>(ar, "AuthorId") == a.Id && ar.Role == role)
+                    );
+                }
+
                 // AuthorRole can attach an author either directly to a Book (BookId) or to a
                 // specific PDFBook (PDFBookId, which itself belongs to a Book via PDFBook.BookId).
                 // AuthorId/BookId/PDFBookId are all EF Core shadow properties (no C# property on
-                // AuthorRole itself), hence EF.Property<>() below. "number of books" is counted at
-                // the Book level - resolving PDFBookId-attached rows to their owning Book - so
-                // multiple scans/editions of the same work don't inflate an author's count.
-                var authorBookLinks =
-                    from ar in _context.Set<AuthorRole>()
-                    where string.IsNullOrEmpty(role) || ar.Role == role
-                    join pb in _context.PDFBooks on EF.Property<int?>(ar, "PDFBookId") equals (int?)pb.Id into pbGroup
-                    from pb in pbGroup.DefaultIfEmpty()
-                    select new
+                // AuthorRole itself), hence EF.Property<>() below.
+                //
+                // BookCount is computed as a per-row CORRELATED SCALAR SUBQUERY rather than a
+                // separate GroupBy+LeftJoin composed with the Authors query. Two rounds of fixes
+                // taught this the hard way: a GroupBy+LeftJoin's nullable-coalesce, while fine in a
+                // plain SELECT, hits a genuine EF Core translation gap once it's also used as an
+                // ORDER BY key (exactly the sortByBookCountDesc=true case) - "could not be
+                // translated". A correlated COUNT subquery avoids that shape entirely: it's a
+                // standard, well-supported "count of related rows per parent" pattern, and since
+                // SQL COUNT() never returns NULL, there's no nullable-coalesce-in-ORDER-BY problem
+                // to hit in the first place. "Number of books" is still counted at the Book level
+                // (not PDFBook) - PDFBookId-attached rows are resolved to their owning Book - so
+                // multiple scans/editions of the same work don't inflate the count.
+                //
+                // Only Id/Name/BookCount are ever projected - every other Author column
+                // (NameInOriginalLanguage, Bio, ImageId, ExtenalImageUrl, LastModified) is unused
+                // by this endpoint and always null in this data anyway. Since none of them are
+                // referenced below, EF Core's generated SQL only selects Id and Name from Authors
+                // rather than the full row - less data read and transferred per author.
+                IQueryable<AuthorWithBookCount> source =
+                    from a in authorsFiltered
+                    select new AuthorWithBookCount
                     {
-                        AuthorId = EF.Property<int>(ar, "AuthorId"),
-                        ResolvedBookId = EF.Property<int?>(ar, "BookId") ?? (pb == null ? (int?)null : (int?)pb.BookId)
+                        Id = a.Id,
+                        Name = a.Name,
+                        BookCount =
+                            (
+                                from ar in _context.Set<AuthorRole>()
+                                where EF.Property<int>(ar, "AuthorId") == a.Id
+                                where string.IsNullOrEmpty(role) || ar.Role == role
+                                join pb in _context.PDFBooks on EF.Property<int?>(ar, "PDFBookId") equals (int?)pb.Id into pbGroup
+                                from pb in pbGroup.DefaultIfEmpty()
+                                // see GetAuthorsWithBookCountAsync history: casting directly to int?
+                                // here (no `pb == null ? ... : ...` wrapper) is required - reading a
+                                // non-nullable column from the unmatched side of a LEFT JOIN throws
+                                // at materialization time otherwise. Not a concern here regardless,
+                                // since this whole subquery collapses to a single COUNT and nothing
+                                // intermediate ever gets materialized into .NET.
+                                select EF.Property<int?>(ar, "BookId") ?? (int?)pb.BookId
+                            )
+                            .Where(bookId => bookId != null)
+                            .Distinct()
+                            .Count()
                     };
-
-                var bookCounts =
-                    from x in authorBookLinks
-                    where x.ResolvedBookId != null
-                    group x by x.AuthorId into g
-                    select new { AuthorId = g.Key, BookCount = g.Select(y => y.ResolvedBookId).Distinct().Count() };
-
-                var authorsBase =
-                    _context.Authors
-                    .Where(a => string.IsNullOrEmpty(authorName)
-                                || a.Name.Contains(authorName)
-                                || (!string.IsNullOrEmpty(a.NameInOriginalLanguage) && a.NameInOriginalLanguage.Contains(authorName)));
-
-                // QueryablePaginator needs a real, EF-backed IQueryable (it calls ToListAsync
-                // internally) - so this whole thing, including the aggregation above, has to stay
-                // one composed query rather than being materialized into memory partway through.
-                IQueryable<AuthorWithBookCount> source;
-                if (string.IsNullOrEmpty(role))
-                {
-                    // no role filter: include every matching author, 0 if they happen to have no books at all
-                    source =
-                        from a in authorsBase
-                        join bc in bookCounts on a.Id equals bc.AuthorId into bcGroup
-                        from bc in bcGroup.DefaultIfEmpty()
-                        select new AuthorWithBookCount
-                        {
-                            Id = a.Id,
-                            Name = a.Name,
-                            NameInOriginalLanguage = a.NameInOriginalLanguage,
-                            Bio = a.Bio,
-                            ImageId = a.ImageId,
-                            ExtenalImageUrl = a.ExtenalImageUrl,
-                            LastModified = a.LastModified,
-                            BookCount = bc != null ? bc.BookCount : 0
-                        };
-                }
-                else
-                {
-                    // role filter: only authors who actually have at least one book in that role
-                    source =
-                        from a in authorsBase
-                        join bc in bookCounts on a.Id equals bc.AuthorId
-                        select new AuthorWithBookCount
-                        {
-                            Id = a.Id,
-                            Name = a.Name,
-                            NameInOriginalLanguage = a.NameInOriginalLanguage,
-                            Bio = a.Bio,
-                            ImageId = a.ImageId,
-                            ExtenalImageUrl = a.ExtenalImageUrl,
-                            LastModified = a.LastModified,
-                            BookCount = bc.BookCount
-                        };
-                }
 
                 source = sortByBookCountDesc
                     ? source.OrderByDescending(a => a.BookCount).ThenBy(a => a.Name)
