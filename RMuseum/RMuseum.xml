@@ -803,6 +803,79 @@
             <param name="userPermissionChecker"></param>
             <param name="bookmarkingService"></param>
         </member>
+        <member name="T:RMuseum.Controllers.PDFSyncController">
+            <summary>
+            two-way sync endpoints for the client's offline structures: bookmarks (existing table,
+            extended with sync fields), shelves/shelf-books, and the study log. Every pull takes a
+            `since` cursor (pass DateTime.MinValue for a first/full sync) and returns a `serverTime`
+            to use as the next call's `since`; every push is a plain array of the client's own
+            locally-changed items, applied with last-write-wins (see each service's doc comments for
+            the exact per-entity rule). All routes require login - none of this exists for
+            anonymous/local-only use, matching the client's "sync only kicks in after login" design.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFSyncController.GetBookmarkChangesAsync(System.DateTime)">
+            <summary>
+            bookmarks changed since `since` (pass DateTime.MinValue for a full sync)
+            </summary>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFSyncController.PushBookmarkChangesAsync(RMuseum.Models.PDFLibrary.ViewModels.PDFBookmarkSyncItemViewModel[])">
+            <summary>
+            pushes locally-changed bookmarks
+            </summary>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFSyncController.GetShelfChangesAsync(System.DateTime)">
+            <summary>
+            shelves changed since `since` (pass DateTime.MinValue for a full sync)
+            </summary>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFSyncController.PushShelfChangesAsync(RMuseum.Models.PDFLibrary.ViewModels.PDFShelfSyncItemViewModel[])">
+            <summary>
+            pushes locally-changed shelves - push this BEFORE shelf-books in the same sync cycle
+            </summary>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFSyncController.GetShelfBookChangesAsync(System.DateTime)">
+            <summary>
+            shelf-book memberships changed since `since` (pass DateTime.MinValue for a full sync)
+            </summary>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFSyncController.PushShelfBookChangesAsync(RMuseum.Models.PDFLibrary.ViewModels.PDFShelfBookSyncItemViewModel[])">
+            <summary>
+            pushes locally-changed shelf-book memberships - push shelves first (see PushShelfChangesAsync)
+            </summary>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFSyncController.GetStudyLogChangesAsync(System.DateTime)">
+            <summary>
+            study log entries changed since `since` (pass DateTime.MinValue for a full sync)
+            </summary>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFSyncController.PushStudyLogChangesAsync(RMuseum.Models.PDFLibrary.ViewModels.PDFStudyLogSyncItemViewModel[])">
+            <summary>
+            pushes new (or cleared) locally-recorded study log entries
+            </summary>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFSyncController.GetReadingPositionsAsync">
+            <summary>
+            each book's current reading position for the user - derived from the study log, not
+            synced/stored directly (see PDFStudyLogEntry's doc comment). Replaces the old
+            PDFVisitRecord-derived GET api/pdf/visits "last activity" list for this purpose.
+            </summary>
+        </member>
+        <member name="F:RMuseum.Controllers.PDFSyncController._bookmarkingService">
+            <summary>
+            bookmarking service (bookmark sync lives here alongside the rest of that table)
+            </summary>
+        </member>
+        <member name="F:RMuseum.Controllers.PDFSyncController._userSyncService">
+            <summary>
+            shelves/study-log sync service
+            </summary>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFSyncController.#ctor(RMuseum.Services.IPDFBookmarkService,RMuseum.Services.IPDFUserSyncService)">
+            <summary>
+            constructor
+            </summary>
+        </member>
         <member name="T:RMuseum.Controllers.RGenericOptionsController">
             <summary>
             options
@@ -1223,6 +1296,22 @@
         <member name="P:RMuseum.DbContext.RMuseumDbContext.PDFVisitRecords">
             <summary>
             Visit Records
+            </summary>
+        </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.PDFShelves">
+            <summary>
+            user-created book shelves (synced with the client's local shelves)
+            </summary>
+        </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.PDFShelfBooks">
+            <summary>
+            book membership in shelves (synced with the client's local shelf-book links)
+            </summary>
+        </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.PDFStudyLogEntries">
+            <summary>
+            user study log entries (synced with the client's local study log; also the source of
+            each user's current per-book reading position - see PDFStudyLogEntry's doc comment)
             </summary>
         </member>
         <member name="P:RMuseum.DbContext.RMuseumDbContext.GanjoorPoemMatchFindings">
@@ -10991,6 +11080,112 @@
             page text
             </summary>
         </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFShelf">
+            <summary>
+            a user-created, named collection of whole books ("قفسه") - server-side counterpart of
+            the Flutter client's local-only BookShelf, kept in sync with it. Id is client-generated
+            (not server ValueGeneratedOnAdd) so a newly created shelf can be referenced by
+            PDFShelfBook rows pushed in the same sync batch, before any round trip confirms a
+            server-assigned id.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFShelf.Id">
+            <summary>
+            Id - client-generated
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFShelf.RAppUserId">
+            <summary>
+            owning user
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFShelf.RAppUser">
+            <summary>
+            owning user
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFShelf.Name">
+            <summary>
+            shelf name
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFShelf.CreatedAt">
+            <summary>
+            when this shelf was first created (client-supplied, preserved across syncs)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFShelf.ClientModifiedAt">
+            <summary>
+            client-supplied time of the most recent edit (rename/delete) - compared against the
+            stored value on push to resolve last-write-wins conflicts between devices. Distinct
+            from LastModified: this one carries the client's own clock/intent, LastModified
+            carries the server's, so a push can tell "is this change newer than what I have"
+            independent of pull-cursor bookkeeping.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFShelf.LastModified">
+            <summary>
+            server-stamped at write time - the sync pull cursor field. Deliberately NOT used for
+            conflict resolution (see ClientModifiedAt) so that pull-since pagination stays
+            correct/monotonic regardless of client clock skew.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFShelf.IsDeleted">
+            <summary>
+            soft-delete/tombstone flag - deletions are never hard-deleted immediately so that a
+            pull from another device can learn about them; see PDFStorageCleanup-style periodic
+            purge for old tombstones
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFShelfBook">
+            <summary>
+            one book's membership in one PDFShelf - a book can be on any number of shelves. Natural
+            key for sync purposes is (PDFShelfId, PDFBookId); Id exists only because EF Core wants a
+            primary key and the client's local ShelfBook has no id of its own to reuse.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFShelfBook.Id">
+            <summary>
+            Id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFShelfBook.PDFShelfId">
+            <summary>
+            owning shelf
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFShelfBook.PDFShelf">
+            <summary>
+            owning shelf
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFShelfBook.PDFBookId">
+            <summary>
+            the book placed on the shelf
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFShelfBook.PDFBook">
+            <summary>
+            the book placed on the shelf
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFShelfBook.AddedAt">
+            <summary>
+            client-supplied time this book was added to this shelf. Doubles as the
+            last-write-wins conflict field on sync push, same role as PDFUserBookmark.DateTime.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFShelfBook.LastModified">
+            <summary>
+            server-stamped at write time - the sync pull cursor field, same role as
+            PDFShelf.LastModified.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFShelfBook.IsDeleted">
+            <summary>
+            soft-delete/tombstone flag - see PDFShelf.IsDeleted
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.PDFLibrary.PDFSource">
             <summary>
             PDF Source (Web Sites)
@@ -11063,7 +11258,23 @@
         </member>
         <member name="P:RMuseum.Models.PDFLibrary.PDFUserBookmark.DateTime">
             <summary>
-            DateTime
+            client-supplied time of the bookmark action (create/toggle). Doubles as the
+            last-write-wins conflict field on sync push - compared against the stored value to
+            decide whether an incoming change is newer than what the server already has.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFUserBookmark.LastModified">
+            <summary>
+            server-stamped at write time - the sync pull cursor field. Deliberately NOT used for
+            conflict resolution (see DateTime) so that pull-since pagination stays
+            correct/monotonic regardless of client clock skew.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFUserBookmark.IsDeleted">
+            <summary>
+            soft-delete/tombstone flag. Toggling a bookmark off used to hard-delete this row;
+            it's now a tombstone instead, so another device syncing later can learn the bookmark
+            was removed rather than seeing nothing and assuming it was never synced down yet.
             </summary>
         </member>
         <member name="T:RMuseum.Models.PDFLibrary.PendingPDFStorageCleanup">
@@ -11204,10 +11415,14 @@
         </member>
         <member name="T:RMuseum.Models.PDFLibrary.ViewModels.AuthorWithBookCount">
             <summary>
-            an Author plus the number of distinct books they're credited on (optionally filtered to a
-            single role, e.g. "مترجم"/"نویسنده"/"مصحح") - counted at the Book level (the entity that
-            groups different PDFBook scans/editions of the same work together), not the PDFBook level,
-            so multiple scans of the same work don't inflate the count
+            a minimal Author projection plus the number of distinct books they're credited on
+            (optionally filtered to a single role, e.g. "مترجم"/"نویسنده"/"مصحح") - counted at the Book
+            level (the entity that groups different PDFBook scans/editions of the same work together),
+            not the PDFBook level, so multiple scans of the same work don't inflate the count.
+            Deliberately only Id/Name/BookCount - every other Author field (NameInOriginalLanguage,
+            Bio, ImageId, ExtenalImageUrl, LastModified) is unused by this listing and, in this
+            dataset, always null anyway - leaving them out of the projection means the underlying
+            query only ever selects Id and Name from the Authors table.
             </summary>
         </member>
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.AuthorWithBookCount.Id">
@@ -11218,31 +11433,6 @@
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.AuthorWithBookCount.Name">
             <summary>
             Name
-            </summary>
-        </member>
-        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.AuthorWithBookCount.NameInOriginalLanguage">
-            <summary>
-            Name in original language
-            </summary>
-        </member>
-        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.AuthorWithBookCount.Bio">
-            <summary>
-            bio
-            </summary>
-        </member>
-        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.AuthorWithBookCount.ImageId">
-            <summary>
-            Cover Image Id
-            </summary>
-        </member>
-        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.AuthorWithBookCount.ExtenalImageUrl">
-            <summary>
-            external image url
-            </summary>
-        </member>
-        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.AuthorWithBookCount.LastModified">
-            <summary>
-            Last Modified
             </summary>
         </member>
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.AuthorWithBookCount.BookCount">
@@ -11546,6 +11736,154 @@
             OCR AI revised
             </summary>
         </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFBookmarkSyncItemViewModel">
+            <summary>
+            one bookmark's state, used both as a pull result item (server -> client) and a push
+            input item (client -> server). Identity is the natural key (BookId, PageNumber) - no
+            separate sync id is needed, matching PDFUserBookmark's own uniqueness rule.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookmarkSyncItemViewModel.BookId">
+            <summary>
+            book id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookmarkSyncItemViewModel.PageNumber">
+            <summary>
+            0 means the whole book, matching the existing bookmark API convention
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookmarkSyncItemViewModel.Note">
+            <summary>
+            note - meaningless when IsDeleted is true
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookmarkSyncItemViewModel.ClientModifiedAt">
+            <summary>
+            client-supplied action time - used for last-write-wins conflict resolution on push,
+            and reported back as-is on pull (see PDFUserBookmark.DateTime)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookmarkSyncItemViewModel.IsDeleted">
+            <summary>
+            true if this bookmark was removed
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFShelfSyncItemViewModel">
+            <summary>
+            one shelf's state, used both as a pull result item and a push input item. Id is the
+            client-generated shelf id (see PDFShelf.Id).
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFShelfSyncItemViewModel.Id">
+            <summary>
+            client-generated shelf id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFShelfSyncItemViewModel.Name">
+            <summary>
+            shelf name - meaningless when IsDeleted is true
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFShelfSyncItemViewModel.CreatedAt">
+            <summary>
+            when the shelf was first created
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFShelfSyncItemViewModel.ClientModifiedAt">
+            <summary>
+            client-supplied edit time - used for last-write-wins conflict resolution on push,
+            and reported back as-is on pull
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFShelfSyncItemViewModel.IsDeleted">
+            <summary>
+            true if this shelf was deleted
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFShelfBookSyncItemViewModel">
+            <summary>
+            one shelf-book membership's state, used both as a pull result item and a push input
+            item. Identity is the natural key (ShelfId, BookId).
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFShelfBookSyncItemViewModel.ShelfId">
+            <summary>
+            the shelf - must already exist (or be included earlier in the same push batch, see
+            PDFUserSyncService.ApplyShelfBookChangesAsync)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFShelfBookSyncItemViewModel.BookId">
+            <summary>
+            the book placed on/removed from the shelf
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFShelfBookSyncItemViewModel.ClientModifiedAt">
+            <summary>
+            client-supplied action time - used for last-write-wins conflict resolution on push,
+            and reported back as-is on pull
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFShelfBookSyncItemViewModel.IsDeleted">
+            <summary>
+            true if the book was removed from this shelf
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFStudyLogSyncItemViewModel">
+            <summary>
+            one study log entry's state, used both as a pull result item and a push input item.
+            Id is the client-generated entry id (see PDFStudyLogEntry.Id). Entries are append-only
+            in practice - a push either creates a new entry or (re-push of the same Id, or a
+            "clear history" action) sets IsDeleted; the fields otherwise never change.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFStudyLogSyncItemViewModel.Id">
+            <summary>
+            client-generated entry id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFStudyLogSyncItemViewModel.BookId">
+            <summary>
+            the book this session was reading
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFStudyLogSyncItemViewModel.PageNumber">
+            <summary>
+            the page the session left off on - meaningless when IsDeleted is true
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFStudyLogSyncItemViewModel.Timestamp">
+            <summary>
+            when the session left off
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFStudyLogSyncItemViewModel.IsDeleted">
+            <summary>
+            true if this entry was cleared from history
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFReadingPositionViewModel">
+            <summary>
+            a book's current reading position for the user - derived (not stored/synced directly)
+            as the latest non-deleted PDFStudyLogEntry per PDFBookId. See PDFUserSyncService.
+            GetReadingPositionsAsync.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFReadingPositionViewModel.BookId">
+            <summary>
+            book id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFReadingPositionViewModel.LastPageNumber">
+            <summary>
+            last page read
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFReadingPositionViewModel.LastReadAt">
+            <summary>
+            when that page was last read
+            </summary>
+        </member>
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFUserBookmarkViewModel.Id">
             <summary>
             Id
@@ -11579,6 +11917,71 @@
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFUserBookmarkViewModel.DateTime">
             <summary>
             DateTime
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFUserTracking.PDFStudyLogEntry">
+             <summary>
+             one entry in a user's study log - "at this moment, the person was on this page of this
+             book", recorded when a reading session ends (client decides when, not on every page
+             flip). Server-side counterpart of the Flutter client's local-only StudyLogEntry, kept in
+             sync with it across the user's devices.
+            
+             This is the synced, user-owned replacement for the old PDFVisitRecord-derived
+             GetUserLastActivityAsync "recently read" feature: PDFVisitRecord is anonymous-friendly,
+             write-only server telemetry (search terms, every API hit) never meant to be read back as
+             a device's own source of truth, so it can't represent an editable/deletable/offline
+             "reading history" the way this table does. A book's current reading position ("resume
+             where I left off") is deliberately NOT a separate synced table - it's just the latest
+             (by Timestamp, not IsDeleted) PDFStudyLogEntry per PDFBookId for the user, computed the
+             same way client-side and server-side.
+             </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFStudyLogEntry.Id">
+            <summary>
+            Id - client-generated, so a re-push of an already-synced entry (e.g. after a failed
+            sync retry) is a harmless no-op upsert rather than a duplicate row
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFStudyLogEntry.RAppUserId">
+            <summary>
+            owning user
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFStudyLogEntry.RAppUser">
+            <summary>
+            owning user
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFStudyLogEntry.PDFBookId">
+            <summary>
+            the book this session was reading
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFStudyLogEntry.PDFBook">
+            <summary>
+            the book this session was reading
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFStudyLogEntry.PageNumber">
+            <summary>
+            the page the session left off on
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFStudyLogEntry.Timestamp">
+            <summary>
+            when the session left off (client-supplied, preserved across syncs - this, not
+            LastModified, is what "most recent reading position" is computed from)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFStudyLogEntry.LastModified">
+            <summary>
+            server-stamped, updated on every accepted change - the sync cursor field
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFUserTracking.PDFStudyLogEntry.IsDeleted">
+            <summary>
+            soft-delete/tombstone flag - set when the person clears their study log/history;
+            entries are otherwise append-only and never edited
             </summary>
         </member>
         <member name="T:RMuseum.Models.PDFUserTracking.PDFVisitRecord">
@@ -12039,6 +12442,23 @@
             delete all user bookmarks
             </summary>
             <param name="userId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFBookmarkService.GetBookmarkSyncChangesAsync(System.Guid,System.DateTime,System.Int32)">
+            <summary>
+            bookmarks changed for this user since a given server time - a sync pull
+            </summary>
+            <param name="userId"></param>
+            <param name="since"></param>
+            <param name="take"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFBookmarkService.ApplyBookmarkSyncChangesAsync(System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFBookmarkSyncItemViewModel[])">
+            <summary>
+            applies a batch of client-side bookmark changes - a sync push
+            </summary>
+            <param name="userId"></param>
+            <param name="items"></param>
             <returns></returns>
         </member>
         <member name="P:RMuseum.Services.Implementation.PDFBookmarkService.ReadOnlyMode">
@@ -12523,6 +12943,46 @@
             <param name="canPublish"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._ResolveAuthorsFromLineAsync(RMuseum.DbContext.RMuseumDbContext,System.String)">
+            <summary>
+            splits a comma-separated line of author/translator names into individual Author
+            records, reusing an existing row (exact Name match) or creating a new one - the same
+            resolution rule ImportSohaLibraryUrlAsync applies when it scrapes نویسنده/مترجم
+            values off the source page, extracted here so Edit can reuse it. The line is
+            normalized with the same ToPersianNumbers()/ApplyCorrectYeKe() pipeline import
+            applies before splitting, so a name typed by hand in the edit form still matches an
+            importer-created Author row instead of spawning a near-duplicate. Newly created
+            Authors are saved immediately (same convention the importer uses) so a name repeated
+            twice on the same line resolves to one row, not two. Preserves the line's order;
+            de-duplicates by Author.Id if the same name appears twice.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._SyncContributorRoleAsync(RMuseum.DbContext.RMuseumDbContext,RMuseum.Models.PDFLibrary.PDFBook,System.String,System.String)">
+            <summary>
+            keeps pdfBook.Contributers rows for a single Role ("نویسنده", "مترجم", ...) in sync
+            with a free-text, comma-separated line (AuthorsLine/TranslatorsLine): a link whose
+            Author is still named on the line is left exactly as it is (not removed/re-added, so
+            no duplicate AuthorRole row and no needless Author lookup/create for it); a link
+            whose Author is no longer on the line is removed; a name newly present on the line
+            gets a new link, reusing/creating its Author via _ResolveAuthorsFromLineAsync. Only
+            touches AuthorRole rows with the given Role - "مصحح" and any custom
+            OtherContributerRole rows on the same book are left untouched, since Edit has no text
+            field driving those. Does not call SaveChangesAsync - caller controls the save.
+            Returns the AuthorIds that lost their link here, for the caller to check for
+            orphaning once the removal is actually committed.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._RemoveOrphanedAuthorsAsync(RMuseum.DbContext.RMuseumDbContext,System.Collections.Generic.IEnumerable{System.Int32})">
+            <summary>
+            deletes Author rows that no longer have any AuthorRole pointing at them, checked
+            across the whole AuthorRole table - not just one book's Contributers - since the same
+            Author can be credited on other PDFBooks, or on a plain Book via Book.Authors. Must
+            only be called after the AuthorRole removal that made candidateAuthorIds candidates
+            has actually been committed with SaveChangesAsync: AuthorRole.AuthorId has no
+            cascade/restrict delete behavior, so a query run beforehand would still see the
+            about-to-be-deleted row in the database and wrongly treat the Author as still in use.
+            </summary>
+        </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.SetPDFBookCoverImageFromPageAsync(System.Int32,System.Int32)">
             <summary>
             Copy PDF Book Cover Image From Page Thumbnail image
@@ -12557,7 +13017,10 @@
             (as the merge flow does, onto a survivor) only has the leftovers cleaned up here.
             Takes `context` explicitly (rather than always using the instance's own _context) so it
             can be called from a background job running against its own RMuseumDbContext, not just
-            from a request-scoped call.
+            from a request-scoped call. Returns the AuthorIds that were linked only through the
+            Contributers rows removed here, so the caller can hand them to
+            _RemoveOrphanedAuthorsAsync once this removal is actually committed - this method
+            itself must not do that check, since it runs before the caller's SaveChangesAsync.
             </summary>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetPDFBookByTagValueAsync(System.String,System.String,RMuseum.Models.Artifact.PublishStatus[])">
@@ -12639,7 +13102,7 @@
             <param name="paging"></param>
             <param name="role">exact AuthorRole.Role to filter to (e.g. "نویسنده"); null/empty for all roles combined</param>
             <param name="sortByBookCountDesc">true: sort by book count descending; false: sort by name ascending</param>
-            <param name="authorName">part of the author's name (Name or NameInOriginalLanguage); null/empty for no name filter</param>
+            <param name="authorName">part of the author's name; null/empty for no name filter</param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.AddPDFBookContributerAsync(System.Int32,System.Int32,System.String)">
@@ -13008,6 +13471,26 @@
             <param name="ftpService"></param>
             <param name="optionsService"></param>
         </member>
+        <member name="T:RMuseum.Services.Implementation.PDFUserSyncService">
+            <summary>
+            see IPDFUserSyncService
+            </summary>
+        </member>
+        <member name="F:RMuseum.Services.Implementation.PDFUserSyncService._context">
+            <summary>
+            Database Context
+            </summary>
+        </member>
+        <member name="P:RMuseum.Services.Implementation.PDFUserSyncService.Configuration">
+            <summary>
+            Configuration
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFUserSyncService.#ctor(RMuseum.DbContext.RMuseumDbContext,Microsoft.Extensions.Configuration.IConfiguration)">
+            <summary>
+            constructor
+            </summary>
+        </member>
         <member name="T:RMuseum.Services.Implementation.PictureFileService">
             <summary>
             manipulating picture files 
@@ -13250,6 +13733,30 @@
             <param name="userId"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Services.IPDFBookmarkService.GetBookmarkSyncChangesAsync(System.Guid,System.DateTime,System.Int32)">
+            <summary>
+            bookmarks changed (created/edited/toggled off) for this user since a given server
+            time - a sync pull. Includes tombstones (IsDeleted rows) so another device can learn
+            about deletions. If the result is capped (see take), ServerTime is the LastModified
+            of the last included row rather than "now", so calling again with that as `since`
+            continues where this call left off instead of skipping anything.
+            </summary>
+            <param name="userId"></param>
+            <param name="since"></param>
+            <param name="take"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFBookmarkService.ApplyBookmarkSyncChangesAsync(System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFBookmarkSyncItemViewModel[])">
+            <summary>
+            applies a batch of client-side bookmark changes (a sync push) - last-write-wins per
+            item by comparing ClientModifiedAt against the stored bookmark's own DateTime; a
+            push older than what the server already has is silently ignored (not an error), so
+            the caller doesn't need to pre-filter its own stale items.
+            </summary>
+            <param name="userId"></param>
+            <param name="items"></param>
+            <returns></returns>
+        </member>
         <member name="T:RMuseum.Services.IPDFLibraryService">
             <summary>
             PDF Library Services
@@ -13361,7 +13868,7 @@
             <param name="paging"></param>
             <param name="role">exact AuthorRole.Role to filter to; null/empty for all roles combined</param>
             <param name="sortByBookCountDesc">true: sort by book count descending; false: sort by name ascending</param>
-            <param name="authorName">part of the author's name (Name or NameInOriginalLanguage); null/empty for no name filter</param>
+            <param name="authorName">part of the author's name; null/empty for no name filter</param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.UpdateAuthorAsync(RMuseum.Models.PDFLibrary.Author)">
@@ -13876,6 +14383,57 @@
             <summary>
             start physically cleaning up storage folders (FTP + local disk) queued by
             RemovePDFBookAsync. Safe to call repeatedly / after an interruption.
+            </summary>
+        </member>
+        <member name="T:RMuseum.Services.IPDFUserSyncService">
+            <summary>
+            two-way sync for the structures that have no other server-side owner: shelves,
+            shelf-book membership, and the study log (which also doubles as the source of each
+            book's current reading position - see PDFStudyLogEntry's doc comment). Bookmark sync
+            lives on IPDFBookmarkService instead, next to the rest of that table's logic.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.IPDFUserSyncService.GetShelfChangesAsync(System.Guid,System.DateTime,System.Int32)">
+            <summary>
+            shelves changed for this user since a given server time - a sync pull
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.IPDFUserSyncService.ApplyShelfChangesAsync(System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFShelfSyncItemViewModel[])">
+            <summary>
+            applies a batch of client-side shelf changes - a sync push. Last-write-wins per item
+            by ClientModifiedAt, same rule as bookmarks.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.IPDFUserSyncService.GetShelfBookChangesAsync(System.Guid,System.DateTime,System.Int32)">
+            <summary>
+            shelf-book memberships changed for this user since a given server time - a sync pull
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.IPDFUserSyncService.ApplyShelfBookChangesAsync(System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFShelfBookSyncItemViewModel[])">
+            <summary>
+            applies a batch of client-side shelf-book membership changes - a sync push. Callers
+            MUST push shelf changes (ApplyShelfChangesAsync) before shelf-book changes in the
+            same sync cycle: an item referencing a shelf id the server doesn't have yet is
+            skipped rather than applied, on the assumption a newly-created shelf was already
+            pushed moments earlier and simply hasn't been retried yet if it's still missing.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.IPDFUserSyncService.GetStudyLogChangesAsync(System.Guid,System.DateTime,System.Int32)">
+            <summary>
+            study log entries changed for this user since a given server time - a sync pull
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.IPDFUserSyncService.ApplyStudyLogChangesAsync(System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFStudyLogSyncItemViewModel[])">
+            <summary>
+            applies a batch of client-side study log entries - a sync push. Entries are
+            append-only and identified by their own client-generated Id, so this is always an
+            idempotent upsert, never a last-write-wins comparison against existing content.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.IPDFUserSyncService.GetReadingPositionsAsync(System.Guid)">
+            <summary>
+            each book's current reading position for the user - the latest non-deleted study log
+            entry per PDFBookId, replacing the old PDFVisitRecord-derived "last activity" list.
             </summary>
         </member>
         <member name="T:RMuseum.Services.IPictureFileService">

@@ -34,5 +34,29 @@ namespace RMuseum.Services
         /// <param name="userId"></param>
         /// <returns></returns>
         Task<RServiceResult<bool>> DeleteAllBookmarks(Guid userId);
+
+        /// <summary>
+        /// bookmarks changed (created/edited/toggled off) for this user since a given server
+        /// time - a sync pull. Includes tombstones (IsDeleted rows) so another device can learn
+        /// about deletions. If the result is capped (see take), ServerTime is the LastModified
+        /// of the last included row rather than "now", so calling again with that as `since`
+        /// continues where this call left off instead of skipping anything.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="since"></param>
+        /// <param name="take"></param>
+        /// <returns></returns>
+        Task<RServiceResult<(DateTime ServerTime, PDFBookmarkSyncItemViewModel[] Items)>> GetBookmarkSyncChangesAsync(Guid userId, DateTime since, int take = 500);
+
+        /// <summary>
+        /// applies a batch of client-side bookmark changes (a sync push) - last-write-wins per
+        /// item by comparing ClientModifiedAt against the stored bookmark's own DateTime; a
+        /// push older than what the server already has is silently ignored (not an error), so
+        /// the caller doesn't need to pre-filter its own stale items.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="items"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> ApplyBookmarkSyncChangesAsync(Guid userId, PDFBookmarkSyncItemViewModel[] items);
     }
 }

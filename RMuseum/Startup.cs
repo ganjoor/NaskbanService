@@ -281,6 +281,9 @@ namespace RMuseum
             //PDF bookmarking service
             services.AddTransient<IPDFBookmarkService, PDFBookmarkService>();
 
+            //PDF shelves/study-log sync service
+            services.AddTransient<IPDFUserSyncService, PDFUserSyncService>();
+
             //upload limit for IIS
             services.Configure<IISServerOptions>(options =>
             {

@@ -572,6 +572,22 @@ namespace RMuseum.DbContext
         /// </summary>
         public DbSet<PDFVisitRecord> PDFVisitRecords { get; set; }
 
+        /// <summary>
+        /// user-created book shelves (synced with the client's local shelves)
+        /// </summary>
+        public DbSet<PDFShelf> PDFShelves { get; set; }
+
+        /// <summary>
+        /// book membership in shelves (synced with the client's local shelf-book links)
+        /// </summary>
+        public DbSet<PDFShelfBook> PDFShelfBooks { get; set; }
+
+        /// <summary>
+        /// user study log entries (synced with the client's local study log; also the source of
+        /// each user's current per-book reading position - see PDFStudyLogEntry's doc comment)
+        /// </summary>
+        public DbSet<PDFStudyLogEntry> PDFStudyLogEntries { get; set; }
+
 
         /// <summary>
         /// ganjoor-poem match findings
