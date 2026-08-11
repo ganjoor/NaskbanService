@@ -2740,74 +2740,56 @@ namespace RMuseum.Services.Implementation
         {
             try
             {
-                var visitsUnfiltered = await _context.PDFVisitRecords.AsNoTracking()
-                                .Where
-                                (
-                                   t => t.RAppUserId == userId && t.PDFBookId != null
-                                )
-                                .OrderByDescending(t => t.DateTime)
-                                .Select(t =>
-                                    new PDFVisistViewModel()
-                                    {
-                                        DateTime = t.DateTime,
-                                        PDFBookId = (int)t.PDFBookId,
-                                        PageNumber = t.PDFPageNumber,
-                                    })
-                                .Take(200)
-                                .ToListAsync();
+                // derived from PDFStudyLogEntry (see that model's doc comment) rather than
+                // PDFVisitRecord - the study log is the single, synced, user-manageable source
+                // of "what was I last reading" now, shared with the Flutter client's own
+                // history/resume feature. PDFVisitRecord itself is untouched and kept for its
+                // own separate purpose (general API-hit/analytics logging, search terms,
+                // anonymous visits) - it was never really the same concern as this method, it
+                // just used to be the only data available to derive this from.
+                var maxByBook = _context.PDFStudyLogEntries
+                    .Where(e => e.RAppUserId == userId && !e.IsDeleted)
+                    .GroupBy(e => e.PDFBookId)
+                    .Select(g => new { BookId = g.Key, LastReadAt = g.Max(e => e.Timestamp) });
+
+                var entries = _context.PDFStudyLogEntries.Where(e => e.RAppUserId == userId && !e.IsDeleted);
+
+                var joined = await (
+                    from m in maxByBook
+                    join e in entries
+                        on new { m.BookId, m.LastReadAt } equals new { BookId = e.PDFBookId, LastReadAt = e.Timestamp }
+                    select new { m.BookId, m.LastReadAt, e.PageNumber })
+                    .ToListAsync();
+
+                // same rare-tie guard as PDFUserSyncService.GetReadingPositionsAsync
+                var positions = joined
+                    .GroupBy(p => p.BookId)
+                    .Select(g => g.First())
+                    .OrderByDescending(p => p.LastReadAt)
+                    .Take(200)
+                    .ToList();
 
                 List<PDFVisistViewModel> visits = new List<PDFVisistViewModel>();
 
-                var bookIds = visitsUnfiltered.GroupBy(t => t.PDFBookId).ToList();
-                foreach (var bookId in bookIds)
+                foreach (var position in positions)
                 {
-                    var visit = visitsUnfiltered.Where(v => v.PDFBookId == bookId.Key).First();
-                    var pdf = await _context.PDFBooks.AsNoTracking().Where(p => p.Id == visit.PDFBookId).FirstOrDefaultAsync();
-                    if (pdf != null)
-                    {
-                        var pageNumber = visit.PageNumber;
-                        if (pageNumber == null)
-                        {
-                            var visitWithPageNumber = visitsUnfiltered.Where(t => t.PDFBookId == pdf.Id && t.PageNumber != null).FirstOrDefault();
-                            if (visitWithPageNumber != null)
-                            {
-                                pageNumber = visitWithPageNumber.PageNumber;
-                            }
-                        }
-                        if (pageNumber != null)
-                        {
-                            var page = await _context.PDFPages.AsNoTracking().Where(p => p.PDFBookId == visit.PDFBookId && p.PageNumber == pageNumber).FirstOrDefaultAsync();
-                            if (page != null)
-                            {
-                                visits.Add
-                                    (
-                                    new PDFVisistViewModel()
-                                    {
-                                        DateTime = visit.DateTime,
-                                        PDFBookId = visit.PDFBookId,
-                                        PageNumber = pageNumber,
-                                        BookTitle = pdf.Title,
-                                        ExternalImageUrl = page.ExtenalThumbnailImageUrl
-                                    }
-                                    );
-                            }
-                        }
-                        else
-                        {
-                            visits.Add
-                                 (
-                                 new PDFVisistViewModel()
-                                 {
-                                     DateTime = visit.DateTime,
-                                     PDFBookId = visit.PDFBookId,
-                                     PageNumber = null,
-                                     BookTitle = pdf.Title,
-                                     ExternalImageUrl = pdf.ExtenalCoverImageUrl
-                                 }
-                                 );
-                        }
-                    }
+                    var pdf = await _context.PDFBooks.AsNoTracking().Where(p => p.Id == position.BookId).FirstOrDefaultAsync();
+                    if (pdf == null)
+                        continue;
 
+                    var page = await _context.PDFPages.AsNoTracking().Where(p => p.PDFBookId == position.BookId && p.PageNumber == position.PageNumber).FirstOrDefaultAsync();
+
+                    visits.Add
+                        (
+                        new PDFVisistViewModel()
+                        {
+                            DateTime = position.LastReadAt,
+                            PDFBookId = position.BookId,
+                            PageNumber = position.PageNumber,
+                            BookTitle = pdf.Title,
+                            ExternalImageUrl = page != null ? page.ExtenalThumbnailImageUrl : pdf.ExtenalCoverImageUrl
+                        }
+                        );
                 }
 
                 return new RServiceResult<PDFVisistViewModel[]>(visits.ToArray());
