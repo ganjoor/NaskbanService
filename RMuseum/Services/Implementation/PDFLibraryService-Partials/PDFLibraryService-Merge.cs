@@ -313,10 +313,17 @@ namespace RMuseum.Services.Implementation
                 extraWorkBeforeSave?.Invoke(context);
 
                 await Report("queuing duplicate's PDFBook row for removal");
-                await _QueuePDFBookRemovalAsync(context, duplicate);
+                List<int> contributorAuthorIds = await _QueuePDFBookRemovalAsync(context, duplicate);
 
                 await Report("saving changes");
                 await context.SaveChangesAsync();
+
+                // only after the above is committed - see _RemoveOrphanedAuthorsAsync
+                if (contributorAuthorIds.Count > 0)
+                {
+                    await _RemoveOrphanedAuthorsAsync(context, contributorAuthorIds);
+                }
+
                 return new RServiceResult<bool>(true);
             }
             catch (Exception exp)

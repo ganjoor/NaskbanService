@@ -461,6 +461,7 @@ namespace RMuseum.Services.Implementation
 
                 PDFBook pdfBook =
                      await _context.PDFBooks
+                     .Include(b => b.Contributers).ThenInclude(c => c.Author)
                      .Where(a => a.Id == model.Id)
                     .SingleOrDefaultAsync();
 
@@ -490,6 +491,11 @@ namespace RMuseum.Services.Implementation
                         }
                     }
 
+                    // captured before the scalar copy below overwrites them - drives whether
+                    // Contributers ("نویسنده"/"مترجم" rows) need to be resynced at all
+                    bool authorsLineChanged = pdfBook.AuthorsLine != model.AuthorsLine;
+                    bool translatorsLineChanged = pdfBook.TranslatorsLine != model.TranslatorsLine;
+
                     pdfBook.Status = model.Status;
                     pdfBook.Title = model.Title;
                     pdfBook.SubTitle = model.SubTitle;
@@ -513,14 +519,168 @@ namespace RMuseum.Services.Implementation
                     pdfBook.BookScriptType = model.BookScriptType;
                     pdfBook.LastModified = DateTime.Now;
 
+                    // keep the structured Contributers (AuthorRole) rows behind AuthorsLine/
+                    // TranslatorsLine in sync with the edited text - see
+                    // _SyncContributorRoleAsync for what "in sync" means (existing links for
+                    // names still on the line are left untouched, links for names dropped from
+                    // the line are removed, links for new names are added).
+                    List<int> orphanCandidateAuthorIds = new List<int>();
+
+                    if (authorsLineChanged)
+                    {
+                        orphanCandidateAuthorIds.AddRange(
+                            await _SyncContributorRoleAsync(_context, pdfBook, "نویسنده", pdfBook.AuthorsLine)
+                            );
+                    }
+
+                    if (translatorsLineChanged)
+                    {
+                        orphanCandidateAuthorIds.AddRange(
+                            await _SyncContributorRoleAsync(_context, pdfBook, "مترجم", pdfBook.TranslatorsLine)
+                            );
+                    }
+
                     _context.Update(pdfBook);
                     await _context.SaveChangesAsync();
+
+                    // only worth checking Authors that actually lost a link just now, and only
+                    // after the removal above is committed - see _RemoveOrphanedAuthorsAsync
+                    if (orphanCandidateAuthorIds.Count > 0)
+                    {
+                        await _RemoveOrphanedAuthorsAsync(_context, orphanCandidateAuthorIds);
+                    }
                 }
                 return new RServiceResult<PDFBook>(pdfBook);
             }
             catch (Exception exp)
             {
                 return new RServiceResult<PDFBook>(null, exp.ToString());
+            }
+        }
+
+        /// <summary>
+        /// splits a comma-separated line of author/translator names into individual Author
+        /// records, reusing an existing row (exact Name match) or creating a new one - the same
+        /// resolution rule ImportSohaLibraryUrlAsync applies when it scrapes نویسنده/مترجم
+        /// values off the source page, extracted here so Edit can reuse it. The line is
+        /// normalized with the same ToPersianNumbers()/ApplyCorrectYeKe() pipeline import
+        /// applies before splitting, so a name typed by hand in the edit form still matches an
+        /// importer-created Author row instead of spawning a near-duplicate. Newly created
+        /// Authors are saved immediately (same convention the importer uses) so a name repeated
+        /// twice on the same line resolves to one row, not two. Preserves the line's order;
+        /// de-duplicates by Author.Id if the same name appears twice.
+        /// </summary>
+        private async Task<List<Author>> _ResolveAuthorsFromLineAsync(RMuseumDbContext context, string line)
+        {
+            List<Author> resolved = new List<Author>();
+            if (string.IsNullOrWhiteSpace(line))
+                return resolved;
+
+            string normalizedLine = line.ToPersianNumbers().ApplyCorrectYeKe();
+
+            foreach (string rawName in normalizedLine.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                string name = rawName.Trim();
+                if (string.IsNullOrEmpty(name))
+                    continue;
+
+                Author author =
+                    resolved.Where(a => a.Name == name).FirstOrDefault()
+                    ??
+                    await context.Authors.Where(a => a.Name == name).FirstOrDefaultAsync();
+
+                if (author == null)
+                {
+                    author = new Author() { Name = name };
+                    context.Authors.Add(author);
+                    await context.SaveChangesAsync();
+                }
+
+                if (!resolved.Any(a => a.Id == author.Id))
+                {
+                    resolved.Add(author);
+                }
+            }
+
+            return resolved;
+        }
+
+        /// <summary>
+        /// keeps pdfBook.Contributers rows for a single Role ("نویسنده", "مترجم", ...) in sync
+        /// with a free-text, comma-separated line (AuthorsLine/TranslatorsLine): a link whose
+        /// Author is still named on the line is left exactly as it is (not removed/re-added, so
+        /// no duplicate AuthorRole row and no needless Author lookup/create for it); a link
+        /// whose Author is no longer on the line is removed; a name newly present on the line
+        /// gets a new link, reusing/creating its Author via _ResolveAuthorsFromLineAsync. Only
+        /// touches AuthorRole rows with the given Role - "مصحح" and any custom
+        /// OtherContributerRole rows on the same book are left untouched, since Edit has no text
+        /// field driving those. Does not call SaveChangesAsync - caller controls the save.
+        /// Returns the AuthorIds that lost their link here, for the caller to check for
+        /// orphaning once the removal is actually committed.
+        /// </summary>
+        private async Task<List<int>> _SyncContributorRoleAsync(RMuseumDbContext context, PDFBook pdfBook, string role, string line)
+        {
+            List<Author> desiredAuthors = await _ResolveAuthorsFromLineAsync(context, line);
+            List<int> desiredIds = desiredAuthors.Select(a => a.Id).ToList();
+
+            List<AuthorRole> existingRoles = pdfBook.Contributers.Where(c => c.Role == role).ToList();
+            List<int> existingIds = existingRoles.Select(c => c.Author.Id).ToList();
+
+            List<int> removedAuthorIds = new List<int>();
+            foreach (AuthorRole existing in existingRoles)
+            {
+                if (!desiredIds.Contains(existing.Author.Id))
+                {
+                    removedAuthorIds.Add(existing.Author.Id);
+                    pdfBook.Contributers.Remove(existing);
+                    context.Remove(existing);
+                }
+            }
+
+            foreach (Author author in desiredAuthors)
+            {
+                if (!existingIds.Contains(author.Id))
+                {
+                    pdfBook.Contributers.Add(new AuthorRole()
+                    {
+                        Author = author,
+                        Role = role
+                    });
+                }
+            }
+
+            return removedAuthorIds;
+        }
+
+        /// <summary>
+        /// deletes Author rows that no longer have any AuthorRole pointing at them, checked
+        /// across the whole AuthorRole table - not just one book's Contributers - since the same
+        /// Author can be credited on other PDFBooks, or on a plain Book via Book.Authors. Must
+        /// only be called after the AuthorRole removal that made candidateAuthorIds candidates
+        /// has actually been committed with SaveChangesAsync: AuthorRole.AuthorId has no
+        /// cascade/restrict delete behavior, so a query run beforehand would still see the
+        /// about-to-be-deleted row in the database and wrongly treat the Author as still in use.
+        /// </summary>
+        private async Task _RemoveOrphanedAuthorsAsync(RMuseumDbContext context, IEnumerable<int> candidateAuthorIds)
+        {
+            bool anyRemoved = false;
+            foreach (int authorId in candidateAuthorIds.Distinct())
+            {
+                bool stillReferenced = await context.Set<AuthorRole>().AnyAsync(ar => EF.Property<int>(ar, "AuthorId") == authorId);
+                if (stillReferenced)
+                    continue;
+
+                Author author = await context.Authors.Where(a => a.Id == authorId).SingleOrDefaultAsync();
+                if (author != null)
+                {
+                    context.Authors.Remove(author);
+                    anyRemoved = true;
+                }
+            }
+
+            if (anyRemoved)
+            {
+                await context.SaveChangesAsync();
             }
         }
 
@@ -595,9 +755,15 @@ namespace RMuseum.Services.Implementation
                     return new RServiceResult<bool>(false, "PDFBook not found.");
                 }
 
-                await _QueuePDFBookRemovalAsync(_context, record);
+                List<int> contributorAuthorIds = await _QueuePDFBookRemovalAsync(_context, record);
 
                 await _context.SaveChangesAsync();
+
+                // only after the above is committed - see _RemoveOrphanedAuthorsAsync
+                if (contributorAuthorIds.Count > 0)
+                {
+                    await _RemoveOrphanedAuthorsAsync(_context, contributorAuthorIds);
+                }
             }
             catch (Exception exp)
             {
@@ -616,9 +782,12 @@ namespace RMuseum.Services.Implementation
         /// (as the merge flow does, onto a survivor) only has the leftovers cleaned up here.
         /// Takes `context` explicitly (rather than always using the instance's own _context) so it
         /// can be called from a background job running against its own RMuseumDbContext, not just
-        /// from a request-scoped call.
+        /// from a request-scoped call. Returns the AuthorIds that were linked only through the
+        /// Contributers rows removed here, so the caller can hand them to
+        /// _RemoveOrphanedAuthorsAsync once this removal is actually committed - this method
+        /// itself must not do that check, since it runs before the caller's SaveChangesAsync.
         /// </summary>
-        private async Task _QueuePDFBookRemovalAsync(RMuseumDbContext context, PDFBook record)
+        private async Task<List<int>> _QueuePDFBookRemovalAsync(RMuseumDbContext context, PDFBook record)
         {
             int pdfBookId = record.Id;
             var pageIds = record.Pages.Select(p => p.Id).ToArray();
@@ -632,6 +801,13 @@ namespace RMuseum.Services.Implementation
                 .Where(bm => bm.PDFBookId == pdfBookId || (bm.PageId != null && pageIds.Contains(bm.PageId.Value)))
                 .ToArrayAsync();
             context.PDFUserBookmarks.RemoveRange(bookmarksToRemove);
+
+            // author ids about to lose this link - read via the AuthorId shadow property so this
+            // works whether or not the caller included AuthorRole.Author
+            List<int> contributorAuthorIds = record.Contributers
+                .Select(c => EF.Property<int>(c, "AuthorId"))
+                .Distinct()
+                .ToList();
 
             // author/contributor links still attached to record (a caller may have already moved
             // some of these onto a survivor before calling this method)
@@ -670,6 +846,8 @@ namespace RMuseum.Services.Implementation
                     }
                 );
             }
+
+            return contributorAuthorIds;
         }
 
         /// <summary>
