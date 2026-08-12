@@ -284,7 +284,30 @@ namespace RMuseum.Services.Implementation
                     .OrderByDescending(p => p.LastReadAt)
                     .ToList();
 
-                return new RServiceResult<PDFReadingPositionViewModel[]>(positions.ToArray());
+                // enriched with BookTitle/ThumbnailUrl the same way GetUserLastActivityAsync
+                // does - a per-position lookup rather than a single bigger join, since this
+                // list is at most one row per book the user has ever read, not a candidate for
+                // the same N+1 concern a per-page-view query would be
+                List<PDFReadingPositionViewModel> result = new List<PDFReadingPositionViewModel>();
+                foreach (var position in positions)
+                {
+                    var pdf = await _context.PDFBooks.AsNoTracking().Where(p => p.Id == position.BookId).FirstOrDefaultAsync();
+                    if (pdf == null)
+                        continue;
+
+                    var page = await _context.PDFPages.AsNoTracking().Where(p => p.PDFBookId == position.BookId && p.PageNumber == position.PageNumber).FirstOrDefaultAsync();
+
+                    result.Add(new PDFReadingPositionViewModel()
+                    {
+                        BookId = position.BookId,
+                        LastPageNumber = position.PageNumber,
+                        LastReadAt = position.LastReadAt,
+                        BookTitle = pdf.Title,
+                        ThumbnailUrl = page != null ? page.ExtenalThumbnailImageUrl : pdf.ExtenalCoverImageUrl
+                    });
+                }
+
+                return new RServiceResult<PDFReadingPositionViewModel[]>(result.ToArray());
             }
             catch (Exception exp)
             {

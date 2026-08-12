@@ -180,6 +180,18 @@ namespace RMuseum.Models.PDFLibrary.ViewModels
         public int BookId { get; set; }
 
         /// <summary>
+        /// book title - see PDFBookmarkSyncItemViewModel.BookTitle for why this is
+        /// server-supplied rather than left for the client to fill in
+        /// </summary>
+        public string BookTitle { get; set; }
+
+        /// <summary>
+        /// the last-read page's own thumbnail, falling back to the book cover if that page has
+        /// none - same fallback GetUserLastActivityAsync already used for PDFVisistViewModel
+        /// </summary>
+        public string ThumbnailUrl { get; set; }
+
+        /// <summary>
         /// last page read
         /// </summary>
         public int LastPageNumber { get; set; }
