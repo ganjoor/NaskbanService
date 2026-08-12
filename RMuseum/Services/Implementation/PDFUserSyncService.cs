@@ -295,12 +295,12 @@ namespace RMuseum.Services.Implementation
                     if (pdf == null)
                         continue;
 
-                    var page = await _context.PDFPages.AsNoTracking().Where(p => p.PDFBookId == position.BookId && p.PageNumber == position.PageNumber).FirstOrDefaultAsync();
+                    var page = await _context.PDFPages.AsNoTracking().Where(p => p.PDFBookId == position.BookId && p.PageNumber == position.LastPageNumber).FirstOrDefaultAsync();
 
                     result.Add(new PDFReadingPositionViewModel()
                     {
                         BookId = position.BookId,
-                        LastPageNumber = position.PageNumber,
+                        LastPageNumber = position.LastPageNumber,
                         LastReadAt = position.LastReadAt,
                         BookTitle = pdf.Title,
                         ThumbnailUrl = page != null ? page.ExtenalThumbnailImageUrl : pdf.ExtenalCoverImageUrl
