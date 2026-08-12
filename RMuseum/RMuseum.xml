@@ -795,13 +795,20 @@
             bookmarking service
             </summary>
         </member>
-        <member name="M:RMuseum.Controllers.PDFLibraryController.#ctor(RMuseum.Services.IPDFLibraryService,RSecurityBackend.Services.IUserPermissionChecker,RMuseum.Services.IPDFBookmarkService)">
+        <member name="F:RMuseum.Controllers.PDFLibraryController._userSyncService">
+            <summary>
+            shelves/study-log sync service (also used here to record a study log entry for a
+            logged-in user's page view - see GetPDFPageAsync)
+            </summary>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.#ctor(RMuseum.Services.IPDFLibraryService,RSecurityBackend.Services.IUserPermissionChecker,RMuseum.Services.IPDFBookmarkService,RMuseum.Services.IPDFUserSyncService)">
             <summary>
             constructor
             </summary>
             <param name="pdfService"></param>
             <param name="userPermissionChecker"></param>
             <param name="bookmarkingService"></param>
+            <param name="userSyncService"></param>
         </member>
         <member name="T:RMuseum.Controllers.PDFSyncController">
             <summary>
@@ -13416,13 +13423,6 @@
             fill missing book texts
             </summary>
         </member>
-        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.TrackVisitAsync(RMuseum.Models.PDFUserTracking.PDFVisitRecord)">
-            <summary>
-            track visit
-            </summary>
-            <param name="visit"></param>
-            <returns></returns>
-        </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetUserLastActivityAsync(System.Guid)">
             <summary>
             get user last activity
@@ -14278,13 +14278,6 @@
             </summary>
             <param name="count"></param>
         </member>
-        <member name="M:RMuseum.Services.IPDFLibraryService.TrackVisitAsync(RMuseum.Models.PDFUserTracking.PDFVisitRecord)">
-            <summary>
-            track visit
-            </summary>
-            <param name="visit"></param>
-            <returns></returns>
-        </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.GetUserLastActivityAsync(System.Guid)">
             <summary>
             get user last activity
@@ -14446,6 +14439,19 @@
             <summary>
             each book's current reading position for the user - the latest non-deleted study log
             entry per PDFBookId, replacing the old PDFVisitRecord-derived "last activity" list.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.IPDFUserSyncService.RecordStudyLogEntryAsync(System.Guid,System.Int32,System.Int32)">
+            <summary>
+            records a single study log entry directly, server-side - used by
+            PDFLibraryController.GetPDFPageAsync for a logged-in user's page view. Distinct from
+            ApplyStudyLogChangesAsync (the sync push path): this is a plain insert with a
+            server-generated id, not a client-supplied one, since the server is the one
+            observing the event here rather than replaying something the client already knows
+            about. See PDFStudyLogEntry's doc comment for why only a server-observable page
+            view (a client fetching a specific page from this server) can ever be captured this
+            way - the Flutter client's own local/offline reading sessions still only ever reach
+            this table via ApplyStudyLogChangesAsync.
             </summary>
         </member>
         <member name="T:RMuseum.Services.IPictureFileService">
