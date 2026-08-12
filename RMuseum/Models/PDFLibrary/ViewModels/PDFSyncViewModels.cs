@@ -143,6 +143,15 @@ namespace RMuseum.Models.PDFLibrary.ViewModels
         public int BookId { get; set; }
 
         /// <summary>
+        /// book title - server-supplied on pull only, same reasoning as
+        /// PDFBookmarkSyncItemViewModel.BookTitle. Unlike bookmarks/shelf-books, a study log
+        /// entry pulled from another device has no existing local row to fall back to (each
+        /// entry is a distinct new append, never an update to one already on this device), so
+        /// this is the only source it can ever get a title from.
+        /// </summary>
+        public string BookTitle { get; set; }
+
+        /// <summary>
         /// the page the session left off on - meaningless when IsDeleted is true
         /// </summary>
         public int PageNumber { get; set; }

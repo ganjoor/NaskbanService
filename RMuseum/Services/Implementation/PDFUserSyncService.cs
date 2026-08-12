@@ -178,6 +178,7 @@ namespace RMuseum.Services.Implementation
             try
             {
                 var rows = await _context.PDFStudyLogEntries
+                    .Include(e => e.PDFBook)
                     .Where(e => e.RAppUserId == userId && e.LastModified >= since)
                     .OrderBy(e => e.LastModified)
                     .Take(take)
@@ -187,6 +188,7 @@ namespace RMuseum.Services.Implementation
                 {
                     Id = e.Id,
                     BookId = e.PDFBookId,
+                    BookTitle = e.PDFBook?.Title,
                     PageNumber = e.PageNumber,
                     Timestamp = e.Timestamp,
                     IsDeleted = e.IsDeleted
