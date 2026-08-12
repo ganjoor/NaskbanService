@@ -287,6 +287,29 @@ namespace RMuseum.Services.Implementation
             }
         }
 
+        public async Task<RServiceResult<bool>> RecordStudyLogEntryAsync(Guid userId, int pdfBookId, int pageNumber)
+        {
+            try
+            {
+                _context.PDFStudyLogEntries.Add(new PDFStudyLogEntry()
+                {
+                    Id = Guid.NewGuid(),
+                    RAppUserId = userId,
+                    PDFBookId = pdfBookId,
+                    PageNumber = pageNumber,
+                    Timestamp = DateTime.Now,
+                    LastModified = DateTime.Now,
+                    IsDeleted = false
+                });
+                await _context.SaveChangesAsync();
+                return new RServiceResult<bool>(true);
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<bool>(false, exp.ToString());
+            }
+        }
+
         /// <summary>
         /// Database Context
         /// </summary>

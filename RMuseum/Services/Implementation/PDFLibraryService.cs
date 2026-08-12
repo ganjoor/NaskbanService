@@ -2713,25 +2713,6 @@ namespace RMuseum.Services.Implementation
 
 
         /// <summary>
-        /// track visit
-        /// </summary>
-        /// <param name="visit"></param>
-        /// <returns></returns>
-        public async Task<RServiceResult<bool>> TrackVisitAsync(PDFVisitRecord visit)
-        {
-            try
-            {
-                _context.Add(visit);
-                await _context.SaveChangesAsync();
-                return new RServiceResult<bool>(true);
-            }
-            catch (Exception exp)
-            {
-                return new RServiceResult<bool>(false, exp.ToString());
-            }
-        }
-
-        /// <summary>
         /// get user last activity
         /// </summary>
         /// <param name="userId"></param>

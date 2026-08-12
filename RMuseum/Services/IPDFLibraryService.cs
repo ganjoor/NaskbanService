@@ -527,13 +527,6 @@ namespace RMuseum.Services
 
 
         /// <summary>
-        /// track visit
-        /// </summary>
-        /// <param name="visit"></param>
-        /// <returns></returns>
-        Task<RServiceResult<bool>> TrackVisitAsync(PDFVisitRecord visit);
-
-        /// <summary>
         /// get user last activity
         /// </summary>
         /// <param name="userId"></param>

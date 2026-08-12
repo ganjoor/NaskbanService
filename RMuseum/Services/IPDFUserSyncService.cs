@@ -55,5 +55,18 @@ namespace RMuseum.Services
         /// entry per PDFBookId, replacing the old PDFVisitRecord-derived "last activity" list.
         /// </summary>
         Task<RServiceResult<PDFReadingPositionViewModel[]>> GetReadingPositionsAsync(Guid userId);
+
+        /// <summary>
+        /// records a single study log entry directly, server-side - used by
+        /// PDFLibraryController.GetPDFPageAsync for a logged-in user's page view. Distinct from
+        /// ApplyStudyLogChangesAsync (the sync push path): this is a plain insert with a
+        /// server-generated id, not a client-supplied one, since the server is the one
+        /// observing the event here rather than replaying something the client already knows
+        /// about. See PDFStudyLogEntry's doc comment for why only a server-observable page
+        /// view (a client fetching a specific page from this server) can ever be captured this
+        /// way - the Flutter client's own local/offline reading sessions still only ever reach
+        /// this table via ApplyStudyLogChangesAsync.
+        /// </summary>
+        Task<RServiceResult<bool>> RecordStudyLogEntryAsync(Guid userId, int pdfBookId, int pageNumber);
     }
 }
