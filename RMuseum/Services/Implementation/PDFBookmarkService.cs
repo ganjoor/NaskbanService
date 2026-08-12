@@ -153,6 +153,7 @@ namespace RMuseum.Services.Implementation
             {
                 var rows = await _context.PDFUserBookmarks
                     .Include(b => b.Page)
+                    .Include(b => b.PDFBook)
                     .Where(b => b.RAppUserId == userId && b.LastModified >= since)
                     .OrderBy(b => b.LastModified)
                     .Take(take)
@@ -163,6 +164,8 @@ namespace RMuseum.Services.Implementation
                     BookId = b.PDFBookId ?? 0,
                     PageNumber = b.Page == null ? 0 : b.Page.PageNumber,
                     Note = b.Note,
+                    BookTitle = b.PDFBook?.Title,
+                    ThumbnailUrl = b.Page != null ? b.Page.ExtenalThumbnailImageUrl : b.PDFBook?.ExtenalCoverImageUrl,
                     ClientModifiedAt = b.DateTime,
                     IsDeleted = b.IsDeleted
                 }).ToArray();

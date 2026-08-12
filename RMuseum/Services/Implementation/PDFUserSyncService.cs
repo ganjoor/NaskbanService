@@ -97,6 +97,7 @@ namespace RMuseum.Services.Implementation
             {
                 var rows = await _context.PDFShelfBooks
                     .Include(sb => sb.PDFShelf)
+                    .Include(sb => sb.PDFBook)
                     .Where(sb => sb.PDFShelf.RAppUserId == userId && sb.LastModified >= since)
                     .OrderBy(sb => sb.LastModified)
                     .Take(take)
@@ -106,6 +107,8 @@ namespace RMuseum.Services.Implementation
                 {
                     ShelfId = sb.PDFShelfId,
                     BookId = sb.PDFBookId,
+                    BookTitle = sb.PDFBook?.Title,
+                    ThumbnailUrl = sb.PDFBook?.ExtenalCoverImageUrl,
                     ClientModifiedAt = sb.AddedAt,
                     IsDeleted = sb.IsDeleted
                 }).ToArray();

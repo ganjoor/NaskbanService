@@ -25,6 +25,20 @@ namespace RMuseum.Models.PDFLibrary.ViewModels
         public string Note { get; set; }
 
         /// <summary>
+        /// book title - server-supplied on pull only (ignored on push; the server already has
+        /// this, sending it back would just be echoing what the client sent). Without this, a
+        /// bookmark pulled down on a device that has never opened this book locally has nothing
+        /// to display but "page N" and the note - see LocalBookmarkService.applyRemote.
+        /// </summary>
+        public string BookTitle { get; set; }
+
+        /// <summary>
+        /// page thumbnail (or book cover, for a whole-book bookmark) - server-supplied on pull
+        /// only, same reasoning as BookTitle.
+        /// </summary>
+        public string ThumbnailUrl { get; set; }
+
+        /// <summary>
         /// client-supplied action time - used for last-write-wins conflict resolution on push,
         /// and reported back as-is on pull (see PDFUserBookmark.DateTime)
         /// </summary>
@@ -85,6 +99,18 @@ namespace RMuseum.Models.PDFLibrary.ViewModels
         /// the book placed on/removed from the shelf
         /// </summary>
         public int BookId { get; set; }
+
+        /// <summary>
+        /// book title - server-supplied on pull only, same reasoning as
+        /// PDFBookmarkSyncItemViewModel.BookTitle
+        /// </summary>
+        public string BookTitle { get; set; }
+
+        /// <summary>
+        /// book cover thumbnail - server-supplied on pull only, same reasoning as
+        /// PDFBookmarkSyncItemViewModel.ThumbnailUrl
+        /// </summary>
+        public string ThumbnailUrl { get; set; }
 
         /// <summary>
         /// client-supplied action time - used for last-write-wins conflict resolution on push,
