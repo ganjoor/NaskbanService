@@ -153,7 +153,7 @@ namespace RMuseum.Services.Implementation
             {
                 var rows = await _context.PDFUserBookmarks
                     .Include(b => b.Page)
-                    .Where(b => b.RAppUserId == userId && b.LastModified > since)
+                    .Where(b => b.RAppUserId == userId && b.LastModified >= since)
                     .OrderBy(b => b.LastModified)
                     .Take(take)
                     .ToListAsync();

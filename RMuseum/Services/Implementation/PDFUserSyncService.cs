@@ -22,7 +22,7 @@ namespace RMuseum.Services.Implementation
             try
             {
                 var rows = await _context.PDFShelves
-                    .Where(s => s.RAppUserId == userId && s.LastModified > since)
+                    .Where(s => s.RAppUserId == userId && s.LastModified >= since)
                     .OrderBy(s => s.LastModified)
                     .Take(take)
                     .ToListAsync();
@@ -97,7 +97,7 @@ namespace RMuseum.Services.Implementation
             {
                 var rows = await _context.PDFShelfBooks
                     .Include(sb => sb.PDFShelf)
-                    .Where(sb => sb.PDFShelf.RAppUserId == userId && sb.LastModified > since)
+                    .Where(sb => sb.PDFShelf.RAppUserId == userId && sb.LastModified >= since)
                     .OrderBy(sb => sb.LastModified)
                     .Take(take)
                     .ToListAsync();
@@ -175,7 +175,7 @@ namespace RMuseum.Services.Implementation
             try
             {
                 var rows = await _context.PDFStudyLogEntries
-                    .Where(e => e.RAppUserId == userId && e.LastModified > since)
+                    .Where(e => e.RAppUserId == userId && e.LastModified >= since)
                     .OrderBy(e => e.LastModified)
                     .Take(take)
                     .ToListAsync();
