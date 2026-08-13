@@ -588,6 +588,11 @@ namespace RMuseum.DbContext
         /// </summary>
         public DbSet<PDFStudyLogEntry> PDFStudyLogEntries { get; set; }
 
+        /// <summary>
+        /// pinned authors (synced with the client's local pinned authors)
+        /// </summary>
+        public DbSet<PDFPinnedAuthor> PDFPinnedAuthors { get; set; }
+
 
         /// <summary>
         /// ganjoor-poem match findings

@@ -201,4 +201,34 @@ namespace RMuseum.Models.PDFLibrary.ViewModels
         /// </summary>
         public DateTime LastReadAt { get; set; }
     }
+
+    /// <summary>
+    /// one pinned author's state, used both as a pull result item and a push input item.
+    /// Identity is the natural key AuthorId (per-user, implicitly) - no separate sync id is
+    /// needed, matching PDFUserBookmark's own uniqueness rule.
+    /// </summary>
+    public class PDFPinnedAuthorSyncItemViewModel
+    {
+        /// <summary>
+        /// author id
+        /// </summary>
+        public int AuthorId { get; set; }
+
+        /// <summary>
+        /// author name - server-supplied on pull only (ignored on push; the server already has
+        /// this via AuthorId), same reasoning as PDFBookmarkSyncItemViewModel.BookTitle
+        /// </summary>
+        public string AuthorName { get; set; }
+
+        /// <summary>
+        /// client-supplied action time - used for last-write-wins conflict resolution on push,
+        /// and reported back as-is on pull (see PDFPinnedAuthor.PinnedAt)
+        /// </summary>
+        public DateTime ClientModifiedAt { get; set; }
+
+        /// <summary>
+        /// true if this author was unpinned
+        /// </summary>
+        public bool IsDeleted { get; set; }
+    }
 }

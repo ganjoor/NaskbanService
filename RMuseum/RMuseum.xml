@@ -868,6 +868,16 @@
             PDFVisitRecord-derived GET api/pdf/visits "last activity" list for this purpose.
             </summary>
         </member>
+        <member name="M:RMuseum.Controllers.PDFSyncController.GetPinnedAuthorChangesAsync(System.DateTime)">
+            <summary>
+            pinned authors changed since `since` (pass DateTime.MinValue for a full sync)
+            </summary>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFSyncController.PushPinnedAuthorChangesAsync(RMuseum.Models.PDFLibrary.ViewModels.PDFPinnedAuthorSyncItemViewModel[])">
+            <summary>
+            pushes locally-changed pinned authors
+            </summary>
+        </member>
         <member name="F:RMuseum.Controllers.PDFSyncController._bookmarkingService">
             <summary>
             bookmarking service (bookmark sync lives here alongside the rest of that table)
@@ -1319,6 +1329,11 @@
             <summary>
             user study log entries (synced with the client's local study log; also the source of
             each user's current per-book reading position - see PDFStudyLogEntry's doc comment)
+            </summary>
+        </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.PDFPinnedAuthors">
+            <summary>
+            pinned authors (synced with the client's local pinned authors)
             </summary>
         </member>
         <member name="P:RMuseum.DbContext.RMuseumDbContext.GanjoorPoemMatchFindings">
@@ -11099,6 +11114,59 @@
             page text
             </summary>
         </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFPinnedAuthor">
+            <summary>
+            a user-pinned author - lets someone jump straight back to an author's books without
+            searching for them again every time. Server-side counterpart of the Flutter client's
+            local-only PinnedAuthor, kept in sync with it. Own Id (rather than a composite key on
+            (RAppUserId, AuthorId)) matches the existing PDFUserBookmark convention: a natural key
+            exists and is enforced at the application level in the sync service, but EF still wants
+            its own single-column primary key.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPinnedAuthor.Id">
+            <summary>
+            Id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPinnedAuthor.RAppUserId">
+            <summary>
+            owning user
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPinnedAuthor.RAppUser">
+            <summary>
+            owning user
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPinnedAuthor.AuthorId">
+            <summary>
+            the pinned author
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPinnedAuthor.Author">
+            <summary>
+            the pinned author
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPinnedAuthor.PinnedAt">
+            <summary>
+            client-supplied time of the pin action - doubles as the last-write-wins conflict
+            field on sync push, same role as PDFUserBookmark.DateTime/PDFShelf.ClientModifiedAt
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPinnedAuthor.LastModified">
+            <summary>
+            server-stamped at write time - the sync pull cursor field, same role as
+            PDFUserBookmark.LastModified
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPinnedAuthor.IsDeleted">
+            <summary>
+            soft-delete/tombstone flag - unpinning is never a hard delete immediately, so that a
+            pull from another device can learn about it (see PDFUserBookmark.IsDeleted)
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.PDFLibrary.PDFShelf">
             <summary>
             a user-created, named collection of whole books ("قفسه") - server-side counterpart of
@@ -11777,6 +11845,20 @@
             note - meaningless when IsDeleted is true
             </summary>
         </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookmarkSyncItemViewModel.BookTitle">
+            <summary>
+            book title - server-supplied on pull only (ignored on push; the server already has
+            this, sending it back would just be echoing what the client sent). Without this, a
+            bookmark pulled down on a device that has never opened this book locally has nothing
+            to display but "page N" and the note - see LocalBookmarkService.applyRemote.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookmarkSyncItemViewModel.ThumbnailUrl">
+            <summary>
+            page thumbnail (or book cover, for a whole-book bookmark) - server-supplied on pull
+            only, same reasoning as BookTitle.
+            </summary>
+        </member>
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookmarkSyncItemViewModel.ClientModifiedAt">
             <summary>
             client-supplied action time - used for last-write-wins conflict resolution on push,
@@ -11837,6 +11919,18 @@
             the book placed on/removed from the shelf
             </summary>
         </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFShelfBookSyncItemViewModel.BookTitle">
+            <summary>
+            book title - server-supplied on pull only, same reasoning as
+            PDFBookmarkSyncItemViewModel.BookTitle
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFShelfBookSyncItemViewModel.ThumbnailUrl">
+            <summary>
+            book cover thumbnail - server-supplied on pull only, same reasoning as
+            PDFBookmarkSyncItemViewModel.ThumbnailUrl
+            </summary>
+        </member>
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFShelfBookSyncItemViewModel.ClientModifiedAt">
             <summary>
             client-supplied action time - used for last-write-wins conflict resolution on push,
@@ -11866,6 +11960,15 @@
             the book this session was reading
             </summary>
         </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFStudyLogSyncItemViewModel.BookTitle">
+            <summary>
+            book title - server-supplied on pull only, same reasoning as
+            PDFBookmarkSyncItemViewModel.BookTitle. Unlike bookmarks/shelf-books, a study log
+            entry pulled from another device has no existing local row to fall back to (each
+            entry is a distinct new append, never an update to one already on this device), so
+            this is the only source it can ever get a title from.
+            </summary>
+        </member>
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFStudyLogSyncItemViewModel.PageNumber">
             <summary>
             the page the session left off on - meaningless when IsDeleted is true
@@ -11893,6 +11996,18 @@
             book id
             </summary>
         </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFReadingPositionViewModel.BookTitle">
+            <summary>
+            book title - see PDFBookmarkSyncItemViewModel.BookTitle for why this is
+            server-supplied rather than left for the client to fill in
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFReadingPositionViewModel.ThumbnailUrl">
+            <summary>
+            the last-read page's own thumbnail, falling back to the book cover if that page has
+            none - same fallback GetUserLastActivityAsync already used for PDFVisistViewModel
+            </summary>
+        </member>
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFReadingPositionViewModel.LastPageNumber">
             <summary>
             last page read
@@ -11901,6 +12016,35 @@
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFReadingPositionViewModel.LastReadAt">
             <summary>
             when that page was last read
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFPinnedAuthorSyncItemViewModel">
+            <summary>
+            one pinned author's state, used both as a pull result item and a push input item.
+            Identity is the natural key AuthorId (per-user, implicitly) - no separate sync id is
+            needed, matching PDFUserBookmark's own uniqueness rule.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPinnedAuthorSyncItemViewModel.AuthorId">
+            <summary>
+            author id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPinnedAuthorSyncItemViewModel.AuthorName">
+            <summary>
+            author name - server-supplied on pull only (ignored on push; the server already has
+            this via AuthorId), same reasoning as PDFBookmarkSyncItemViewModel.BookTitle
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPinnedAuthorSyncItemViewModel.ClientModifiedAt">
+            <summary>
+            client-supplied action time - used for last-write-wins conflict resolution on push,
+            and reported back as-is on pull (see PDFPinnedAuthor.PinnedAt)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPinnedAuthorSyncItemViewModel.IsDeleted">
+            <summary>
+            true if this author was unpinned
             </summary>
         </member>
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFUserBookmarkViewModel.Id">
@@ -14452,6 +14596,17 @@
             view (a client fetching a specific page from this server) can ever be captured this
             way - the Flutter client's own local/offline reading sessions still only ever reach
             this table via ApplyStudyLogChangesAsync.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.IPDFUserSyncService.GetPinnedAuthorChangesAsync(System.Guid,System.DateTime,System.Int32)">
+            <summary>
+            pinned authors changed for this user since a given server time - a sync pull
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.IPDFUserSyncService.ApplyPinnedAuthorChangesAsync(System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFPinnedAuthorSyncItemViewModel[])">
+            <summary>
+            applies a batch of client-side pinned-author changes - a sync push. Last-write-wins
+            per item by ClientModifiedAt, same rule as bookmarks/shelves.
             </summary>
         </member>
         <member name="T:RMuseum.Services.IPictureFileService">

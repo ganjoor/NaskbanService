@@ -68,5 +68,16 @@ namespace RMuseum.Services
         /// this table via ApplyStudyLogChangesAsync.
         /// </summary>
         Task<RServiceResult<bool>> RecordStudyLogEntryAsync(Guid userId, int pdfBookId, int pageNumber);
+
+        /// <summary>
+        /// pinned authors changed for this user since a given server time - a sync pull
+        /// </summary>
+        Task<RServiceResult<(DateTime ServerTime, PDFPinnedAuthorSyncItemViewModel[] Items)>> GetPinnedAuthorChangesAsync(Guid userId, DateTime since, int take = 500);
+
+        /// <summary>
+        /// applies a batch of client-side pinned-author changes - a sync push. Last-write-wins
+        /// per item by ClientModifiedAt, same rule as bookmarks/shelves.
+        /// </summary>
+        Task<RServiceResult<bool>> ApplyPinnedAuthorChangesAsync(Guid userId, PDFPinnedAuthorSyncItemViewModel[] items);
     }
 }

@@ -338,6 +338,78 @@ namespace RMuseum.Services.Implementation
             }
         }
 
+        public async Task<RServiceResult<(DateTime ServerTime, PDFPinnedAuthorSyncItemViewModel[] Items)>> GetPinnedAuthorChangesAsync(Guid userId, DateTime since, int take = 500)
+        {
+            try
+            {
+                var rows = await _context.PDFPinnedAuthors
+                    .Include(p => p.Author)
+                    .Where(p => p.RAppUserId == userId && p.LastModified >= since)
+                    .OrderBy(p => p.LastModified)
+                    .Take(take)
+                    .ToListAsync();
+
+                var items = rows.Select(p => new PDFPinnedAuthorSyncItemViewModel()
+                {
+                    AuthorId = p.AuthorId,
+                    AuthorName = p.Author?.Name,
+                    ClientModifiedAt = p.PinnedAt,
+                    IsDeleted = p.IsDeleted
+                }).ToArray();
+
+                DateTime serverTime = rows.Count == take ? rows[rows.Count - 1].LastModified : DateTime.Now;
+                return new RServiceResult<(DateTime, PDFPinnedAuthorSyncItemViewModel[])>((serverTime, items));
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<(DateTime, PDFPinnedAuthorSyncItemViewModel[])>((since, null), exp.ToString());
+            }
+        }
+
+        public async Task<RServiceResult<bool>> ApplyPinnedAuthorChangesAsync(Guid userId, PDFPinnedAuthorSyncItemViewModel[] items)
+        {
+            try
+            {
+                foreach (var item in items ?? Array.Empty<PDFPinnedAuthorSyncItemViewModel>())
+                {
+                    var existing = await _context.PDFPinnedAuthors.Where(p => p.RAppUserId == userId && p.AuthorId == item.AuthorId).FirstOrDefaultAsync();
+
+                    if (existing != null)
+                    {
+                        if (item.ClientModifiedAt <= existing.PinnedAt)
+                            continue; // stale push, server already has a newer state
+
+                        existing.PinnedAt = item.ClientModifiedAt;
+                        existing.IsDeleted = item.IsDeleted;
+                        existing.LastModified = DateTime.Now;
+                        _context.Update(existing);
+                    }
+                    else
+                    {
+                        if (item.IsDeleted)
+                            continue; // nothing to delete, no tombstone needed for a row that never existed
+
+                        _context.PDFPinnedAuthors.Add(new PDFPinnedAuthor()
+                        {
+                            Id = Guid.NewGuid(),
+                            RAppUserId = userId,
+                            AuthorId = item.AuthorId,
+                            PinnedAt = item.ClientModifiedAt,
+                            LastModified = DateTime.Now,
+                            IsDeleted = false
+                        });
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                return new RServiceResult<bool>(true);
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<bool>(false, exp.ToString());
+            }
+        }
+
         /// <summary>
         /// Database Context
         /// </summary>

@@ -154,6 +154,34 @@ namespace RMuseum.Controllers
         }
 
         /// <summary>
+        /// pinned authors changed since `since` (pass DateTime.MinValue for a full sync)
+        /// </summary>
+        [HttpGet("pinnedauthors")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetPinnedAuthorChangesAsync(DateTime since)
+        {
+            var res = await _userSyncService.GetPinnedAuthorChangesAsync(_loggedOnUserId, since);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok(new { serverTime = res.Result.ServerTime, items = res.Result.Items });
+        }
+
+        /// <summary>
+        /// pushes locally-changed pinned authors
+        /// </summary>
+        [HttpPost("pinnedauthors")]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> PushPinnedAuthorChangesAsync([FromBody] PDFPinnedAuthorSyncItemViewModel[] items)
+        {
+            var res = await _userSyncService.ApplyPinnedAuthorChangesAsync(_loggedOnUserId, items);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok();
+        }
+
+        /// <summary>
         /// bookmarking service (bookmark sync lives here alongside the rest of that table)
         /// </summary>
         protected readonly IPDFBookmarkService _bookmarkingService;
