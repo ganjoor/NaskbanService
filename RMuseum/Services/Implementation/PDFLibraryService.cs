@@ -2742,7 +2742,9 @@ namespace RMuseum.Services.Implementation
                     string emptyOrAnd = "";
                     foreach (string word in words)
                     {
-                        searchConditions += $" {emptyOrAnd} \"*{word}*\" ";
+                        // same fix as SearchPDFBooksAsync - trailing wildcard only, see that
+                        // method's comment on why "*word*" was never valid CONTAINS syntax
+                        searchConditions += $" {emptyOrAnd} \"{word}*\" ";
                         emptyOrAnd = " AND ";
                     }
                 }
@@ -2760,10 +2762,64 @@ namespace RMuseum.Services.Implementation
                 (PaginationMetadata PagingMeta, PDFPage[] Items) paginatedResult =
                    await QueryablePaginator<PDFPage>.Paginate(source, paging);
 
+                // PDFPage.PDFBook is [NotMapped] - not a real EF relationship, so there's
+                // nothing to Include() here. The original code instead ran one extra query per
+                // page, sequentially, to fill it in - a classic N+1: a page of 20-50 results
+                // meant 20-50 extra round-trips, and since every page normally shares the same
+                // PDFBookId (searching within one book is the common case, bookId != 0), most
+                // of those were re-fetching the exact same book row over and over. Replaced with
+                // exactly one follow-up query for every *distinct* book actually referenced in
+                // this page of results (usually just one), then an in-memory lookup to attach
+                // each page to its book - same projection (BookText excluded) as the other two
+                // search methods, for the same reason.
+                var distinctBookIds = paginatedResult.Items.Select(p => p.PDFBookId).Distinct().ToList();
+                var booksById = await _context.PDFBooks.AsNoTracking()
+                    .Where(b => distinctBookIds.Contains(b.Id))
+                    .Select(b => new PDFBook
+                    {
+                        Id = b.Id,
+                        BookId = b.BookId,
+                        Status = b.Status,
+                        Title = b.Title,
+                        SubTitle = b.SubTitle,
+                        AuthorsLine = b.AuthorsLine,
+                        ISBN = b.ISBN,
+                        Description = b.Description,
+                        Language = b.Language,
+                        IsTranslation = b.IsTranslation,
+                        TranslatorsLine = b.TranslatorsLine,
+                        TitleInOriginalLanguage = b.TitleInOriginalLanguage,
+                        PublisherLine = b.PublisherLine,
+                        PublishingDate = b.PublishingDate,
+                        PublishingLocation = b.PublishingLocation,
+                        PublishingNumber = b.PublishingNumber,
+                        ClaimedPageCount = b.ClaimedPageCount,
+                        MultiVolumePDFCollectionId = b.MultiVolumePDFCollectionId,
+                        VolumeOrder = b.VolumeOrder,
+                        DateTime = b.DateTime,
+                        LastModified = b.LastModified,
+                        ExternalPDFFileUrl = b.ExternalPDFFileUrl,
+                        CoverImageId = b.CoverImageId,
+                        ExtenalCoverImageUrl = b.ExtenalCoverImageUrl,
+                        OriginalSourceName = b.OriginalSourceName,
+                        OriginalSourceUrl = b.OriginalSourceUrl,
+                        OriginalFileUrl = b.OriginalFileUrl,
+                        PageCount = b.PageCount,
+                        FileMD5CheckSum = b.FileMD5CheckSum,
+                        OriginalFileName = b.OriginalFileName,
+                        StorageFolderName = b.StorageFolderName,
+                        BookScriptType = b.BookScriptType,
+                        PDFSourceId = b.PDFSourceId,
+                        OCRed = b.OCRed,
+                        OCRTime = b.OCRTime,
+                        AIRevised = b.AIRevised,
+                        // BookText intentionally omitted, same as the other two search methods
+                    })
+                    .ToDictionaryAsync(b => b.Id);
+
                 foreach (PDFPage page in paginatedResult.Items)
                 {
-                    page.PDFBook = await _context.PDFBooks.AsNoTracking().Where(b => b.Id == page.PDFBookId).SingleAsync();
-                    page.PDFBook.BookText = "";
+                    page.PDFBook = booksById.TryGetValue(page.PDFBookId, out var book) ? book : null;
                 }
                 return new RServiceResult<(PaginationMetadata PagingMeta, PDFPage[] Items)>(paginatedResult);
             }
