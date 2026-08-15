@@ -2089,6 +2089,27 @@ namespace RMuseum.Controllers
         }
 
         /// <summary>
+        /// delete an Author record by id - does not touch any PDFBook's AuthorsLine/
+        /// TranslatorsLine (see DeleteAuthorByIdAsync's own doc comment on why)
+        /// </summary>
+        /// <param name="authorId">the Author id to delete</param>
+        /// <returns></returns>
+        [HttpDelete]
+        [Route("author/{authorId}")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.DeleteOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> DeleteAuthorByIdAsync(int authorId)
+        {
+            var res = await _pdfService.DeleteAuthorByIdAsync(authorId);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+            {
+                return BadRequest(res.ExceptionString);
+            }
+            return Ok();
+        }
+
+        /// <summary>
         /// delete a duplicate candidate row (e.g. a false positive)
         /// </summary>
         /// <param name="id"></param>

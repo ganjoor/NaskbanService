@@ -632,6 +632,14 @@ namespace RMuseum.Services
         /// <returns></returns>
         Task<RServiceResult<bool>> MergeAuthorsByIdAsync(int survivorAuthorId, int duplicateAuthorId);
 
+        /// <summary>
+        /// delete an Author record by id - does not touch any PDFBook's AuthorsLine/
+        /// TranslatorsLine, unlike merge (see DeleteAuthorByIdAsync's own doc comment on why).
+        /// </summary>
+        /// <param name="authorId">the Author id to delete</param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> DeleteAuthorByIdAsync(int authorId);
+
 
         /// <summary>
         /// start merging EVERY Confirmed duplicate candidate in a single background job, instead
