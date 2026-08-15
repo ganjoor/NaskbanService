@@ -88,7 +88,17 @@ namespace RMuseum.Services.Implementation
                     bool survivorAlreadyHasThisRole = book.Contributers.Any(c => c.Author.Id == survivor.Id && c.Role == dc.Role);
                     if (survivorAlreadyHasThisRole)
                     {
+                        // explicit delete, not book.Contributers.Remove(dc) - removing a
+                        // dependent from a collection navigation only detaches it in memory,
+                        // it does not reliably issue a DELETE unless the relationship happens
+                        // to be configured to cascade-delete orphans, which is not something
+                        // to assume for a shadow-FK-only entity like AuthorRole. This is what
+                        // actually caused the merge to keep failing on the same FK constraint
+                        // even after the duplicate contributions were supposedly "removed" -
+                        // the rows were still sitting in the database, untouched, still
+                        // pointing at the duplicate author.
                         book.Contributers.Remove(dc);
+                        _context.Remove(dc);
                     }
                     else
                     {
@@ -132,7 +142,10 @@ namespace RMuseum.Services.Implementation
                     bool survivorAlreadyHasThisRole = book.Authors.Any(c => c.Author.Id == survivor.Id && c.Role == dc.Role);
                     if (survivorAlreadyHasThisRole)
                     {
+                        // see the matching comment in _RepointAuthorContributionsAsync above -
+                        // an explicit delete is needed here for the same reason
                         book.Authors.Remove(dc);
+                        _context.Remove(dc);
                     }
                     else
                     {
