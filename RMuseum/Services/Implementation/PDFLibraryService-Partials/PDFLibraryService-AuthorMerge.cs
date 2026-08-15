@@ -2,6 +2,7 @@
 using RMuseum.Models.PDFLibrary;
 using RSecurityBackend.Models.Generic;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -40,8 +41,7 @@ namespace RMuseum.Services.Implementation
                     return new RServiceResult<bool>(false, $"duplicate author {duplicateAuthorId} not found");
                 }
 
-                await _RepointAuthorContributionsAsync(survivor, duplicate);
-                await _RepointBookAuthorRolesAsync(survivor, duplicate);
+                await _RepointAuthorRoleRowsAsync(survivor, duplicate);
                 await _RepointAuthorPinsAsync(survivorAuthorId, duplicateAuthorId);
 
                 _context.Authors.Remove(duplicate);
@@ -57,104 +57,99 @@ namespace RMuseum.Services.Implementation
         }
 
         /// <summary>
-        /// AuthorRole is reachable from two different owning collections - PDFBook.Contributers
-        /// (handled here) and Book.Authors (the separate, higher-level Book entity - handled by
-        /// _RepointBookAuthorRolesAsync below). Both need repointing before the duplicate Author
-        /// row can be removed, or the DELETE fails on whichever FK path was missed - AuthorRole
-        /// has no DbSet or navigation of its own back to either owner, so each owner's rows are
-        /// loaded and walked directly rather than the role rows themselves. For each one: a
-        /// duplicate contribution is dropped if the survivor already has an equivalent (same
-        /// role) on that same book, otherwise repointed onto the survivor. The book's free-text
-        /// AuthorsLine/TranslatorsLine also gets the duplicate's exact name swapped for the
-        /// survivor's - those fields get re-parsed into AuthorRole rows again on this book's
-        /// *next* edit (see EditPDFBookMasterRecordAsync's contributor-sync calls), and leaving
-        /// the old spelling in the text would silently recreate the very duplicate this merge
-        /// just removed, the next time anyone unrelated edits that book.
+        /// Queries AuthorRole directly by AuthorId rather than reaching it through a parent's
+        /// collection navigation (PDFBook.Contributers or Book.Authors, the two earlier
+        /// attempts at this method). AuthorRole's own PDFBookId/BookId are both shadow
+        /// properties - not even visible on the C# class, only in the database schema - and
+        /// both are nullable, so a role row missing whichever one a given collection-navigation
+        /// query relies on (or, worse, a row with neither set at all - a genuinely orphaned
+        /// row) is invisible to that query and silently left behind, still pointing at the
+        /// duplicate, blocking the final Authors.Remove below with the exact same FK violation
+        /// every time - which is what happened twice even after fixing the two collection-based
+        /// paths one at a time. Querying the role rows directly closes that off regardless of
+        /// which parent (or no parent) a given row turns out to belong to.
+        ///
+        /// For each duplicate role: dropped (explicit _context.Remove, not detached from a
+        /// collection - see the note further down on why that distinction matters) if the
+        /// survivor already has an equivalent role on the same owner (matched by whichever of
+        /// PDFBookId/BookId that role actually has), otherwise repointed onto the survivor.
+        /// Every affected PDFBook's free-text AuthorsLine/TranslatorsLine also gets the
+        /// duplicate's exact name swapped for the survivor's - those fields get re-parsed into
+        /// AuthorRole rows again on that book's *next* edit (see
+        /// EditPDFBookMasterRecordAsync's contributor-sync calls), and leaving the old spelling
+        /// in the text would silently recreate the very duplicate this merge just removed.
         /// </summary>
-        private async Task _RepointAuthorContributionsAsync(Author survivor, Author duplicate)
+        private async Task _RepointAuthorRoleRowsAsync(Author survivor, Author duplicate)
         {
-            var affectedBooks = await _context.PDFBooks
-                .Include(b => b.Contributers).ThenInclude(c => c.Author)
-                .Where(b => b.Contributers.Any(c => c.Author.Id == duplicate.Id))
+            var duplicateRoles = await _context.Set<AuthorRole>()
+                .Where(r => r.Author.Id == duplicate.Id)
                 .ToListAsync();
 
-            string survivorName = survivor.Name ?? "";
+            if (duplicateRoles.Count == 0)
+                return;
 
-            foreach (var book in affectedBooks)
+            var survivorRoles = await _context.Set<AuthorRole>()
+                .Where(r => r.Author.Id == survivor.Id)
+                .ToListAsync();
+
+            // EF.Property<T>() only works inside a live LINQ-to-Entities expression being
+            // translated to SQL - both role lists are already materialized (post-ToListAsync,
+            // plain LINQ-to-Objects from here on), so shadow property values have to come from
+            // the change tracker's own Entry(...).Property(...) API instead, which works on any
+            // already-tracked entity regardless of query context.
+            int? PdfBookIdOf(AuthorRole r) => (int?)_context.Entry(r).Property("PDFBookId").CurrentValue;
+            int? BookIdOf(AuthorRole r) => (int?)_context.Entry(r).Property("BookId").CurrentValue;
+
+            var survivorRoleKeys = new HashSet<(int? pdfBookId, int? bookId, string role)>(
+                survivorRoles.Select(r => (PdfBookIdOf(r), BookIdOf(r), r.Role)));
+
+            var affectedPdfBookIds = new HashSet<int>();
+
+            foreach (var role in duplicateRoles)
             {
-                var duplicateContributions = book.Contributers.Where(c => c.Author.Id == duplicate.Id).ToList();
-                foreach (var dc in duplicateContributions)
+                int? pdfBookId = PdfBookIdOf(role);
+                int? bookId = BookIdOf(role);
+
+                bool survivorAlreadyHasThisRole = survivorRoleKeys.Contains((pdfBookId, bookId, role.Role));
+                if (survivorAlreadyHasThisRole)
                 {
-                    bool survivorAlreadyHasThisRole = book.Contributers.Any(c => c.Author.Id == survivor.Id && c.Role == dc.Role);
-                    if (survivorAlreadyHasThisRole)
-                    {
-                        // explicit delete, not book.Contributers.Remove(dc) - removing a
-                        // dependent from a collection navigation only detaches it in memory,
-                        // it does not reliably issue a DELETE unless the relationship happens
-                        // to be configured to cascade-delete orphans, which is not something
-                        // to assume for a shadow-FK-only entity like AuthorRole. This is what
-                        // actually caused the merge to keep failing on the same FK constraint
-                        // even after the duplicate contributions were supposedly "removed" -
-                        // the rows were still sitting in the database, untouched, still
-                        // pointing at the duplicate author.
-                        book.Contributers.Remove(dc);
-                        _context.Remove(dc);
-                    }
-                    else
-                    {
-                        dc.Author = survivor;
-                    }
+                    // explicit delete on the tracked entity itself, not
+                    // book.Contributers.Remove(role)/book.Authors.Remove(role) - removing a
+                    // dependent from a collection navigation only detaches it in memory, it
+                    // does not reliably issue a DELETE unless the relationship happens to be
+                    // configured to cascade-delete orphans, which is not something to assume
+                    // for a shadow-FK-only entity like this one. This is what actually caused
+                    // the very first fix attempt to keep failing on the same FK constraint even
+                    // though duplicate contributions were supposedly already "removed" - the
+                    // rows were still sitting in the database, untouched.
+                    _context.Remove(role);
+                }
+                else
+                {
+                    role.Author = survivor;
                 }
 
-                if (!string.IsNullOrEmpty(duplicate.Name))
+                if (pdfBookId.HasValue)
+                    affectedPdfBookIds.Add(pdfBookId.Value);
+            }
+
+            if (affectedPdfBookIds.Count > 0 && !string.IsNullOrEmpty(duplicate.Name))
+            {
+                string survivorName = survivor.Name ?? "";
+                var affectedPdfBooks = await _context.PDFBooks
+                    .Where(b => affectedPdfBookIds.Contains(b.Id))
+                    .ToListAsync();
+
+                foreach (var book in affectedPdfBooks)
                 {
                     if (!string.IsNullOrEmpty(book.AuthorsLine))
                         book.AuthorsLine = book.AuthorsLine.Replace(duplicate.Name, survivorName);
                     if (!string.IsNullOrEmpty(book.TranslatorsLine))
                         book.TranslatorsLine = book.TranslatorsLine.Replace(duplicate.Name, survivorName);
                 }
+
+                _context.PDFBooks.UpdateRange(affectedPdfBooks);
             }
-
-            _context.PDFBooks.UpdateRange(affectedBooks);
-        }
-
-        /// <summary>
-        /// same repoint-or-drop-on-collision logic as _RepointAuthorContributionsAsync above,
-        /// but for the separate Book entity's own AuthorRole collection (Book.Authors) - the
-        /// second, previously-missed path that caused MergeAuthorsByIdAsync's final Authors
-        /// removal to fail with a REFERENCE constraint violation on FK_AuthorRole_Authors_AuthorId
-        /// the first time this ran, since only PDFBook.Contributers was being repointed. Book has
-        /// no AuthorsLine/TranslatorsLine-style free text to fix up (see Book.cs - just Name and
-        /// Description), so there is no equivalent text-replacement step needed here.
-        /// </summary>
-        private async Task _RepointBookAuthorRolesAsync(Author survivor, Author duplicate)
-        {
-            var affectedBooks = await _context.Books
-                .Include(b => b.Authors).ThenInclude(c => c.Author)
-                .Where(b => b.Authors.Any(c => c.Author.Id == duplicate.Id))
-                .ToListAsync();
-
-            foreach (var book in affectedBooks)
-            {
-                var duplicateContributions = book.Authors.Where(c => c.Author.Id == duplicate.Id).ToList();
-                foreach (var dc in duplicateContributions)
-                {
-                    bool survivorAlreadyHasThisRole = book.Authors.Any(c => c.Author.Id == survivor.Id && c.Role == dc.Role);
-                    if (survivorAlreadyHasThisRole)
-                    {
-                        // see the matching comment in _RepointAuthorContributionsAsync above -
-                        // an explicit delete is needed here for the same reason
-                        book.Authors.Remove(dc);
-                        _context.Remove(dc);
-                    }
-                    else
-                    {
-                        dc.Author = survivor;
-                    }
-                }
-            }
-
-            _context.Books.UpdateRange(affectedBooks);
         }
 
         /// <summary>
