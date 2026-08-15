@@ -1952,7 +1952,15 @@ namespace RMuseum.Services.Implementation
                     string emptyOrAnd = "";
                     foreach (string word in words)
                     {
-                        searchConditions += $" {emptyOrAnd} \"*{word}*\" ";
+                        // trailing wildcard only - SQL Server's CONTAINS predicate does not
+                        // support leading wildcards at all (undocumented/unsupported, not just
+                        // slow), so "*word*" here was never a valid substring search to begin
+                        // with. "word*" is the supported prefix-match form and is what the
+                        // full-text index can actually seek efficiently. Trade-off: a search for
+                        // "خانه" now only matches words starting with it (e.g. "خانه‌ای"), not a
+                        // mid-word occurrence like "کتابخانه" - inherent to CONTAINS, not
+                        // something fixable while staying on it.
+                        searchConditions += $" {emptyOrAnd} \"{word}*\" ";
                         emptyOrAnd = " AND ";
                     }
                 }
@@ -1960,6 +1968,12 @@ namespace RMuseum.Services.Implementation
 
                 var source =
                     _context.PDFBooks.AsNoTracking().Include(a => a.Tags)
+                    // Tags is a to-many collection - without AsSplitQuery, combining this
+                    // Include with the paginator's Skip/Take below joins and multiplies each
+                    // matched book by its own tag count before pagination can even apply,
+                    // repeating that cost across every row in the page. Same reasoning already
+                    // applied to the merge queries in PDFLibraryService-Merge.cs.
+                    .AsSplitQuery()
                     .Where(p =>
                            p.Status == PublishStatus.Published
                            &&
