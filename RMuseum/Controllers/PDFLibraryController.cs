@@ -2068,6 +2068,27 @@ namespace RMuseum.Controllers
         }
 
         /// <summary>
+        /// merge two Author records by id (no redirect - see MergeAuthorsByIdAsync's doc comment)
+        /// </summary>
+        /// <param name="survivorAuthorId">the Author id that stays</param>
+        /// <param name="duplicateAuthorId">the Author id that gets merged away and removed</param>
+        /// <returns></returns>
+        [HttpPut]
+        [Route("author/merge/{survivorAuthorId}/{duplicateAuthorId}")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.DeleteOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> MergeAuthorsByIdAsync(int survivorAuthorId, int duplicateAuthorId)
+        {
+            var res = await _pdfService.MergeAuthorsByIdAsync(survivorAuthorId, duplicateAuthorId);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+            {
+                return BadRequest(res.ExceptionString);
+            }
+            return Ok();
+        }
+
+        /// <summary>
         /// delete a duplicate candidate row (e.g. a false positive)
         /// </summary>
         /// <param name="id"></param>

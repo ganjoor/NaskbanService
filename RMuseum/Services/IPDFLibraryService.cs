@@ -621,6 +621,19 @@ namespace RMuseum.Services
         Task<RServiceResult<bool>> MergePDFBooksByIdAsync(int survivorPDFBookId, int duplicatePDFBookId, Guid reviewerUserId);
 
         /// <summary>
+        /// merge two Author records by id - repoints/dedupes every PDFBook contribution and pin
+        /// referencing the duplicate onto the survivor, fixes up affected books' free-text
+        /// AuthorsLine/TranslatorsLine, then removes the duplicate. No redirect is created,
+        /// unlike PDFBook merge - nothing external references an author by a stable id/url the
+        /// way a book's PDF file does.
+        /// </summary>
+        /// <param name="survivorAuthorId">the Author id that stays</param>
+        /// <param name="duplicateAuthorId">the Author id that gets merged away and removed</param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> MergeAuthorsByIdAsync(int survivorAuthorId, int duplicateAuthorId);
+
+
+        /// <summary>
         /// start merging EVERY Confirmed duplicate candidate in a single background job, instead
         /// of one at a time.
         /// </summary>
