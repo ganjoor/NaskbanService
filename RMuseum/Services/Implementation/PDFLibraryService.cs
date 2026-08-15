@@ -1967,12 +1967,15 @@ namespace RMuseum.Services.Implementation
                 //full text catalogue should be created manually
 
                 var source =
-                    _context.PDFBooks.AsNoTracking().Include(a => a.Tags)
-                    // Tags is a to-many collection - without AsSplitQuery, combining this
-                    // Include with the paginator's Skip/Take below joins and multiplies each
-                    // matched book by its own tag count before pagination can even apply,
-                    // repeating that cost across every row in the page. Same reasoning already
-                    // applied to the merge queries in PDFLibraryService-Merge.cs.
+                    _context.PDFBooks.AsNoTracking()
+                    // Tags is a to-many collection - without AsSplitQuery, combining a
+                    // collection like this with the paginator's Skip/Take below joins and
+                    // multiplies each matched book by its own tag count before pagination can
+                    // even apply, repeating that cost across every row in the page. Same
+                    // reasoning already applied to the merge queries in
+                    // PDFLibraryService-Merge.cs. Still applies here even though Tags is now
+                    // brought in via the Select projection below rather than Include - it's the
+                    // same collection-materialization behavior either way.
                     .AsSplitQuery()
                     .Where(p =>
                            p.Status == PublishStatus.Published
@@ -1988,16 +1991,64 @@ namespace RMuseum.Services.Implementation
                            ||
                            p.Tags.Where(t => EF.Functions.Contains(t.Value, searchConditions) || EF.Functions.Contains(t.ValueInEnglish, searchConditions)).Any()
                            )
-                           ).OrderBy(i => i.Title);
+                           )
+                    // explicit projection, excluding BookText - the full OCR'd text of the
+                    // whole book, not searched or shown here, can be large per book, and was
+                    // being loaded for every row on every page only to be immediately discarded
+                    // a few lines down. Tags is kept (this method's callers expect it, unlike
+                    // SearchPDFBookForPDFPagesTextAsync); every other field mirrors what this
+                    // query already returned before (PDFFile/CoverImage/Contributers/Pages/
+                    // PDFSource/Book/MultiVolumePDFCollection were never Include()'d here
+                    // either, so they stay unset, same as before).
+                    .Select(p => new PDFBook
+                    {
+                        Id = p.Id,
+                        BookId = p.BookId,
+                        Status = p.Status,
+                        Title = p.Title,
+                        SubTitle = p.SubTitle,
+                        AuthorsLine = p.AuthorsLine,
+                        ISBN = p.ISBN,
+                        Description = p.Description,
+                        Language = p.Language,
+                        IsTranslation = p.IsTranslation,
+                        TranslatorsLine = p.TranslatorsLine,
+                        TitleInOriginalLanguage = p.TitleInOriginalLanguage,
+                        PublisherLine = p.PublisherLine,
+                        PublishingDate = p.PublishingDate,
+                        PublishingLocation = p.PublishingLocation,
+                        PublishingNumber = p.PublishingNumber,
+                        ClaimedPageCount = p.ClaimedPageCount,
+                        MultiVolumePDFCollectionId = p.MultiVolumePDFCollectionId,
+                        VolumeOrder = p.VolumeOrder,
+                        DateTime = p.DateTime,
+                        LastModified = p.LastModified,
+                        ExternalPDFFileUrl = p.ExternalPDFFileUrl,
+                        CoverImageId = p.CoverImageId,
+                        ExtenalCoverImageUrl = p.ExtenalCoverImageUrl,
+                        OriginalSourceName = p.OriginalSourceName,
+                        OriginalSourceUrl = p.OriginalSourceUrl,
+                        OriginalFileUrl = p.OriginalFileUrl,
+                        PageCount = p.PageCount,
+                        Tags = p.Tags,
+                        FileMD5CheckSum = p.FileMD5CheckSum,
+                        OriginalFileName = p.OriginalFileName,
+                        StorageFolderName = p.StorageFolderName,
+                        BookScriptType = p.BookScriptType,
+                        PDFSourceId = p.PDFSourceId,
+                        OCRed = p.OCRed,
+                        OCRTime = p.OCRTime,
+                        AIRevised = p.AIRevised,
+                    })
+                    .OrderBy(i => i.Title);
 
 
                 (PaginationMetadata PagingMeta, PDFBook[] Items) paginatedResult =
                    await QueryablePaginator<PDFBook>.Paginate(source, paging);
 
-                foreach (var book in paginatedResult.Items)
-                {
-                    book.BookText = "";
-                }
+                // no BookText-clearing loop needed anymore - the projection above never
+                // loads it in the first place, so every returned book's BookText is already
+                // its default (null)
 
 
                 return new RServiceResult<(PaginationMetadata PagingMeta, PDFBook[] Items)>(paginatedResult);
@@ -2578,7 +2629,9 @@ namespace RMuseum.Services.Implementation
                     string emptyOrAnd = "";
                     foreach (string word in words)
                     {
-                        searchConditions += $" {emptyOrAnd} \"*{word}*\" ";
+                        // same fix as SearchPDFBooksAsync - trailing wildcard only, see that
+                        // method's comment on why "*word*" was never valid CONTAINS syntax
+                        searchConditions += $" {emptyOrAnd} \"{word}*\" ";
                         emptyOrAnd = " AND ";
                     }
                 }
@@ -2590,17 +2643,63 @@ namespace RMuseum.Services.Implementation
                            p.Status == PublishStatus.Published
                            &&
                            EF.Functions.Contains(p.BookText, searchConditions)
-                           ).OrderBy(i => i.Title);
+                           )
+                    // explicit projection, excluding BookText - it's what's being searched
+                    // (via CONTAINS above, evaluated server-side against the indexed column,
+                    // not needing it back in the result) and can be large per book; loading it
+                    // for every row on every page only to immediately discard it a few lines
+                    // down was pure wasted network/memory cost. Every other field mirrors what
+                    // this query already returned before (no navigation properties were ever
+                    // Include()'d here, so PDFFile/CoverImage/Contributers/Pages/Tags/PDFSource/
+                    // Book/MultiVolumePDFCollection stay unset here too, same as before).
+                    .Select(p => new PDFBook
+                    {
+                        Id = p.Id,
+                        BookId = p.BookId,
+                        Status = p.Status,
+                        Title = p.Title,
+                        SubTitle = p.SubTitle,
+                        AuthorsLine = p.AuthorsLine,
+                        ISBN = p.ISBN,
+                        Description = p.Description,
+                        Language = p.Language,
+                        IsTranslation = p.IsTranslation,
+                        TranslatorsLine = p.TranslatorsLine,
+                        TitleInOriginalLanguage = p.TitleInOriginalLanguage,
+                        PublisherLine = p.PublisherLine,
+                        PublishingDate = p.PublishingDate,
+                        PublishingLocation = p.PublishingLocation,
+                        PublishingNumber = p.PublishingNumber,
+                        ClaimedPageCount = p.ClaimedPageCount,
+                        MultiVolumePDFCollectionId = p.MultiVolumePDFCollectionId,
+                        VolumeOrder = p.VolumeOrder,
+                        DateTime = p.DateTime,
+                        LastModified = p.LastModified,
+                        ExternalPDFFileUrl = p.ExternalPDFFileUrl,
+                        CoverImageId = p.CoverImageId,
+                        ExtenalCoverImageUrl = p.ExtenalCoverImageUrl,
+                        OriginalSourceName = p.OriginalSourceName,
+                        OriginalSourceUrl = p.OriginalSourceUrl,
+                        OriginalFileUrl = p.OriginalFileUrl,
+                        PageCount = p.PageCount,
+                        FileMD5CheckSum = p.FileMD5CheckSum,
+                        OriginalFileName = p.OriginalFileName,
+                        StorageFolderName = p.StorageFolderName,
+                        BookScriptType = p.BookScriptType,
+                        PDFSourceId = p.PDFSourceId,
+                        OCRed = p.OCRed,
+                        OCRTime = p.OCRTime,
+                        AIRevised = p.AIRevised,
+                    })
+                    .OrderBy(i => i.Title);
 
 
                 (PaginationMetadata PagingMeta, PDFBook[] Books) paginatedResult =
                    await QueryablePaginator<PDFBook>.Paginate(source, paging);
 
-                foreach (var book in paginatedResult.Books)
-                {
-                    book.BookText = "";
-                }
-
+                // no BookText-clearing loop needed anymore - the projection above never
+                // loads it in the first place, so every returned book's BookText is already
+                // its default (null)
 
                 return new RServiceResult<(PaginationMetadata PagingMeta, PDFBook[] Books)>(paginatedResult);
             }
