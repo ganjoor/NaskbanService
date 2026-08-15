@@ -41,6 +41,7 @@ namespace RMuseum.Services.Implementation
                 }
 
                 await _RepointAuthorContributionsAsync(survivor, duplicate);
+                await _RepointBookAuthorRolesAsync(survivor, duplicate);
                 await _RepointAuthorPinsAsync(survivorAuthorId, duplicateAuthorId);
 
                 _context.Authors.Remove(duplicate);
@@ -56,15 +57,19 @@ namespace RMuseum.Services.Implementation
         }
 
         /// <summary>
-        /// AuthorRole has no DbSet or navigation of its own back to PDFBook (only reachable via
-        /// PDFBook.Contributers), so the affected books are loaded directly rather than the role
-        /// rows. For each one: a duplicate contribution is dropped if the survivor already has an
-        /// equivalent (same role) on that same book, otherwise repointed onto the survivor. The
-        /// book's free-text AuthorsLine/TranslatorsLine also gets the duplicate's exact name
-        /// swapped for the survivor's - those fields get re-parsed into AuthorRole rows again on
-        /// this book's *next* edit (see EditPDFBookMasterRecordAsync's contributor-sync calls),
-        /// and leaving the old spelling in the text would silently recreate the very duplicate
-        /// this merge just removed, the next time anyone unrelated edits that book.
+        /// AuthorRole is reachable from two different owning collections - PDFBook.Contributers
+        /// (handled here) and Book.Authors (the separate, higher-level Book entity - handled by
+        /// _RepointBookAuthorRolesAsync below). Both need repointing before the duplicate Author
+        /// row can be removed, or the DELETE fails on whichever FK path was missed - AuthorRole
+        /// has no DbSet or navigation of its own back to either owner, so each owner's rows are
+        /// loaded and walked directly rather than the role rows themselves. For each one: a
+        /// duplicate contribution is dropped if the survivor already has an equivalent (same
+        /// role) on that same book, otherwise repointed onto the survivor. The book's free-text
+        /// AuthorsLine/TranslatorsLine also gets the duplicate's exact name swapped for the
+        /// survivor's - those fields get re-parsed into AuthorRole rows again on this book's
+        /// *next* edit (see EditPDFBookMasterRecordAsync's contributor-sync calls), and leaving
+        /// the old spelling in the text would silently recreate the very duplicate this merge
+        /// just removed, the next time anyone unrelated edits that book.
         /// </summary>
         private async Task _RepointAuthorContributionsAsync(Author survivor, Author duplicate)
         {
@@ -101,6 +106,42 @@ namespace RMuseum.Services.Implementation
             }
 
             _context.PDFBooks.UpdateRange(affectedBooks);
+        }
+
+        /// <summary>
+        /// same repoint-or-drop-on-collision logic as _RepointAuthorContributionsAsync above,
+        /// but for the separate Book entity's own AuthorRole collection (Book.Authors) - the
+        /// second, previously-missed path that caused MergeAuthorsByIdAsync's final Authors
+        /// removal to fail with a REFERENCE constraint violation on FK_AuthorRole_Authors_AuthorId
+        /// the first time this ran, since only PDFBook.Contributers was being repointed. Book has
+        /// no AuthorsLine/TranslatorsLine-style free text to fix up (see Book.cs - just Name and
+        /// Description), so there is no equivalent text-replacement step needed here.
+        /// </summary>
+        private async Task _RepointBookAuthorRolesAsync(Author survivor, Author duplicate)
+        {
+            var affectedBooks = await _context.Books
+                .Include(b => b.Authors).ThenInclude(c => c.Author)
+                .Where(b => b.Authors.Any(c => c.Author.Id == duplicate.Id))
+                .ToListAsync();
+
+            foreach (var book in affectedBooks)
+            {
+                var duplicateContributions = book.Authors.Where(c => c.Author.Id == duplicate.Id).ToList();
+                foreach (var dc in duplicateContributions)
+                {
+                    bool survivorAlreadyHasThisRole = book.Authors.Any(c => c.Author.Id == survivor.Id && c.Role == dc.Role);
+                    if (survivorAlreadyHasThisRole)
+                    {
+                        book.Authors.Remove(dc);
+                    }
+                    else
+                    {
+                        dc.Author = survivor;
+                    }
+                }
+            }
+
+            _context.Books.UpdateRange(affectedBooks);
         }
 
         /// <summary>
