@@ -135,7 +135,11 @@ namespace RMuseum.Services
         Task<RServiceResult<Author>> UpdateAuthorAsync(Author model);
 
         /// <summary>
-        /// delete author by id
+        /// delete author by id - removes every AuthorRole/PDFPinnedAuthor referencing this
+        /// author first. Deliberately does not touch any PDFBook's AuthorsLine/TranslatorsLine -
+        /// a generic/placeholder credit (e.g. "جمعی از نویسندگان") is worth removing as a
+        /// browsable/searchable author, but its exact wording is still worth keeping as plain
+        /// text on whichever books already carry it.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
@@ -631,14 +635,6 @@ namespace RMuseum.Services
         /// <param name="duplicateAuthorId">the Author id that gets merged away and removed</param>
         /// <returns></returns>
         Task<RServiceResult<bool>> MergeAuthorsByIdAsync(int survivorAuthorId, int duplicateAuthorId);
-
-        /// <summary>
-        /// delete an Author record by id - does not touch any PDFBook's AuthorsLine/
-        /// TranslatorsLine, unlike merge (see DeleteAuthorByIdAsync's own doc comment on why).
-        /// </summary>
-        /// <param name="authorId">the Author id to delete</param>
-        /// <returns></returns>
-        Task<RServiceResult<bool>> DeleteAuthorByIdAsync(int authorId);
 
 
         /// <summary>

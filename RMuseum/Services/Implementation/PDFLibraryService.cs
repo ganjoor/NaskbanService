@@ -803,9 +803,16 @@ namespace RMuseum.Services.Implementation
             context.PDFUserBookmarks.RemoveRange(bookmarksToRemove);
 
             // author ids about to lose this link - read via the AuthorId shadow property so this
-            // works whether or not the caller included AuthorRole.Author
+            // works whether or not the caller included AuthorRole.Author. EF.Property<T>() only
+            // works inside a live LINQ-to-Entities expression being translated to SQL -
+            // record.Contributers is already an in-memory, materialized collection at this point
+            // (LINQ-to-Objects from here on), so the shadow property value has to come from the
+            // change tracker's own Entry(...).Property(...) API instead, which works regardless
+            // of query context. Same fix as the one applied to Author merge's
+            // _RepointAuthorRoleRowsAsync, which is where this exact mistake was first caught -
+            // this one predates that fix and was missed at the time.
             List<int> contributorAuthorIds = record.Contributers
-                .Select(c => EF.Property<int>(c, "AuthorId"))
+                .Select(c => (int)context.Entry(c).Property("AuthorId").CurrentValue)
                 .Distinct()
                 .ToList();
 
@@ -1094,11 +1101,34 @@ namespace RMuseum.Services.Implementation
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
+        /// <summary>
+        /// delete author by id - for a generic/placeholder credit (e.g. "جمعی از نویسندگان")
+        /// that shouldn't exist as a browsable/searchable author entry, but whose exact wording
+        /// is still worth keeping on the books it's credited on. Removes every AuthorRole and
+        /// PDFPinnedAuthor referencing this author first (see _RemoveAuthorRoleRowsAsync/
+        /// _RemoveAuthorPinsAsync in PDFLibraryService-AuthorDelete.cs) - the previous version of
+        /// this method skipped that and went straight for _context.Remove(dbAuthor), which would
+        /// throw the same FK_AuthorRole_Authors_AuthorId violation debugged at length for Author
+        /// merge, the first time it was called on any author with existing contributions.
+        /// Deliberately does NOT touch any PDFBook's AuthorsLine/TranslatorsLine - unlike merge,
+        /// there's no survivor to substitute in, and the wording is still meaningful as
+        /// descriptive text on the book itself even once the structured Author entity is gone.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         public async Task<RServiceResult<bool>> DeleteAuthorAsync(int id)
         {
             try
             {
                 var dbAuthor = await _context.Authors.Where(author => author.Id == id).SingleOrDefaultAsync();
+                if (dbAuthor == null)
+                {
+                    return new RServiceResult<bool>(false, $"author {id} not found");
+                }
+
+                await _RemoveAuthorRoleRowsAsync(id);
+                await _RemoveAuthorPinsAsync(id);
+
                 _context.Remove(dbAuthor);
                 await _context.SaveChangesAsync();
                 return new RServiceResult<bool>(true);

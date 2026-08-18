@@ -325,7 +325,8 @@
         </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.DeleteAuthorAsync(System.Int32)">
             <summary>
-            delete an existing author
+            delete an existing author - does not touch any PDFBook's AuthorsLine/TranslatorsLine
+            (see DeleteAuthorAsync's own doc comment on the service side for why)
             </summary>
             <param name="id"></param>
             <returns></returns>
@@ -764,6 +765,14 @@
             </summary>
             <param name="survivorPDFBookId">the PDFBook id that stays and receives the merged data</param>
             <param name="duplicatePDFBookId">the PDFBook id that gets merged away and removed</param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.MergeAuthorsByIdAsync(System.Int32,System.Int32)">
+            <summary>
+            merge two Author records by id (no redirect - see MergeAuthorsByIdAsync's doc comment)
+            </summary>
+            <param name="survivorAuthorId">the Author id that stays</param>
+            <param name="duplicateAuthorId">the Author id that gets merged away and removed</param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.DeletePDFBookDuplicateCandidateAsync(System.Guid)">
@@ -12663,6 +12672,77 @@
             PDF Library Services
             </summary>
         </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._RemoveAuthorRoleRowsAsync(System.Int32)">
+            <summary>
+            Same direct-by-AuthorId query as _RepointAuthorRoleRowsAsync (see that method's own
+            doc comment for why AuthorRole is queried directly rather than through
+            PDFBook.Contributers/Book.Authors - the same reasoning and the same risk of a missed
+            path applies here). Every matching role is simply deleted, not repointed - there is no
+            survivor for a plain delete - and no PDFBook/Book text is touched. Used by
+            DeleteAuthorAsync (in PDFLibraryService.cs, the pre-existing delete-author method -
+            this used to be its own separate DeleteAuthorByIdAsync/author/{authorId} route until
+            that turned out to duplicate and route-conflict with the already-existing
+            DeleteAuthorAsync/author/{id}; consolidated into that one instead of running two).
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._RemoveAuthorPinsAsync(System.Int32)">
+            <summary>
+            every pin on this author is tombstoned (IsDeleted = true), never hard-deleted - same
+            reasoning as _RepointAuthorPinsAsync's own doc comment: a hard delete would leave
+            another device's already-pulled local pin dangling forever, since a future sync pull
+            would never mention this row again to tell that device to remove it. Unlike merge,
+            there is no survivor to carry the pin forward onto - the author is just gone. Used by
+            DeleteAuthorAsync in PDFLibraryService.cs.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.MergeAuthorsByIdAsync(System.Int32,System.Int32)">
+            <summary>
+            merge two Author records by id - for an operator (with PDFBook delete permission,
+            same policy as PDFBook merge) who spots two spellings of the same author, e.g. while
+            browsing the authors list. Unlike PDFBook merge, this creates no redirect: nothing
+            external references an author by a stable, shareable id/url the way a book's PDF file
+            does, so there is nothing that would need one.
+            </summary>
+            <param name="survivorAuthorId">the Author id that stays</param>
+            <param name="duplicateAuthorId">the Author id that gets merged away and removed</param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._RepointAuthorRoleRowsAsync(RMuseum.Models.PDFLibrary.Author,RMuseum.Models.PDFLibrary.Author)">
+             <summary>
+             Queries AuthorRole directly by AuthorId rather than reaching it through a parent's
+             collection navigation (PDFBook.Contributers or Book.Authors, the two earlier
+             attempts at this method). AuthorRole's own PDFBookId/BookId are both shadow
+             properties - not even visible on the C# class, only in the database schema - and
+             both are nullable, so a role row missing whichever one a given collection-navigation
+             query relies on (or, worse, a row with neither set at all - a genuinely orphaned
+             row) is invisible to that query and silently left behind, still pointing at the
+             duplicate, blocking the final Authors.Remove below with the exact same FK violation
+             every time - which is what happened twice even after fixing the two collection-based
+             paths one at a time. Querying the role rows directly closes that off regardless of
+             which parent (or no parent) a given row turns out to belong to.
+            
+             For each duplicate role: dropped (explicit _context.Remove, not detached from a
+             collection - see the note further down on why that distinction matters) if the
+             survivor already has an equivalent role on the same owner (matched by whichever of
+             PDFBookId/BookId that role actually has), otherwise repointed onto the survivor.
+             Every affected PDFBook's free-text AuthorsLine/TranslatorsLine also gets the
+             duplicate's exact name swapped for the survivor's - those fields get re-parsed into
+             AuthorRole rows again on that book's *next* edit (see
+             EditPDFBookMasterRecordAsync's contributor-sync calls), and leaving the old spelling
+             in the text would silently recreate the very duplicate this merge just removed.
+             </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._RepointAuthorPinsAsync(System.Int32,System.Int32)">
+            <summary>
+            every pin on the duplicate is tombstoned (IsDeleted = true), never hard-deleted - a
+            hard delete would leave another device's already-pulled local pin dangling forever,
+            since a future sync pull would never mention this row again to tell that device to
+            remove it (see PDFPinnedAuthor's own doc comment on IsDeleted). If that same user
+            doesn't already have the survivor pinned, a fresh pin on the survivor is created for
+            them in the same pass - the person doing the merge is fixing which record represents
+            this author, not asking anyone to re-decide whether they wanted that author pinned.
+            </summary>
+        </member>
         <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupMinTitleLengthForFuzzyMatch">
             <summary>
             minimum normalized-title length to be considered for fuzzy comparison (very short
@@ -13249,6 +13329,21 @@
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.DeleteAuthorAsync(System.Int32)">
             <summary>
             delete author by id
+            </summary>
+            <param name="id"></param>
+            <returns></returns>
+            <summary>
+            delete author by id - for a generic/placeholder credit (e.g. "جمعی از نویسندگان")
+            that shouldn't exist as a browsable/searchable author entry, but whose exact wording
+            is still worth keeping on the books it's credited on. Removes every AuthorRole and
+            PDFPinnedAuthor referencing this author first (see _RemoveAuthorRoleRowsAsync/
+            _RemoveAuthorPinsAsync in PDFLibraryService-AuthorDelete.cs) - the previous version of
+            this method skipped that and went straight for _context.Remove(dbAuthor), which would
+            throw the same FK_AuthorRole_Authors_AuthorId violation debugged at length for Author
+            merge, the first time it was called on any author with existing contributions.
+            Deliberately does NOT touch any PDFBook's AuthorsLine/TranslatorsLine - unlike merge,
+            there's no survivor to substitute in, and the wording is still meaningful as
+            descriptive text on the book itself even once the structured Author entity is gone.
             </summary>
             <param name="id"></param>
             <returns></returns>
@@ -14048,7 +14143,11 @@
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.DeleteAuthorAsync(System.Int32)">
             <summary>
-            delete author by id
+            delete author by id - removes every AuthorRole/PDFPinnedAuthor referencing this
+            author first. Deliberately does not touch any PDFBook's AuthorsLine/TranslatorsLine -
+            a generic/placeholder credit (e.g. "جمعی از نویسندگان") is worth removing as a
+            browsable/searchable author, but its exact wording is still worth keeping as plain
+            text on whichever books already carry it.
             </summary>
             <param name="id"></param>
             <returns></returns>
@@ -14525,6 +14624,18 @@
             <param name="survivorPDFBookId">the PDFBook id that stays and receives the merged data</param>
             <param name="duplicatePDFBookId">the PDFBook id that gets merged away and removed</param>
             <param name="reviewerUserId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.MergeAuthorsByIdAsync(System.Int32,System.Int32)">
+            <summary>
+            merge two Author records by id - repoints/dedupes every PDFBook contribution and pin
+            referencing the duplicate onto the survivor, fixes up affected books' free-text
+            AuthorsLine/TranslatorsLine, then removes the duplicate. No redirect is created,
+            unlike PDFBook merge - nothing external references an author by a stable id/url the
+            way a book's PDF file does.
+            </summary>
+            <param name="survivorAuthorId">the Author id that stays</param>
+            <param name="duplicateAuthorId">the Author id that gets merged away and removed</param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.StartMergingConfirmedPDFBookDuplicatesAsync">

@@ -707,7 +707,8 @@ namespace RMuseum.Controllers
         }
 
         /// <summary>
-        /// delete an existing author
+        /// delete an existing author - does not touch any PDFBook's AuthorsLine/TranslatorsLine
+        /// (see DeleteAuthorAsync's own doc comment on the service side for why)
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
@@ -2081,27 +2082,6 @@ namespace RMuseum.Controllers
         public async Task<IActionResult> MergeAuthorsByIdAsync(int survivorAuthorId, int duplicateAuthorId)
         {
             var res = await _pdfService.MergeAuthorsByIdAsync(survivorAuthorId, duplicateAuthorId);
-            if (!string.IsNullOrEmpty(res.ExceptionString))
-            {
-                return BadRequest(res.ExceptionString);
-            }
-            return Ok();
-        }
-
-        /// <summary>
-        /// delete an Author record by id - does not touch any PDFBook's AuthorsLine/
-        /// TranslatorsLine (see DeleteAuthorByIdAsync's own doc comment on why)
-        /// </summary>
-        /// <param name="authorId">the Author id to delete</param>
-        /// <returns></returns>
-        [HttpDelete]
-        [Route("author/{authorId}")]
-        [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.DeleteOperationShortName)]
-        [ProducesResponseType((int)HttpStatusCode.OK)]
-        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
-        public async Task<IActionResult> DeleteAuthorByIdAsync(int authorId)
-        {
-            var res = await _pdfService.DeleteAuthorByIdAsync(authorId);
             if (!string.IsNullOrEmpty(res.ExceptionString))
             {
                 return BadRequest(res.ExceptionString);
