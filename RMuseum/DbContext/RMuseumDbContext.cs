@@ -593,6 +593,11 @@ namespace RMuseum.DbContext
         /// </summary>
         public DbSet<PDFPinnedAuthor> PDFPinnedAuthors { get; set; }
 
+        /// <summary>
+        /// user reports against books (copyright, incorrect metadata, other)
+        /// </summary>
+        public DbSet<PDFBookReport> PDFBookReports { get; set; }
+
 
         /// <summary>
         /// ganjoor-poem match findings

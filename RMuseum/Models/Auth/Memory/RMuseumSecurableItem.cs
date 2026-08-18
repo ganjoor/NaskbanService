@@ -114,6 +114,13 @@ namespace RMuseum.Models.Auth.Memory
         public const string PDFLibraryEntityShortName = "pdf";
 
         /// <summary>
+        /// user reports against books - deliberately its own entity rather than folded into
+        /// PDFLibraryEntityShortName, since a reviewer here doesn't necessarily need (and
+        /// shouldn't automatically get) PDF delete permission, or vice versa
+        /// </summary>
+        public const string PDFBookReportEntityShortName = "pdfreport";
+
+        /// <summary>
         /// ftp
         /// </summary>
         public const string QueuedFTPUploadShortName = "ftp";
@@ -219,6 +226,15 @@ namespace RMuseum.Models.Auth.Memory
                             new SecurableItemOperation(ToAwaitingStatusOperationShortName, "درخواست بازبینی", false),
                             new SecurableItemOperation(PublishOperationShortName, "انتشار", false),
                             new SecurableItemOperation(ReviewGanjoorLinksOperationShortName, "بررسی شعرهای پیشنهادی گنجور", false),
+                        }
+                    },
+                    new SecurableItem()
+                    {
+                        ShortName = PDFBookReportEntityShortName,
+                        Description = "گزارش‌های کاربران دربارهٔ کتاب‌ها",
+                        Operations = new SecurableItemOperation[]
+                        {
+                            new SecurableItemOperation(ModerateOperationShortName, "بررسی و پاسخ به گزارش‌ها", false),
                         }
                     },
                     new SecurableItem()

@@ -146,6 +146,32 @@ namespace RMuseum.Services
         Task<RServiceResult<bool>> DeleteAuthorAsync(int id);
 
         /// <summary>
+        /// submit a report against a book - see PDFLibraryService-Report.cs's own doc comments
+        /// on this and the two methods below
+        /// </summary>
+        /// <param name="reporterId"></param>
+        /// <param name="pdfBookId"></param>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        Task<RServiceResult<Guid>> SubmitPDFBookReportAsync(Guid reporterId, int pdfBookId, PDFBookReportSubmitViewModel model);
+
+        /// <summary>
+        /// paginated list of still-open book reports, for reviewers
+        /// </summary>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        Task<RServiceResult<(PaginationMetadata PagingMeta, PDFBookReportViewModel[] Items)>> GetOpenPDFBookReportsAsync(PagingParameterModel paging);
+
+        /// <summary>
+        /// respond to and close a book report
+        /// </summary>
+        /// <param name="reviewerId"></param>
+        /// <param name="reportId"></param>
+        /// <param name="response"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> ClosePDFBookReportAsync(Guid reviewerId, Guid reportId, string response);
+
+        /// <summary>
         /// add pdf book contributer
         /// </summary>
         /// <param name="pdfBookId"></param>

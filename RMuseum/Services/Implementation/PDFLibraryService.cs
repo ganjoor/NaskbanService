@@ -11,6 +11,7 @@ using RMuseum.Models.PDFLibrary.ViewModels;
 using RSecurityBackend.Models.Auth.ViewModels;
 using RSecurityBackend.Models.Generic;
 using RSecurityBackend.Models.Image;
+using RSecurityBackend.Models.Notification;
 using RSecurityBackend.Services;
 using RSecurityBackend.Services.Implementation;
 using System;
@@ -1096,11 +1097,6 @@ namespace RMuseum.Services.Implementation
             }
         }
 
-        /// <summary>
-        /// delete author by id
-        /// </summary>
-        /// <param name="id"></param>
-        /// <returns></returns>
         /// <summary>
         /// delete author by id - for a generic/placeholder credit (e.g. "جمعی از نویسندگان")
         /// that shouldn't exist as a browsable/searchable author entry, but whose exact wording
@@ -3108,6 +3104,15 @@ namespace RMuseum.Services.Implementation
         /// </summary>
         protected readonly RMuseumDbContext _context;
         /// <summary>
+        /// user service - for looking up which users hold a given permission (used by
+        /// PDFBookReport notifications, see PDFLibraryService-Report.cs)
+        /// </summary>
+        protected readonly IAppUserService _appUserService;
+        /// <summary>
+        /// notification service - see PDFLibraryService-Report.cs
+        /// </summary>
+        protected readonly IRNotificationService _notificationService;
+        /// <summary>
         /// Background Task Queue Instance
         /// </summary>
         protected readonly IBackgroundTaskQueue _backgroundTaskQueue;
@@ -3141,7 +3146,9 @@ namespace RMuseum.Services.Implementation
         /// <param name="configuration"></param>
         /// <param name="ftpService"></param>
         /// <param name="optionsService"></param>
-        public PDFLibraryService(RMuseumDbContext context, IBackgroundTaskQueue backgroundTaskQueue, IImageFileService imageFileService, IConfiguration configuration, IQueuedFTPUploadService ftpService, IRGenericOptionsService optionsService)
+        /// <param name="appUserService"></param>
+        /// <param name="notificationService"></param>
+        public PDFLibraryService(RMuseumDbContext context, IBackgroundTaskQueue backgroundTaskQueue, IImageFileService imageFileService, IConfiguration configuration, IQueuedFTPUploadService ftpService, IRGenericOptionsService optionsService, IAppUserService appUserService, IRNotificationService notificationService)
         {
             _context = context;
             _backgroundTaskQueue = backgroundTaskQueue;
@@ -3149,6 +3156,8 @@ namespace RMuseum.Services.Implementation
             Configuration = configuration;
             _ftpService = ftpService;
             _optionsService = optionsService;
+            _appUserService = appUserService;
+            _notificationService = notificationService;
         }
     }
 }

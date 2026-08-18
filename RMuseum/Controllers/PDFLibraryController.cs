@@ -725,6 +725,68 @@ namespace RMuseum.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// submit a report against a book (copyright violation, incorrect metadata, or
+        /// something else) - any authenticated user
+        /// </summary>
+        /// <param name="pdfBookId"></param>
+        /// <param name="report"></param>
+        /// <returns>id of the new report</returns>
+        [HttpPost]
+        [Route("{pdfBookId}/report")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(Guid))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> SubmitPDFBookReportAsync(int pdfBookId, [FromBody] PDFBookReportSubmitViewModel report)
+        {
+            Guid userId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.SubmitPDFBookReportAsync(userId, pdfBookId, report);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok(res.Result);
+        }
+
+        /// <summary>
+        /// paginated list of still-open book reports
+        /// </summary>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("reports/open")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFBookReportEntityShortName + ":" + RMuseumSecurableItem.ModerateOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFBookReportViewModel>))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetOpenPDFBookReportsAsync([FromQuery] PagingParameterModel paging)
+        {
+            var res = await _pdfService.GetOpenPDFBookReportsAsync(paging);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
+
+            return Ok(res.Result.Items);
+        }
+
+        /// <summary>
+        /// respond to and close a book report
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        [HttpPut]
+        [Route("report/{id}/close")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFBookReportEntityShortName + ":" + RMuseumSecurableItem.ModerateOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> ClosePDFBookReportAsync(Guid id, [FromBody] PDFBookReportCloseViewModel model)
+        {
+            Guid userId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.ClosePDFBookReportAsync(userId, id, model.Response);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok();
+        }
+
         [HttpPost("pdfbook/{pdfBookId}/contributor")]
         [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.ModifyOperationShortName)]
         [ProducesResponseType((int)HttpStatusCode.OK)]

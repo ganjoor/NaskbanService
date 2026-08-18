@@ -331,6 +331,30 @@
             <param name="id"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.SubmitPDFBookReportAsync(System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportSubmitViewModel)">
+            <summary>
+            submit a report against a book (copyright violation, incorrect metadata, or
+            something else) - any authenticated user
+            </summary>
+            <param name="pdfBookId"></param>
+            <param name="report"></param>
+            <returns>id of the new report</returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetOpenPDFBookReportsAsync(RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            paginated list of still-open book reports
+            </summary>
+            <param name="paging"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.ClosePDFBookReportAsync(System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportCloseViewModel)">
+            <summary>
+            respond to and close a book report
+            </summary>
+            <param name="id"></param>
+            <param name="model"></param>
+            <returns></returns>
+        </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.DeletePDFBookContributerAsync(System.Int32,System.Int32)">
             <summary>
             delete an existing contribution from pdf book
@@ -1345,6 +1369,11 @@
             pinned authors (synced with the client's local pinned authors)
             </summary>
         </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.PDFBookReports">
+            <summary>
+            user reports against books (copyright, incorrect metadata, other)
+            </summary>
+        </member>
         <member name="P:RMuseum.DbContext.RMuseumDbContext.GanjoorPoemMatchFindings">
             <summary>
             ganjoor-poem match findings
@@ -1859,6 +1888,18 @@
             <inheritdoc />
         </member>
         <member name="M:RMuseum.Migrations.PA.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:RMuseum.Migrations.AddPDFBookReports">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.AddPDFBookReports.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.AddPDFBookReports.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.AddPDFBookReports.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
         <member name="T:RMuseum.Models.Accounting.DonationExpenditure">
@@ -2871,6 +2912,13 @@
         <member name="F:RMuseum.Models.Auth.Memory.RMuseumSecurableItem.PDFLibraryEntityShortName">
             <summary>
             pdf
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.Auth.Memory.RMuseumSecurableItem.PDFBookReportEntityShortName">
+            <summary>
+            user reports against books - deliberately its own entity rather than folded into
+            PDFLibraryEntityShortName, since a reviewer here doesn't necessarily need (and
+            shouldn't automatically get) PDF delete permission, or vice versa
             </summary>
         </member>
         <member name="F:RMuseum.Models.Auth.Memory.RMuseumSecurableItem.QueuedFTPUploadShortName">
@@ -11025,6 +11073,99 @@
             user id of the operator who confirmed the merge
             </summary>
         </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFBookReport">
+            <summary>
+            a registered user's report against a book (copyright violation, incorrect metadata,
+            or something else) - modeled after GanjoorCommentAbuseReport from the sibling Ganjoor
+            project, but richer: that one is simply deleted once handled, with no response back to
+            the reporter. This one is Closed with a written ReviewerResponse instead, and the
+            reporter is notified when that happens - a response nobody sees defeats the point of
+            writing one.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReport.Id">
+            <summary>
+            Id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReport.PDFBookId">
+            <summary>
+            the reported book
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReport.PDFBook">
+            <summary>
+            the reported book
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReport.ReporterId">
+            <summary>
+            reporting user
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReport.Reporter">
+            <summary>
+            reporting user
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReport.Category">
+            <summary>
+            one of a fixed set of category strings the client hardcodes and sends verbatim:
+            "Copyright", "IncorrectMetadata", "Other" - a plain string rather than a C# enum,
+            matching GanjoorCommentAbuseReport.ReasonCode's own convention, so a new category can
+            be added later without a migration.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReport.Description">
+            <summary>
+            free text explanation provided by the reporter
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReport.Status">
+            <summary>
+            Open until a reviewer closes it
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReport.CreatedAt">
+            <summary>
+            when the report was submitted
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReport.ReviewerId">
+            <summary>
+            user who closed/responded to this report - null while still Open
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReport.Reviewer">
+            <summary>
+            user who closed/responded to this report - null while still Open
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReport.ReviewerResponse">
+            <summary>
+            the reviewer's written response to the reporter - null while still Open
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReport.ReviewedAt">
+            <summary>
+            when the report was closed - null while still Open
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFBookReportStatus">
+            <summary>
+            PDFBookReport status
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.PDFLibrary.PDFBookReportStatus.Open">
+            <summary>
+            submitted, not yet reviewed
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.PDFLibrary.PDFBookReportStatus.Closed">
+            <summary>
+            reviewed and responded to
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.PDFLibrary.PDFPage">
             <summary>
             PDF Page
@@ -11767,6 +11908,91 @@
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.NewPDFBookViewModel.BookScriptType">
             <summary>
             Book Script Type
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportSubmitViewModel">
+            <summary>
+            submitting a report against a book
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportSubmitViewModel.Category">
+            <summary>
+            one of a fixed set the client hardcodes: "Copyright", "IncorrectMetadata", "Other"
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportSubmitViewModel.Description">
+            <summary>
+            explanatory text provided by the reporter
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportCloseViewModel">
+            <summary>
+            a reviewer's response, closing a report
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportCloseViewModel.Response">
+            <summary>
+            the reviewer's written response to the reporter
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportViewModel">
+            <summary>
+            PDFBookReport, for listing to reviewers
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportViewModel.Id">
+            <summary>
+            id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportViewModel.PDFBookId">
+            <summary>
+            reported book
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportViewModel.PDFBookTitle">
+            <summary>
+            reported book's title, so the list doesn't need a follow-up call just to show it
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportViewModel.ReporterId">
+            <summary>
+            reporting user's id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportViewModel.ReporterName">
+            <summary>
+            reporting user's display name
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportViewModel.Category">
+            <summary>
+            "Copyright", "IncorrectMetadata", or "Other"
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportViewModel.Description">
+            <summary>
+            explanatory text provided by the reporter
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportViewModel.Status">
+            <summary>
+            Open or Closed
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportViewModel.CreatedAt">
+            <summary>
+            when submitted
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportViewModel.ReviewerResponse">
+            <summary>
+            the reviewer's written response - null while still Open
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportViewModel.ReviewedAt">
+            <summary>
+            when closed - null while still Open
             </summary>
         </member>
         <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFGanjoorLinkSuggestion">
@@ -13108,6 +13334,31 @@
             </summary>
             <param name="count"></param>
         </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.SubmitPDFBookReportAsync(System.Guid,System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportSubmitViewModel)">
+            <summary>
+            submit a report against a book (copyright violation, incorrect metadata, or
+            something else) - any authenticated user. Modeled after the sibling Ganjoor
+            project's GanjoorService.ReportComment: save first, then look up every user holding
+            the PDFBookReportEntityShortName:ModerateOperationShortName permission and notify
+            each of them. A failure in that lookup/notification step is swallowed rather than
+            failing the whole submission - the report itself is already safely saved by then,
+            and a missed notification isn't worth losing a user's report over (same reasoning
+            the Ganjoor precedent uses: "if not, do nothing").
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetOpenPDFBookReportsAsync(RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            paginated list of still-open reports, for reviewers
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.ClosePDFBookReportAsync(System.Guid,System.Guid,System.String)">
+            <summary>
+            respond to and close a report - notifies the original reporter with the response.
+            A response nobody sees defeats the point of writing one, so unlike the sibling
+            Ganjoor project's comment-report handling (which just deletes the report with no
+            feedback to the reporter), this one always notifies.
+            </summary>
+        </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetImportJobs(RSecurityBackend.Models.Generic.PagingParameterModel)">
             <summary>
              import jobs
@@ -13327,11 +13578,6 @@
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.DeleteAuthorAsync(System.Int32)">
-            <summary>
-            delete author by id
-            </summary>
-            <param name="id"></param>
-            <returns></returns>
             <summary>
             delete author by id - for a generic/placeholder credit (e.g. "جمعی از نویسندگان")
             that shouldn't exist as a browsable/searchable author entry, but whose exact wording
@@ -13698,6 +13944,17 @@
             Database Context
             </summary>
         </member>
+        <member name="F:RMuseum.Services.Implementation.PDFLibraryService._appUserService">
+            <summary>
+            user service - for looking up which users hold a given permission (used by
+            PDFBookReport notifications, see PDFLibraryService-Report.cs)
+            </summary>
+        </member>
+        <member name="F:RMuseum.Services.Implementation.PDFLibraryService._notificationService">
+            <summary>
+            notification service - see PDFLibraryService-Report.cs
+            </summary>
+        </member>
         <member name="F:RMuseum.Services.Implementation.PDFLibraryService._backgroundTaskQueue">
             <summary>
             Background Task Queue Instance
@@ -13723,7 +13980,7 @@
             Configuration
             </summary>
         </member>
-        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.#ctor(RMuseum.DbContext.RMuseumDbContext,RSecurityBackend.Services.IBackgroundTaskQueue,RSecurityBackend.Services.IImageFileService,Microsoft.Extensions.Configuration.IConfiguration,RMuseum.Services.IQueuedFTPUploadService,RSecurityBackend.Services.IRGenericOptionsService)">
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.#ctor(RMuseum.DbContext.RMuseumDbContext,RSecurityBackend.Services.IBackgroundTaskQueue,RSecurityBackend.Services.IImageFileService,Microsoft.Extensions.Configuration.IConfiguration,RMuseum.Services.IQueuedFTPUploadService,RSecurityBackend.Services.IRGenericOptionsService,RSecurityBackend.Services.IAppUserService,RSecurityBackend.Services.IRNotificationService)">
             <summary>
             constructor
             </summary>
@@ -13733,6 +13990,8 @@
             <param name="configuration"></param>
             <param name="ftpService"></param>
             <param name="optionsService"></param>
+            <param name="appUserService"></param>
+            <param name="notificationService"></param>
         </member>
         <member name="T:RMuseum.Services.Implementation.PDFUserSyncService">
             <summary>
@@ -14150,6 +14409,32 @@
             text on whichever books already carry it.
             </summary>
             <param name="id"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.SubmitPDFBookReportAsync(System.Guid,System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportSubmitViewModel)">
+            <summary>
+            submit a report against a book - see PDFLibraryService-Report.cs's own doc comments
+            on this and the two methods below
+            </summary>
+            <param name="reporterId"></param>
+            <param name="pdfBookId"></param>
+            <param name="model"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetOpenPDFBookReportsAsync(RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            paginated list of still-open book reports, for reviewers
+            </summary>
+            <param name="paging"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.ClosePDFBookReportAsync(System.Guid,System.Guid,System.String)">
+            <summary>
+            respond to and close a book report
+            </summary>
+            <param name="reviewerId"></param>
+            <param name="reportId"></param>
+            <param name="response"></param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.AddPDFBookContributerAsync(System.Int32,System.Int32,System.String)">
