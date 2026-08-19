@@ -598,6 +598,12 @@ namespace RMuseum.DbContext
         /// </summary>
         public DbSet<PDFBookReport> PDFBookReports { get; set; }
 
+        /// <summary>
+        /// public comments on PDF pages, with threaded replies (Phase 1 - see
+        /// PDFPageComment's own doc comment)
+        /// </summary>
+        public DbSet<PDFPageComment> PDFPageComments { get; set; }
+
 
         /// <summary>
         /// ganjoor-poem match findings

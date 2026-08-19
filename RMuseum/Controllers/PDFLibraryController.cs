@@ -787,6 +787,73 @@ namespace RMuseum.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// submit a page comment or reply - any authenticated user
+        /// </summary>
+        /// <param name="pdfPageId"></param>
+        /// <param name="comment"></param>
+        /// <returns>id of the new comment</returns>
+        [HttpPost]
+        [Route("page/{pdfPageId}/comment")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(Guid))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> SubmitPDFPageCommentAsync(int pdfPageId, [FromBody] PDFPageCommentPostViewModel comment)
+        {
+            Guid userId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.SubmitPDFPageCommentAsync(userId, pdfPageId, comment);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok(res.Result);
+        }
+
+        /// <summary>
+        /// every published comment on a page - public, no login required, though a logged-in
+        /// caller's own comments come back with MyComment set (no [Authorize] here so
+        /// anonymous visitors can still read comments; the auth middleware still populates
+        /// User.Claims when a valid token is sent regardless of whether the action requires it)
+        /// </summary>
+        /// <param name="pdfPageId"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("page/{pdfPageId}/comments")]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFPageCommentViewModel>))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetPDFPageCommentsAsync(int pdfPageId)
+        {
+            Guid? userId = null;
+            var claim = User.Claims.FirstOrDefault(c => c.Type == "UserId");
+            if (claim != null)
+                userId = new Guid(claim.Value);
+
+            var res = await _pdfService.GetPDFPageCommentsAsync(pdfPageId, userId);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok(res.Result);
+        }
+
+        /// <summary>
+        /// delete a page comment - its own author always can; deleting someone else's needs
+        /// pdfcomment:moderate, checked inside the service (not via a policy attribute here -
+        /// see DeletePDFPageCommentAsync's own doc comment on why a policy attribute alone
+        /// can't express "or it's your own")
+        /// </summary>
+        /// <param name="commentId"></param>
+        /// <returns></returns>
+        [HttpDelete]
+        [Route("comment/{commentId}")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> DeletePDFPageCommentAsync(Guid commentId)
+        {
+            Guid userId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.DeletePDFPageCommentAsync(userId, commentId);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok();
+        }
+
         [HttpPost("pdfbook/{pdfBookId}/contributor")]
         [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.ModifyOperationShortName)]
         [ProducesResponseType((int)HttpStatusCode.OK)]

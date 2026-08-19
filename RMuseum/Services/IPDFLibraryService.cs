@@ -172,6 +172,32 @@ namespace RMuseum.Services
         Task<RServiceResult<bool>> ClosePDFBookReportAsync(Guid reviewerId, Guid reportId, string response);
 
         /// <summary>
+        /// submit a page comment or reply - see PDFLibraryService-Comment.cs's own doc
+        /// comments on this and the two methods below
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="pdfPageId"></param>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        Task<RServiceResult<Guid>> SubmitPDFPageCommentAsync(Guid userId, int pdfPageId, PDFPageCommentPostViewModel model);
+
+        /// <summary>
+        /// every published comment on a page, flat
+        /// </summary>
+        /// <param name="pdfPageId"></param>
+        /// <param name="requestingUserId">optional - only affects MyComment</param>
+        /// <returns></returns>
+        Task<RServiceResult<PDFPageCommentViewModel[]>> GetPDFPageCommentsAsync(int pdfPageId, Guid? requestingUserId);
+
+        /// <summary>
+        /// delete a page comment - own author always, others need pdfcomment:moderate
+        /// </summary>
+        /// <param name="requestingUserId"></param>
+        /// <param name="commentId"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> DeletePDFPageCommentAsync(Guid requestingUserId, Guid commentId);
+
+        /// <summary>
         /// add pdf book contributer
         /// </summary>
         /// <param name="pdfBookId"></param>

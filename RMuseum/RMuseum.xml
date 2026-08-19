@@ -355,6 +355,34 @@
             <param name="model"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.SubmitPDFPageCommentAsync(System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel)">
+            <summary>
+            submit a page comment or reply - any authenticated user
+            </summary>
+            <param name="pdfPageId"></param>
+            <param name="comment"></param>
+            <returns>id of the new comment</returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetPDFPageCommentsAsync(System.Int32)">
+            <summary>
+            every published comment on a page - public, no login required, though a logged-in
+            caller's own comments come back with MyComment set (no [Authorize] here so
+            anonymous visitors can still read comments; the auth middleware still populates
+            User.Claims when a valid token is sent regardless of whether the action requires it)
+            </summary>
+            <param name="pdfPageId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.DeletePDFPageCommentAsync(System.Guid)">
+            <summary>
+            delete a page comment - its own author always can; deleting someone else's needs
+            pdfcomment:moderate, checked inside the service (not via a policy attribute here -
+            see DeletePDFPageCommentAsync's own doc comment on why a policy attribute alone
+            can't express "or it's your own")
+            </summary>
+            <param name="commentId"></param>
+            <returns></returns>
+        </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.DeletePDFBookContributerAsync(System.Int32,System.Int32)">
             <summary>
             delete an existing contribution from pdf book
@@ -1372,6 +1400,12 @@
         <member name="P:RMuseum.DbContext.RMuseumDbContext.PDFBookReports">
             <summary>
             user reports against books (copyright, incorrect metadata, other)
+            </summary>
+        </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.PDFPageComments">
+            <summary>
+            public comments on PDF pages, with threaded replies (Phase 1 - see
+            PDFPageComment's own doc comment)
             </summary>
         </member>
         <member name="P:RMuseum.DbContext.RMuseumDbContext.GanjoorPoemMatchFindings">
@@ -2919,6 +2953,14 @@
             user reports against books - deliberately its own entity rather than folded into
             PDFLibraryEntityShortName, since a reviewer here doesn't necessarily need (and
             shouldn't automatically get) PDF delete permission, or vice versa
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.Auth.Memory.RMuseumSecurableItem.PDFPageCommentEntityShortName">
+            <summary>
+            moderating other users' page comments (deleting a comment that isn't your own) -
+            deliberately separate from PDFBookReportEntityShortName, since reviewing book
+            reports and moderating comments are different responsibilities. A user can always
+            delete their own comment regardless of this permission.
             </summary>
         </member>
         <member name="F:RMuseum.Models.Auth.Memory.RMuseumSecurableItem.QueuedFTPUploadShortName">
@@ -11256,6 +11298,72 @@
             tags view models
             </summary>
         </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFPageComment">
+            <summary>
+            a public comment on a PDF page - Phase 1 of the commenting system: plain page-level
+            comments with threaded replies (a reply is just another PDFPageComment with InReplyToId
+            set, matching the sibling Ganjoor project's GanjoorComment - no separate reply table).
+            Phase 2 will add an optional highlighted-region reference: a client-cropped image of the
+            area plus fractional (0.0-1.0) coordinates relative to PDFPage's own
+            FullResolutionImageWidth/Height, so the highlight displays correctly regardless of which
+            device rendered the page or at what zoom level - deliberately left off this entity for
+            now rather than added as unused nullable columns ahead of need.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.Id">
+            <summary>
+            Id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.PDFPageId">
+            <summary>
+            the page this comment is on
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.PDFPage">
+            <summary>
+            the page this comment is on
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.UserId">
+            <summary>
+            commenting user - always required, unlike GanjoorComment's UserId which is nullable
+            to accommodate legacy anonymous imported comments this project has none of
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.User">
+            <summary>
+            commenting user
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.Text">
+            <summary>
+            plain text, not HTML - avoids sanitization/XSS concerns for a first version; unlike
+            GanjoorComment.HtmlComment, nothing here renders as markup
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.CreatedAt">
+            <summary>
+            when submitted
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.InReplyToId">
+            <summary>
+            the comment this one replies to - null for a top-level comment
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.InReplyTo">
+            <summary>
+            the comment this one replies to - null for a top-level comment
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.Status">
+            <summary>
+            published immediately for Phase 1 - no moderation queue yet, but reusing the same
+            PublishStatus enum already used across this project keeps the door open for one
+            later without a schema change
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.PDFLibrary.PDFPageUnrevisedText">
             <summary>
             backup for ai chanegs
@@ -12033,6 +12141,70 @@
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFGanjoorLinkSuggestion.SuggestedByMachine">
             <summary>
             suggested by a machine
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel">
+            <summary>
+            submitting a page comment (Phase 1 - no highlight/image yet)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel.Text">
+            <summary>
+            comment text - plain text, not HTML
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel.InReplyToId">
+            <summary>
+            send null for a top-level comment, or another comment's id to reply to it
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel">
+            <summary>
+            PDFPageComment, for listing - a flat list, not a nested tree (matches
+            GanjoorCommentFullViewModel's own convention): each reply carries its parent's
+            InReplyToId, and the client builds whatever threaded/indented display it wants from
+            that rather than the server pre-shaping a tree.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.Id">
+            <summary>
+            id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.PDFPageId">
+            <summary>
+            the page this comment is on
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.UserId">
+            <summary>
+            commenting user's id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.UserName">
+            <summary>
+            commenting user's display name
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.Text">
+            <summary>
+            comment text
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.CreatedAt">
+            <summary>
+            when submitted
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.InReplyToId">
+            <summary>
+            null for a top-level comment, otherwise the id of the comment this one replies to
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.MyComment">
+            <summary>
+            true when the requesting user is this comment's own author - lets the client show
+            a delete button without a separate ownership check of its own
             </summary>
         </member>
         <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFPageOCRDataViewModel">
@@ -12967,6 +13139,32 @@
             doesn't already have the survivor pinned, a fresh pin on the survivor is created for
             them in the same pass - the person doing the merge is fixing which record represents
             this author, not asking anyone to re-decide whether they wanted that author pinned.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.SubmitPDFPageCommentAsync(System.Guid,System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel)">
+            <summary>
+            submit a page comment, or a reply to one - Phase 1: plain text only, no
+            highlight/image yet (see PDFPageComment's own doc comment). Any authenticated user.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetPDFPageCommentsAsync(System.Int32,System.Nullable{System.Guid})">
+            <summary>
+            every published comment on a page, flat (not nested - see
+            PDFPageCommentViewModel's own doc comment on why), oldest first so replies
+            naturally read in order under whatever a client groups them by. [requestingUserId]
+            is optional (anonymous visitors can read comments) and only affects MyComment.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.DeletePDFPageCommentAsync(System.Guid,System.Guid)">
+            <summary>
+            delete a comment - its own author always can, regardless of permissions; anyone
+            else needs pdfcomment:moderate. This dual-path check is why the controller action
+            for this is just [Authorize] (logged in) rather than a policy-gated
+            [Authorize(Policy=...)] - a policy attribute can't conditionally allow "or it's your
+            own", since ownership isn't known until the specific comment is loaded.
+            Replies pointing at a deleted comment are left in place with a dangling
+            InReplyToId, same as GanjoorComment's own approach - not cascade-deleted, since a
+            reply can still stand on its own even once whatever it replied to is gone.
             </summary>
         </member>
         <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupMinTitleLengthForFuzzyMatch">
@@ -14435,6 +14633,32 @@
             <param name="reviewerId"></param>
             <param name="reportId"></param>
             <param name="response"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.SubmitPDFPageCommentAsync(System.Guid,System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel)">
+            <summary>
+            submit a page comment or reply - see PDFLibraryService-Comment.cs's own doc
+            comments on this and the two methods below
+            </summary>
+            <param name="userId"></param>
+            <param name="pdfPageId"></param>
+            <param name="model"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetPDFPageCommentsAsync(System.Int32,System.Nullable{System.Guid})">
+            <summary>
+            every published comment on a page, flat
+            </summary>
+            <param name="pdfPageId"></param>
+            <param name="requestingUserId">optional - only affects MyComment</param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.DeletePDFPageCommentAsync(System.Guid,System.Guid)">
+            <summary>
+            delete a page comment - own author always, others need pdfcomment:moderate
+            </summary>
+            <param name="requestingUserId"></param>
+            <param name="commentId"></param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.AddPDFBookContributerAsync(System.Int32,System.Int32,System.String)">

@@ -121,6 +121,14 @@ namespace RMuseum.Models.Auth.Memory
         public const string PDFBookReportEntityShortName = "pdfreport";
 
         /// <summary>
+        /// moderating other users' page comments (deleting a comment that isn't your own) -
+        /// deliberately separate from PDFBookReportEntityShortName, since reviewing book
+        /// reports and moderating comments are different responsibilities. A user can always
+        /// delete their own comment regardless of this permission.
+        /// </summary>
+        public const string PDFPageCommentEntityShortName = "pdfcomment";
+
+        /// <summary>
         /// ftp
         /// </summary>
         public const string QueuedFTPUploadShortName = "ftp";
@@ -235,6 +243,15 @@ namespace RMuseum.Models.Auth.Memory
                         Operations = new SecurableItemOperation[]
                         {
                             new SecurableItemOperation(ModerateOperationShortName, "بررسی و پاسخ به گزارش‌ها", false),
+                        }
+                    },
+                    new SecurableItem()
+                    {
+                        ShortName = PDFPageCommentEntityShortName,
+                        Description = "دیدگاه‌های کاربران روی صفحات کتاب‌ها",
+                        Operations = new SecurableItemOperation[]
+                        {
+                            new SecurableItemOperation(ModerateOperationShortName, "حذف دیدگاه دیگر کاربران", false),
                         }
                     },
                     new SecurableItem()
