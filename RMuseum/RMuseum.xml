@@ -1936,6 +1936,18 @@
         <member name="M:RMuseum.Migrations.AddPDFBookReports.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
+        <member name="T:RMuseum.Migrations.AddPDFPageComments">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.AddPDFPageComments.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.AddPDFPageComments.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.AddPDFPageComments.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
         <member name="T:RMuseum.Models.Accounting.DonationExpenditure">
             <summary>
             donation expenditures
@@ -13156,16 +13168,25 @@
             </summary>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.DeletePDFPageCommentAsync(System.Guid,System.Guid)">
-            <summary>
-            delete a comment - its own author always can, regardless of permissions; anyone
-            else needs pdfcomment:moderate. This dual-path check is why the controller action
-            for this is just [Authorize] (logged in) rather than a policy-gated
-            [Authorize(Policy=...)] - a policy attribute can't conditionally allow "or it's your
-            own", since ownership isn't known until the specific comment is loaded.
-            Replies pointing at a deleted comment are left in place with a dangling
-            InReplyToId, same as GanjoorComment's own approach - not cascade-deleted, since a
-            reply can still stand on its own even once whatever it replied to is gone.
-            </summary>
+             <summary>
+             delete a comment - its own author always can, regardless of permissions; anyone
+             else needs pdfcomment:moderate. This dual-path check is why the controller action
+             for this is just [Authorize] (logged in) rather than a policy-gated
+             [Authorize(Policy=...)] - a policy attribute can't conditionally allow "or it's your
+             own", since ownership isn't known until the specific comment is loaded.
+            
+             This is a SOFT delete (Status set to Deleted, row kept), not a hard one - the
+             generated migration confirmed why a hard delete isn't safe here: the InReplyToId
+             self-reference has no cascade/set-null behavior at the database level at all (no
+             FK path was even generated for it beyond plain NO ACTION), because SQL Server
+             disallows cascading on this kind of self-referencing relationship in the first
+             place. Deleting a comment that has any replies would throw a FK violation outright.
+             Soft-deleting sidesteps that entirely (the row stays, so nothing referencing it via
+             InReplyToId ever becomes invalid) and is arguably better UX anyway - a reply stays
+             anchored to its real parent instead of becoming an orphaned top-level comment.
+             GetPDFPageCommentsAsync already filters to Status == Published, so a soft-deleted
+             comment simply stops appearing.
+             </summary>
         </member>
         <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupMinTitleLengthForFuzzyMatch">
             <summary>
