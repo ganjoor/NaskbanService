@@ -111,9 +111,18 @@ namespace RMuseum.Services.Implementation
         /// for this is just [Authorize] (logged in) rather than a policy-gated
         /// [Authorize(Policy=...)] - a policy attribute can't conditionally allow "or it's your
         /// own", since ownership isn't known until the specific comment is loaded.
-        /// Replies pointing at a deleted comment are left in place with a dangling
-        /// InReplyToId, same as GanjoorComment's own approach - not cascade-deleted, since a
-        /// reply can still stand on its own even once whatever it replied to is gone.
+        ///
+        /// This is a SOFT delete (Status set to Deleted, row kept), not a hard one - the
+        /// generated migration confirmed why a hard delete isn't safe here: the InReplyToId
+        /// self-reference has no cascade/set-null behavior at the database level at all (no
+        /// FK path was even generated for it beyond plain NO ACTION), because SQL Server
+        /// disallows cascading on this kind of self-referencing relationship in the first
+        /// place. Deleting a comment that has any replies would throw a FK violation outright.
+        /// Soft-deleting sidesteps that entirely (the row stays, so nothing referencing it via
+        /// InReplyToId ever becomes invalid) and is arguably better UX anyway - a reply stays
+        /// anchored to its real parent instead of becoming an orphaned top-level comment.
+        /// GetPDFPageCommentsAsync already filters to Status == Published, so a soft-deleted
+        /// comment simply stops appearing.
         /// </summary>
         public async Task<RServiceResult<bool>> DeletePDFPageCommentAsync(Guid requestingUserId, Guid commentId)
         {
@@ -134,7 +143,8 @@ namespace RMuseum.Services.Implementation
                     }
                 }
 
-                _context.Remove(comment);
+                comment.Status = PublishStatus.Deleted;
+                _context.Update(comment);
                 await _context.SaveChangesAsync();
 
                 return new RServiceResult<bool>(true);
