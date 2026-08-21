@@ -79,6 +79,15 @@ namespace RMuseum.Services.Implementation
                     {
                         return new RServiceResult<Guid>(Guid.Empty, imageRes.ExceptionString);
                     }
+                    // Add() writes the file and builds the RImage object, but does not persist
+                    // it to the database on its own - confirmed directly by the FK violation
+                    // this caused (INSERT on PDFPageComments failing against
+                    // FK_PDFPageComments_GeneralImages_ImageId, "the conflict occurred ... table
+                    // GeneralImages, column Id") when only the returned Id was referenced below
+                    // without the row actually existing yet. Explicitly tracked and inserted
+                    // here instead, in the same SaveChangesAsync call as the comment itself,
+                    // rather than assuming Add already committed it.
+                    _context.Set<RImage>().Add(imageRes.Result);
                     imageId = imageRes.Result.Id;
                 }
 
