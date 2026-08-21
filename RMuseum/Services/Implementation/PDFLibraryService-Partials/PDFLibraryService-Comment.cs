@@ -4,6 +4,7 @@ using RMuseum.Models.Auth.Memory;
 using RMuseum.Models.PDFLibrary;
 using RMuseum.Models.PDFLibrary.ViewModels;
 using RSecurityBackend.Models.Generic;
+using RSecurityBackend.Models.Notification;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -31,9 +32,13 @@ namespace RMuseum.Services.Implementation
                     return new RServiceResult<Guid>(Guid.Empty, $"PDFPage {pdfPageId} not found");
                 }
 
+                // declared here (rather than inside the if block below, where it's assigned)
+                // so it's still in scope further down, where a successful reply needs its
+                // parent's UserId to notify - stays null for a top-level (non-reply) comment
+                PDFPageComment parent = null;
                 if (model.InReplyToId != null)
                 {
-                    var parent = await _context.PDFPageComments.AsNoTracking()
+                    parent = await _context.PDFPageComments.AsNoTracking()
                         .Where(c => c.Id == model.InReplyToId.Value)
                         .SingleOrDefaultAsync();
                     if (parent == null)
@@ -61,6 +66,37 @@ namespace RMuseum.Services.Implementation
                 };
                 _context.PDFPageComments.Add(comment);
                 await _context.SaveChangesAsync();
+
+                // notify the parent comment's author, never yourself when replying to your
+                // own comment. Wrapped in its own try/catch, deliberately separate from the
+                // method's outer one: the comment above is already saved by this point, so a
+                // notification failure here must never make this method report failure back
+                // to the client for a submission that actually succeeded - that could lead a
+                // client to retry and create a duplicate comment. Same "swallow it, the
+                // submission already succeeded" reasoning as SubmitPDFBookReportAsync's own
+                // moderator-notification step.
+                if (model.InReplyToId != null && parent.UserId != userId)
+                {
+                    try
+                    {
+                        var book = await _context.PDFBooks.AsNoTracking()
+                            .Where(b => b.Id == page.PDFBookId)
+                            .Select(b => new { b.Title })
+                            .SingleOrDefaultAsync();
+
+                        await _notificationService.PushNotification
+                                        (
+                                            parent.UserId,
+                                            "پاسخ به دیدگاه شما",
+                                            $"کسی به دیدگاه شما در صفحهٔ {page.PageNumber} کتاب «{book?.Title}» پاسخ داد:{Environment.NewLine}{comment.Text}",
+                                            NotificationType.ActionRequired
+                                        );
+                    }
+                    catch
+                    {
+                        // if not, do nothing - see doc comment above
+                    }
+                }
 
                 return new RServiceResult<Guid>(comment.Id);
             }
