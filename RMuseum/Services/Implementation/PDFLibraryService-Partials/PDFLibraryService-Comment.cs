@@ -7,6 +7,8 @@ using RMuseum.Models.PDFLibrary.ViewModels;
 using RSecurityBackend.Models.Generic;
 using RSecurityBackend.Models.Image;
 using RSecurityBackend.Models.Notification;
+using RSecurityBackend.Services;
+using RSecurityBackend.Services.Implementation;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -169,6 +171,7 @@ namespace RMuseum.Services.Implementation
                 var comments = await _context.PDFPageComments.AsNoTracking()
                     .Include(c => c.User)
                     .Include(c => c.Image)
+                    .Include(c => c.PDFPage)
                     .Where(c => c.PDFPageId == pdfPageId && c.Status == PublishStatus.Published)
                     .OrderBy(c => c.CreatedAt)
                     .ToArrayAsync();
@@ -177,6 +180,7 @@ namespace RMuseum.Services.Implementation
                 {
                     Id = c.Id,
                     PDFPageId = c.PDFPageId,
+                    PageNumber = c.PDFPage.PageNumber,
                     UserId = c.UserId,
                     UserName = c.User.NickName,
                     Text = c.Text,
@@ -195,6 +199,79 @@ namespace RMuseum.Services.Implementation
             catch (Exception exp)
             {
                 return new RServiceResult<PDFPageCommentViewModel[]>(null, exp.ToString());
+            }
+        }
+
+        /// <summary>
+        /// count of published comments on a single page - deliberately keyed by
+        /// (pdfBookId, pageNumber) rather than the resolved PDFPageId, since a client walking
+        /// through pages (to show a comment-count badge as the reader turns pages) always
+        /// already has book id + page number in hand and would otherwise need an extra
+        /// round-trip just to resolve the PDFPageId first before it could even ask for a count.
+        /// Meant to be cheap and safe to call on every page turn - no Include, no projection
+        /// beyond a plain count.
+        /// </summary>
+        public async Task<RServiceResult<int>> GetPDFPageCommentCountAsync(int pdfBookId, int pageNumber)
+        {
+            try
+            {
+                var count = await _context.PDFPageComments.AsNoTracking()
+                    .Where(c => c.PDFPage.PDFBookId == pdfBookId
+                             && c.PDFPage.PageNumber == pageNumber
+                             && c.Status == PublishStatus.Published)
+                    .CountAsync();
+
+                return new RServiceResult<int>(count);
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<int>(0, exp.ToString());
+            }
+        }
+
+        /// <summary>
+        /// every published comment across every page of a book, paginated, newest first - the
+        /// book-wide comment hub. Same flat (not nested) shape and same reasoning as
+        /// GetPDFPageCommentsAsync for why ImageUrl is built in memory after materializing
+        /// rather than inside the translated query.
+        /// </summary>
+        public async Task<RServiceResult<(PaginationMetadata PagingMeta, PDFPageCommentViewModel[] Items)>> GetPDFBookCommentsAsync(int pdfBookId, PagingParameterModel paging)
+        {
+            try
+            {
+                var source = _context.PDFPageComments.AsNoTracking()
+                    .Include(c => c.User)
+                    .Include(c => c.Image)
+                    .Include(c => c.PDFPage)
+                    .Where(c => c.PDFPage.PDFBookId == pdfBookId && c.Status == PublishStatus.Published)
+                    .OrderByDescending(c => c.CreatedAt);
+
+                (PaginationMetadata PagingMeta, PDFPageComment[] Items) paginatedResult =
+                    await QueryablePaginator<PDFPageComment>.Paginate(source, paging);
+
+                var items = paginatedResult.Items.Select(c => new PDFPageCommentViewModel()
+                {
+                    Id = c.Id,
+                    PDFPageId = c.PDFPageId,
+                    PageNumber = c.PDFPage.PageNumber,
+                    UserId = c.UserId,
+                    UserName = c.User.NickName,
+                    Text = c.Text,
+                    CreatedAt = c.CreatedAt,
+                    InReplyToId = c.InReplyToId,
+                    MyComment = false, // the hub doesn't need per-viewer ownership - no delete action there
+                    ImageUrl = c.Image == null ? null : _BuildRImageUrl(c.Image),
+                    HighlightX = c.HighlightX,
+                    HighlightY = c.HighlightY,
+                    HighlightWidth = c.HighlightWidth,
+                    HighlightHeight = c.HighlightHeight,
+                }).ToArray();
+
+                return new RServiceResult<(PaginationMetadata, PDFPageCommentViewModel[])>((paginatedResult.PagingMeta, items));
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<(PaginationMetadata, PDFPageCommentViewModel[])>((null, null), exp.ToString());
             }
         }
 

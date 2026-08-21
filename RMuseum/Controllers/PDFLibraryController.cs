@@ -848,6 +848,52 @@ namespace RMuseum.Controllers
         }
 
         /// <summary>
+        /// count of published comments on a single page - public, no login required. Keyed by
+        /// (pdfBookId, pageNumber) rather than PDFPageId - see
+        /// GetPDFPageCommentCountAsync's own doc comment on why. Meant to be cheap enough to
+        /// call on every page turn for a comment-count badge.
+        /// </summary>
+        /// <param name="pdfBookId"></param>
+        /// <param name="pageNumber"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("{pdfBookId}/page/{pageNumber}/comments/count")]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(int))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetPDFPageCommentCountAsync(int pdfBookId, int pageNumber)
+        {
+            var res = await _pdfService.GetPDFPageCommentCountAsync(pdfBookId, pageNumber);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok(res.Result);
+        }
+
+        /// <summary>
+        /// every published comment across every page of a book, paginated - the book-wide
+        /// comment hub. Public, no login required, same reasoning as
+        /// GetPDFPageCommentsAsync (MyComment isn't populated here - see
+        /// GetPDFBookCommentsAsync's own doc comment - so there's nothing auth-dependent in
+        /// this response to justify requiring it)
+        /// </summary>
+        /// <param name="pdfBookId"></param>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("{pdfBookId}/comments")]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFPageCommentViewModel>))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetPDFBookCommentsAsync(int pdfBookId, [FromQuery] PagingParameterModel paging)
+        {
+            var res = await _pdfService.GetPDFBookCommentsAsync(pdfBookId, paging);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
+
+            return Ok(res.Result.Items);
+        }
+
+        /// <summary>
         /// delete a page comment - its own author always can; deleting someone else's needs
         /// pdfcomment:moderate, checked inside the service (not via a policy attribute here -
         /// see DeletePDFPageCommentAsync's own doc comment on why a policy attribute alone

@@ -64,6 +64,14 @@ namespace RMuseum.Models.PDFLibrary.ViewModels
         public int PDFPageId { get; set; }
 
         /// <summary>
+        /// the page's own page number within its book - not needed by the page-scoped
+        /// GetPDFPageCommentsAsync (the caller already knows which page they asked for), but
+        /// needed by the book-wide hub (GetPDFBookCommentsAsync), so it can link each comment
+        /// back to the page it's on
+        /// </summary>
+        public int PageNumber { get; set; }
+
+        /// <summary>
         /// commenting user's id
         /// </summary>
         public Guid UserId { get; set; }
