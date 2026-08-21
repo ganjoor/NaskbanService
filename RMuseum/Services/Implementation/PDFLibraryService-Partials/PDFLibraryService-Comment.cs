@@ -21,8 +21,15 @@ namespace RMuseum.Services.Implementation
         /// submit a page comment, or a reply to one - Phase 1 fields (Text/InReplyToId) plus
         /// Phase 2's optional highlighted region (image + fractional coordinates, see
         /// PDFPageComment's own doc comment). Any authenticated user.
+        ///
+        /// Keyed by (pdfBookId, pageNumber), not the internal PDFPage.Id - a caller always
+        /// already has book id + page number in hand and shouldn't need a separate round-trip
+        /// just to resolve an internal id first before it can even submit a comment. Internally
+        /// this still resolves to a PDFPage row and still uses its Id for the actual
+        /// PDFPageComment.PDFPageId foreign key - only the public-facing identifier changes,
+        /// not the underlying schema.
         /// </summary>
-        public async Task<RServiceResult<Guid>> SubmitPDFPageCommentAsync(Guid userId, int pdfPageId, PDFPageCommentPostViewModel model, IFormFile image)
+        public async Task<RServiceResult<Guid>> SubmitPDFPageCommentAsync(Guid userId, int pdfBookId, int pageNumber, PDFPageCommentPostViewModel model, IFormFile image)
         {
             try
             {
@@ -45,11 +52,14 @@ namespace RMuseum.Services.Implementation
                     return new RServiceResult<Guid>(Guid.Empty, "برای دیدگاه دارای هایلایت، تصویر بخش هایلایت‌شده الزامی است");
                 }
 
-                var page = await _context.PDFPages.AsNoTracking().Where(p => p.Id == pdfPageId).SingleOrDefaultAsync();
+                var page = await _context.PDFPages.AsNoTracking()
+                    .Where(p => p.PDFBookId == pdfBookId && p.PageNumber == pageNumber)
+                    .SingleOrDefaultAsync();
                 if (page == null)
                 {
-                    return new RServiceResult<Guid>(Guid.Empty, $"PDFPage {pdfPageId} not found");
+                    return new RServiceResult<Guid>(Guid.Empty, $"page {pageNumber} of book {pdfBookId} not found");
                 }
+                int pdfPageId = page.Id;
 
                 // declared here (rather than inside the if block below, where it's assigned)
                 // so it's still in scope further down, where a successful reply needs its
@@ -155,8 +165,11 @@ namespace RMuseum.Services.Implementation
         /// PDFPageCommentViewModel's own doc comment on why), oldest first so replies
         /// naturally read in order under whatever a client groups them by. [requestingUserId]
         /// is optional (anonymous visitors can read comments) and only affects MyComment.
+        ///
+        /// Keyed by (pdfBookId, pageNumber), not the internal PDFPage.Id - same reasoning as
+        /// SubmitPDFPageCommentAsync's own doc comment.
         /// </summary>
-        public async Task<RServiceResult<PDFPageCommentViewModel[]>> GetPDFPageCommentsAsync(int pdfPageId, Guid? requestingUserId)
+        public async Task<RServiceResult<PDFPageCommentViewModel[]>> GetPDFPageCommentsAsync(int pdfBookId, int pageNumber, Guid? requestingUserId)
         {
             try
             {
@@ -172,7 +185,7 @@ namespace RMuseum.Services.Implementation
                     .Include(c => c.User)
                     .Include(c => c.Image)
                     .Include(c => c.PDFPage)
-                    .Where(c => c.PDFPageId == pdfPageId && c.Status == PublishStatus.Published)
+                    .Where(c => c.PDFPage.PDFBookId == pdfBookId && c.PDFPage.PageNumber == pageNumber && c.Status == PublishStatus.Published)
                     .OrderBy(c => c.CreatedAt)
                     .ToArrayAsync();
 

@@ -177,19 +177,21 @@ namespace RMuseum.Services
         /// comments on this and the two methods below
         /// </summary>
         /// <param name="userId"></param>
-        /// <param name="pdfPageId"></param>
+        /// <param name="pdfBookId"></param>
+        /// <param name="pageNumber"></param>
         /// <param name="model"></param>
         /// <param name="image">Phase 2: optional highlighted-region snippet - required together with model's HighlightX/Y/Width/Height, omitted for a plain page-level comment</param>
         /// <returns></returns>
-        Task<RServiceResult<Guid>> SubmitPDFPageCommentAsync(Guid userId, int pdfPageId, PDFPageCommentPostViewModel model, IFormFile image);
+        Task<RServiceResult<Guid>> SubmitPDFPageCommentAsync(Guid userId, int pdfBookId, int pageNumber, PDFPageCommentPostViewModel model, IFormFile image);
 
         /// <summary>
         /// every published comment on a page, flat
         /// </summary>
-        /// <param name="pdfPageId"></param>
+        /// <param name="pdfBookId"></param>
+        /// <param name="pageNumber"></param>
         /// <param name="requestingUserId">optional - only affects MyComment</param>
         /// <returns></returns>
-        Task<RServiceResult<PDFPageCommentViewModel[]>> GetPDFPageCommentsAsync(int pdfPageId, Guid? requestingUserId);
+        Task<RServiceResult<PDFPageCommentViewModel[]>> GetPDFPageCommentsAsync(int pdfBookId, int pageNumber, Guid? requestingUserId);
 
         /// <summary>
         /// count of published comments on a single page - keyed by (pdfBookId, pageNumber),

@@ -793,15 +793,18 @@ namespace RMuseum.Controllers
         /// since Phase 2 needs to accept an optional image file alongside the text fields -
         /// read directly from Request.Form, matching the sibling Ganjoor project's own mixed
         /// file+field upload convention (e.g. GanjoorController's Request.Form["bookName"]).
+        /// Keyed by (pdfBookId, pageNumber), not the internal PDFPage.Id - see
+        /// SubmitPDFPageCommentAsync's own doc comment on why.
         /// </summary>
-        /// <param name="pdfPageId"></param>
+        /// <param name="pdfBookId"></param>
+        /// <param name="pageNumber"></param>
         /// <returns>id of the new comment</returns>
         [HttpPost]
-        [Route("page/{pdfPageId}/comment")]
+        [Route("{pdfBookId}/page/{pageNumber}/comment")]
         [Authorize]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(Guid))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
-        public async Task<IActionResult> SubmitPDFPageCommentAsync(int pdfPageId)
+        public async Task<IActionResult> SubmitPDFPageCommentAsync(int pdfBookId, int pageNumber)
         {
             Guid userId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
 
@@ -816,7 +819,7 @@ namespace RMuseum.Controllers
             };
             IFormFile image = Request.Form.Files.Count > 0 ? Request.Form.Files[0] : null;
 
-            var res = await _pdfService.SubmitPDFPageCommentAsync(userId, pdfPageId, model, image);
+            var res = await _pdfService.SubmitPDFPageCommentAsync(userId, pdfBookId, pageNumber, model, image);
             if (!string.IsNullOrEmpty(res.ExceptionString))
                 return BadRequest(res.ExceptionString);
             return Ok(res.Result);
@@ -826,22 +829,25 @@ namespace RMuseum.Controllers
         /// every published comment on a page - public, no login required, though a logged-in
         /// caller's own comments come back with MyComment set (no [Authorize] here so
         /// anonymous visitors can still read comments; the auth middleware still populates
-        /// User.Claims when a valid token is sent regardless of whether the action requires it)
+        /// User.Claims when a valid token is sent regardless of whether the action requires it).
+        /// Keyed by (pdfBookId, pageNumber), not the internal PDFPage.Id - see
+        /// GetPDFPageCommentsAsync's own doc comment on why.
         /// </summary>
-        /// <param name="pdfPageId"></param>
+        /// <param name="pdfBookId"></param>
+        /// <param name="pageNumber"></param>
         /// <returns></returns>
         [HttpGet]
-        [Route("page/{pdfPageId}/comments")]
+        [Route("{pdfBookId}/page/{pageNumber}/comments")]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFPageCommentViewModel>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
-        public async Task<IActionResult> GetPDFPageCommentsAsync(int pdfPageId)
+        public async Task<IActionResult> GetPDFPageCommentsAsync(int pdfBookId, int pageNumber)
         {
             Guid? userId = null;
             var claim = User.Claims.FirstOrDefault(c => c.Type == "UserId");
             if (claim != null)
                 userId = new Guid(claim.Value);
 
-            var res = await _pdfService.GetPDFPageCommentsAsync(pdfPageId, userId);
+            var res = await _pdfService.GetPDFPageCommentsAsync(pdfBookId, pageNumber, userId);
             if (!string.IsNullOrEmpty(res.ExceptionString))
                 return BadRequest(res.ExceptionString);
             return Ok(res.Result);
