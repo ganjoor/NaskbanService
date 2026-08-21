@@ -355,12 +355,14 @@
             <param name="model"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Controllers.PDFLibraryController.SubmitPDFPageCommentAsync(System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel)">
+        <member name="M:RMuseum.Controllers.PDFLibraryController.SubmitPDFPageCommentAsync(System.Int32)">
             <summary>
-            submit a page comment or reply - any authenticated user
+            submit a page comment or reply - any authenticated user. Multipart form (not JSON)
+            since Phase 2 needs to accept an optional image file alongside the text fields -
+            read directly from Request.Form, matching the sibling Ganjoor project's own mixed
+            file+field upload convention (e.g. GanjoorController's Request.Form["bookName"]).
             </summary>
             <param name="pdfPageId"></param>
-            <param name="comment"></param>
             <returns>id of the new comment</returns>
         </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.GetPDFPageCommentsAsync(System.Int32)">
@@ -11312,14 +11314,14 @@
         </member>
         <member name="T:RMuseum.Models.PDFLibrary.PDFPageComment">
             <summary>
-            a public comment on a PDF page - Phase 1 of the commenting system: plain page-level
-            comments with threaded replies (a reply is just another PDFPageComment with InReplyToId
-            set, matching the sibling Ganjoor project's GanjoorComment - no separate reply table).
-            Phase 2 will add an optional highlighted-region reference: a client-cropped image of the
-            area plus fractional (0.0-1.0) coordinates relative to PDFPage's own
-            FullResolutionImageWidth/Height, so the highlight displays correctly regardless of which
-            device rendered the page or at what zoom level - deliberately left off this entity for
-            now rather than added as unused nullable columns ahead of need.
+            a public comment on a PDF page - Phase 1: plain page-level comments with threaded
+            replies (a reply is just another PDFPageComment with InReplyToId set, matching the
+            sibling Ganjoor project's GanjoorComment - no separate reply table). Phase 2 (below):
+            an optional highlighted-region reference - a client-cropped image of the area (pages
+            are rendered entirely client-side, via pdfx/pdf.js, so there is no server-side page
+            render to crop from) plus fractional (0.0-1.0) coordinates relative to PDFPage's own
+            FullResolutionImageWidth/Height, so the highlight displays correctly regardless of
+            which device rendered the page or at what zoom level.
             </summary>
         </member>
         <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.Id">
@@ -11374,6 +11376,43 @@
             published immediately for Phase 1 - no moderation queue yet, but reusing the same
             PublishStatus enum already used across this project keeps the door open for one
             later without a schema change
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.ImageId">
+            <summary>
+            Phase 2: the client-cropped snippet of the highlighted region, if this comment
+            references one - null for a plain page-level comment
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.Image">
+            <summary>
+            Phase 2: the client-cropped snippet of the highlighted region, if this comment
+            references one - null for a plain page-level comment
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.HighlightX">
+            <summary>
+            Phase 2: fractional (0.0-1.0) X of the highlighted rectangle's top-left corner,
+            relative to PDFPage.FullResolutionImageWidth - present only alongside the other
+            three Highlight* fields and ImageId, all four or none
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.HighlightY">
+            <summary>
+            Phase 2: fractional (0.0-1.0) Y of the highlighted rectangle's top-left corner,
+            relative to PDFPage.FullResolutionImageHeight
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.HighlightWidth">
+            <summary>
+            Phase 2: fractional (0.0-1.0) width of the highlighted rectangle, relative to
+            PDFPage.FullResolutionImageWidth
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.HighlightHeight">
+            <summary>
+            Phase 2: fractional (0.0-1.0) height of the highlighted rectangle, relative to
+            PDFPage.FullResolutionImageHeight
             </summary>
         </member>
         <member name="T:RMuseum.Models.PDFLibrary.PDFPageUnrevisedText">
@@ -12157,7 +12196,12 @@
         </member>
         <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel">
             <summary>
-            submitting a page comment (Phase 1 - no highlight/image yet)
+            submitting a page comment - Phase 1 fields (Text/InReplyToId) plus Phase 2's optional
+            highlighted region. Bound from multipart form fields, not JSON, since Phase 2 also
+            needs to accept an image file alongside these - see
+            PDFLibraryController.SubmitPDFPageCommentAsync for how each field is read from
+            Request.Form (matching the sibling Ganjoor project's own mixed file+field upload
+            convention, e.g. GanjoorController's Request.Form["bookName"] pattern).
             </summary>
         </member>
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel.Text">
@@ -12168,6 +12212,28 @@
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel.InReplyToId">
             <summary>
             send null for a top-level comment, or another comment's id to reply to it
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel.HighlightX">
+            <summary>
+            Phase 2: fractional (0.0-1.0) coordinates of the highlighted rectangle, relative to
+            PDFPage.FullResolutionImageWidth/Height. All four must be present together, or all
+            four absent - send none of them for a plain page-level comment.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel.HighlightY">
+            <summary>
+            see HighlightX
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel.HighlightWidth">
+            <summary>
+            see HighlightX
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel.HighlightHeight">
+            <summary>
+            see HighlightX
             </summary>
         </member>
         <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel">
@@ -12217,6 +12283,37 @@
             <summary>
             true when the requesting user is this comment's own author - lets the client show
             a delete button without a separate ownership check of its own
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.ImageUrl">
+            <summary>
+            Phase 2: URL of the highlighted region's cropped image, if this comment has one -
+            null for a plain page-level comment. Built from RImage's own Id/ContentType via the
+            generic api/rimages/{id}.{ext} route (RImageControllerBase.GetImageWithCustomExtension)
+            - see GetPDFPageCommentsAsync's own doc comment on this: that exact route wasn't
+            something already used elsewhere in this project to copy from, so the URL shape here
+            is inferred from the route's confirmed parameter shape rather than an existing
+            precedent - worth a quick check against this server's own Swagger UI.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.HighlightX">
+            <summary>
+            Phase 2: see PDFPageCommentPostViewModel.HighlightX - null unless ImageUrl is set
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.HighlightY">
+            <summary>
+            see HighlightX
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.HighlightWidth">
+            <summary>
+            see HighlightX
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.HighlightHeight">
+            <summary>
+            see HighlightX
             </summary>
         </member>
         <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFPageOCRDataViewModel">
@@ -13153,10 +13250,11 @@
             this author, not asking anyone to re-decide whether they wanted that author pinned.
             </summary>
         </member>
-        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.SubmitPDFPageCommentAsync(System.Guid,System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel)">
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.SubmitPDFPageCommentAsync(System.Guid,System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel,Microsoft.AspNetCore.Http.IFormFile)">
             <summary>
-            submit a page comment, or a reply to one - Phase 1: plain text only, no
-            highlight/image yet (see PDFPageComment's own doc comment). Any authenticated user.
+            submit a page comment, or a reply to one - Phase 1 fields (Text/InReplyToId) plus
+            Phase 2's optional highlighted region (image + fractional coordinates, see
+            PDFPageComment's own doc comment). Any authenticated user.
             </summary>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetPDFPageCommentsAsync(System.Int32,System.Nullable{System.Guid})">
@@ -13165,6 +13263,19 @@
             PDFPageCommentViewModel's own doc comment on why), oldest first so replies
             naturally read in order under whatever a client groups them by. [requestingUserId]
             is optional (anonymous visitors can read comments) and only affects MyComment.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._BuildRImageUrl(RSecurityBackend.Models.Image.RImage)">
+            <summary>
+            relative (not absolute) path to a stored image via the generic
+            api/rimages/{id}.{ext} route (RImageControllerBase.GetImageWithCustomExtension) -
+            relative rather than baking this server's own domain in, matching how every client
+            already combines a known API root constant with a relative path for every other
+            endpoint, rather than the server assuming one particular domain/reverse-proxy setup.
+            This exact route wasn't already used elsewhere in this project to copy a URL-building
+            convention from - confirmed the route's parameter shape from the RSecurityBackend
+            package's own XML docs, but the shape here is otherwise inferred, not copied from a
+            working example. Worth a quick check against this server's own Swagger UI.
             </summary>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.DeletePDFPageCommentAsync(System.Guid,System.Guid)">
@@ -14656,7 +14767,7 @@
             <param name="response"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Services.IPDFLibraryService.SubmitPDFPageCommentAsync(System.Guid,System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel)">
+        <member name="M:RMuseum.Services.IPDFLibraryService.SubmitPDFPageCommentAsync(System.Guid,System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel,Microsoft.AspNetCore.Http.IFormFile)">
             <summary>
             submit a page comment or reply - see PDFLibraryService-Comment.cs's own doc
             comments on this and the two methods below
@@ -14664,6 +14775,7 @@
             <param name="userId"></param>
             <param name="pdfPageId"></param>
             <param name="model"></param>
+            <param name="image">Phase 2: optional highlighted-region snippet - required together with model's HighlightX/Y/Width/Height, omitted for a plain page-level comment</param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.GetPDFPageCommentsAsync(System.Int32,System.Nullable{System.Guid})">

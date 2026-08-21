@@ -1,9 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using RMuseum.Models.Artifact;
 using RMuseum.Models.Auth.Memory;
 using RMuseum.Models.PDFLibrary;
 using RMuseum.Models.PDFLibrary.ViewModels;
 using RSecurityBackend.Models.Generic;
+using RSecurityBackend.Models.Image;
 using RSecurityBackend.Models.Notification;
 using System;
 using System.Linq;
@@ -14,16 +16,31 @@ namespace RMuseum.Services.Implementation
     public partial class PDFLibraryService
     {
         /// <summary>
-        /// submit a page comment, or a reply to one - Phase 1: plain text only, no
-        /// highlight/image yet (see PDFPageComment's own doc comment). Any authenticated user.
+        /// submit a page comment, or a reply to one - Phase 1 fields (Text/InReplyToId) plus
+        /// Phase 2's optional highlighted region (image + fractional coordinates, see
+        /// PDFPageComment's own doc comment). Any authenticated user.
         /// </summary>
-        public async Task<RServiceResult<Guid>> SubmitPDFPageCommentAsync(Guid userId, int pdfPageId, PDFPageCommentPostViewModel model)
+        public async Task<RServiceResult<Guid>> SubmitPDFPageCommentAsync(Guid userId, int pdfPageId, PDFPageCommentPostViewModel model, IFormFile image)
         {
             try
             {
                 if (string.IsNullOrWhiteSpace(model.Text))
                 {
                     return new RServiceResult<Guid>(Guid.Empty, "متن دیدگاه نمی‌تواند خالی باشد");
+                }
+
+                // all four highlight coordinates must arrive together, or not at all - a
+                // partial set (e.g. only HighlightX sent) is meaningless and would silently
+                // corrupt the highlighted rectangle if allowed through
+                bool anyHighlightField = model.HighlightX != null || model.HighlightY != null || model.HighlightWidth != null || model.HighlightHeight != null;
+                bool allHighlightFields = model.HighlightX != null && model.HighlightY != null && model.HighlightWidth != null && model.HighlightHeight != null;
+                if (anyHighlightField && !allHighlightFields)
+                {
+                    return new RServiceResult<Guid>(Guid.Empty, "مختصات هایلایت باید همگی یا هیچ‌کدام ارسال شوند");
+                }
+                if (allHighlightFields && image == null)
+                {
+                    return new RServiceResult<Guid>(Guid.Empty, "برای دیدگاه دارای هایلایت، تصویر بخش هایلایت‌شده الزامی است");
                 }
 
                 var page = await _context.PDFPages.AsNoTracking().Where(p => p.Id == pdfPageId).SingleOrDefaultAsync();
@@ -54,6 +71,17 @@ namespace RMuseum.Services.Implementation
                     }
                 }
 
+                Guid? imageId = null;
+                if (image != null)
+                {
+                    var imageRes = await _imageFileService.Add(image, null, image.FileName, "PDFPageCommentImages");
+                    if (!string.IsNullOrEmpty(imageRes.ExceptionString))
+                    {
+                        return new RServiceResult<Guid>(Guid.Empty, imageRes.ExceptionString);
+                    }
+                    imageId = imageRes.Result.Id;
+                }
+
                 var comment = new PDFPageComment()
                 {
                     Id = Guid.NewGuid(),
@@ -63,6 +91,11 @@ namespace RMuseum.Services.Implementation
                     CreatedAt = DateTime.Now,
                     InReplyToId = model.InReplyToId,
                     Status = PublishStatus.Published,
+                    ImageId = imageId,
+                    HighlightX = model.HighlightX,
+                    HighlightY = model.HighlightY,
+                    HighlightWidth = model.HighlightWidth,
+                    HighlightHeight = model.HighlightHeight,
                 };
                 _context.PDFPageComments.Add(comment);
                 await _context.SaveChangesAsync();
@@ -116,29 +149,67 @@ namespace RMuseum.Services.Implementation
         {
             try
             {
+                // Image is loaded (Include) but ImageUrl is built afterward, in memory, not
+                // inside the Select below - _BuildRImageUrl is a plain C# method, and EF Core
+                // cannot translate an arbitrary method call into SQL as part of a query
+                // projection. Same underlying mistake class as this project's earlier
+                // EF.Property<T>-outside-a-live-query bugs (see PDFLibraryService-AuthorMerge.cs
+                // and PDFLibraryService.cs's own doc comments on those) - different shape, same
+                // root cause: something that only works outside a translated query, called
+                // inside one.
                 var comments = await _context.PDFPageComments.AsNoTracking()
                     .Include(c => c.User)
+                    .Include(c => c.Image)
                     .Where(c => c.PDFPageId == pdfPageId && c.Status == PublishStatus.Published)
                     .OrderBy(c => c.CreatedAt)
-                    .Select(c => new PDFPageCommentViewModel()
-                    {
-                        Id = c.Id,
-                        PDFPageId = c.PDFPageId,
-                        UserId = c.UserId,
-                        UserName = c.User.NickName,
-                        Text = c.Text,
-                        CreatedAt = c.CreatedAt,
-                        InReplyToId = c.InReplyToId,
-                        MyComment = requestingUserId != null && c.UserId == requestingUserId.Value,
-                    })
                     .ToArrayAsync();
 
-                return new RServiceResult<PDFPageCommentViewModel[]>(comments);
+                var result = comments.Select(c => new PDFPageCommentViewModel()
+                {
+                    Id = c.Id,
+                    PDFPageId = c.PDFPageId,
+                    UserId = c.UserId,
+                    UserName = c.User.NickName,
+                    Text = c.Text,
+                    CreatedAt = c.CreatedAt,
+                    InReplyToId = c.InReplyToId,
+                    MyComment = requestingUserId != null && c.UserId == requestingUserId.Value,
+                    ImageUrl = c.Image == null ? null : _BuildRImageUrl(c.Image),
+                    HighlightX = c.HighlightX,
+                    HighlightY = c.HighlightY,
+                    HighlightWidth = c.HighlightWidth,
+                    HighlightHeight = c.HighlightHeight,
+                }).ToArray();
+
+                return new RServiceResult<PDFPageCommentViewModel[]>(result);
             }
             catch (Exception exp)
             {
                 return new RServiceResult<PDFPageCommentViewModel[]>(null, exp.ToString());
             }
+        }
+
+        /// <summary>
+        /// relative (not absolute) path to a stored image via the generic
+        /// api/rimages/{id}.{ext} route (RImageControllerBase.GetImageWithCustomExtension) -
+        /// relative rather than baking this server's own domain in, matching how every client
+        /// already combines a known API root constant with a relative path for every other
+        /// endpoint, rather than the server assuming one particular domain/reverse-proxy setup.
+        /// This exact route wasn't already used elsewhere in this project to copy a URL-building
+        /// convention from - confirmed the route's parameter shape from the RSecurityBackend
+        /// package's own XML docs, but the shape here is otherwise inferred, not copied from a
+        /// working example. Worth a quick check against this server's own Swagger UI.
+        /// </summary>
+        private static string _BuildRImageUrl(RImage image)
+        {
+            string ext = "jpg";
+            if (!string.IsNullOrEmpty(image.ContentType))
+            {
+                if (image.ContentType.Contains("png")) ext = "png";
+                else if (image.ContentType.Contains("gif")) ext = "gif";
+                else if (image.ContentType.Contains("webp")) ext = "webp";
+            }
+            return $"api/rimages/{image.Id}.{ext}";
         }
 
         /// <summary>

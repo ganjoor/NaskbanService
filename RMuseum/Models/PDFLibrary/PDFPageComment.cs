@@ -1,18 +1,19 @@
 ﻿using RMuseum.Models.Artifact;
 using RSecurityBackend.Models.Auth.Db;
+using RSecurityBackend.Models.Image;
 using System;
 
 namespace RMuseum.Models.PDFLibrary
 {
     /// <summary>
-    /// a public comment on a PDF page - Phase 1 of the commenting system: plain page-level
-    /// comments with threaded replies (a reply is just another PDFPageComment with InReplyToId
-    /// set, matching the sibling Ganjoor project's GanjoorComment - no separate reply table).
-    /// Phase 2 will add an optional highlighted-region reference: a client-cropped image of the
-    /// area plus fractional (0.0-1.0) coordinates relative to PDFPage's own
-    /// FullResolutionImageWidth/Height, so the highlight displays correctly regardless of which
-    /// device rendered the page or at what zoom level - deliberately left off this entity for
-    /// now rather than added as unused nullable columns ahead of need.
+    /// a public comment on a PDF page - Phase 1: plain page-level comments with threaded
+    /// replies (a reply is just another PDFPageComment with InReplyToId set, matching the
+    /// sibling Ganjoor project's GanjoorComment - no separate reply table). Phase 2 (below):
+    /// an optional highlighted-region reference - a client-cropped image of the area (pages
+    /// are rendered entirely client-side, via pdfx/pdf.js, so there is no server-side page
+    /// render to crop from) plus fractional (0.0-1.0) coordinates relative to PDFPage's own
+    /// FullResolutionImageWidth/Height, so the highlight displays correctly regardless of
+    /// which device rendered the page or at what zoom level.
     /// </summary>
     public class PDFPageComment
     {
@@ -69,5 +70,42 @@ namespace RMuseum.Models.PDFLibrary
         /// later without a schema change
         /// </summary>
         public PublishStatus Status { get; set; }
+
+        /// <summary>
+        /// Phase 2: the client-cropped snippet of the highlighted region, if this comment
+        /// references one - null for a plain page-level comment
+        /// </summary>
+        public Guid? ImageId { get; set; }
+
+        /// <summary>
+        /// Phase 2: the client-cropped snippet of the highlighted region, if this comment
+        /// references one - null for a plain page-level comment
+        /// </summary>
+        public virtual RImage Image { get; set; }
+
+        /// <summary>
+        /// Phase 2: fractional (0.0-1.0) X of the highlighted rectangle's top-left corner,
+        /// relative to PDFPage.FullResolutionImageWidth - present only alongside the other
+        /// three Highlight* fields and ImageId, all four or none
+        /// </summary>
+        public double? HighlightX { get; set; }
+
+        /// <summary>
+        /// Phase 2: fractional (0.0-1.0) Y of the highlighted rectangle's top-left corner,
+        /// relative to PDFPage.FullResolutionImageHeight
+        /// </summary>
+        public double? HighlightY { get; set; }
+
+        /// <summary>
+        /// Phase 2: fractional (0.0-1.0) width of the highlighted rectangle, relative to
+        /// PDFPage.FullResolutionImageWidth
+        /// </summary>
+        public double? HighlightWidth { get; set; }
+
+        /// <summary>
+        /// Phase 2: fractional (0.0-1.0) height of the highlighted rectangle, relative to
+        /// PDFPage.FullResolutionImageHeight
+        /// </summary>
+        public double? HighlightHeight { get; set; }
     }
 }

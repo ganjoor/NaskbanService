@@ -9,6 +9,7 @@ using RSecurityBackend.Models.Auth.Memory;
 using RSecurityBackend.Models.Generic;
 using System.Linq;
 using System;
+using System.Globalization;
 using System.Net;
 using System.Threading.Tasks;
 using RSecurityBackend.Services;
@@ -788,20 +789,34 @@ namespace RMuseum.Controllers
         }
 
         /// <summary>
-        /// submit a page comment or reply - any authenticated user
+        /// submit a page comment or reply - any authenticated user. Multipart form (not JSON)
+        /// since Phase 2 needs to accept an optional image file alongside the text fields -
+        /// read directly from Request.Form, matching the sibling Ganjoor project's own mixed
+        /// file+field upload convention (e.g. GanjoorController's Request.Form["bookName"]).
         /// </summary>
         /// <param name="pdfPageId"></param>
-        /// <param name="comment"></param>
         /// <returns>id of the new comment</returns>
         [HttpPost]
         [Route("page/{pdfPageId}/comment")]
         [Authorize]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(Guid))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
-        public async Task<IActionResult> SubmitPDFPageCommentAsync(int pdfPageId, [FromBody] PDFPageCommentPostViewModel comment)
+        public async Task<IActionResult> SubmitPDFPageCommentAsync(int pdfPageId)
         {
             Guid userId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
-            var res = await _pdfService.SubmitPDFPageCommentAsync(userId, pdfPageId, comment);
+
+            var model = new PDFPageCommentPostViewModel()
+            {
+                Text = Request.Form["text"],
+                InReplyToId = string.IsNullOrEmpty(Request.Form["inReplyToId"]) ? (Guid?)null : new Guid(Request.Form["inReplyToId"]),
+                HighlightX = string.IsNullOrEmpty(Request.Form["highlightX"]) ? (double?)null : double.Parse(Request.Form["highlightX"], CultureInfo.InvariantCulture),
+                HighlightY = string.IsNullOrEmpty(Request.Form["highlightY"]) ? (double?)null : double.Parse(Request.Form["highlightY"], CultureInfo.InvariantCulture),
+                HighlightWidth = string.IsNullOrEmpty(Request.Form["highlightWidth"]) ? (double?)null : double.Parse(Request.Form["highlightWidth"], CultureInfo.InvariantCulture),
+                HighlightHeight = string.IsNullOrEmpty(Request.Form["highlightHeight"]) ? (double?)null : double.Parse(Request.Form["highlightHeight"], CultureInfo.InvariantCulture),
+            };
+            IFormFile image = Request.Form.Files.Count > 0 ? Request.Form.Files[0] : null;
+
+            var res = await _pdfService.SubmitPDFPageCommentAsync(userId, pdfPageId, model, image);
             if (!string.IsNullOrEmpty(res.ExceptionString))
                 return BadRequest(res.ExceptionString);
             return Ok(res.Result);

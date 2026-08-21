@@ -1,4 +1,5 @@
-﻿using RMuseum.Models.Artifact;
+﻿using Microsoft.AspNetCore.Http;
+using RMuseum.Models.Artifact;
 using RMuseum.Models.Artifact.ViewModels;
 using RMuseum.Models.GanjoorIntegration;
 using RMuseum.Models.GanjoorIntegration.ViewModels;
@@ -178,8 +179,9 @@ namespace RMuseum.Services
         /// <param name="userId"></param>
         /// <param name="pdfPageId"></param>
         /// <param name="model"></param>
+        /// <param name="image">Phase 2: optional highlighted-region snippet - required together with model's HighlightX/Y/Width/Height, omitted for a plain page-level comment</param>
         /// <returns></returns>
-        Task<RServiceResult<Guid>> SubmitPDFPageCommentAsync(Guid userId, int pdfPageId, PDFPageCommentPostViewModel model);
+        Task<RServiceResult<Guid>> SubmitPDFPageCommentAsync(Guid userId, int pdfPageId, PDFPageCommentPostViewModel model, IFormFile image);
 
         /// <summary>
         /// every published comment on a page, flat
