@@ -203,13 +203,13 @@ namespace RMuseum.Services
         Task<RServiceResult<int>> GetPDFPageCommentCountAsync(int pdfBookId, int pageNumber);
 
         /// <summary>
-        /// every published comment across every page of a book, paginated, newest first - the
-        /// book-wide comment hub
+        /// every published comment, newest first, paginated - one query serving both the
+        /// site-wide comment hub (pdfBookId null) and a single book's own hub (pdfBookId set)
         /// </summary>
-        /// <param name="pdfBookId"></param>
+        /// <param name="pdfBookId">null for the site-wide hub, or a specific book's id</param>
         /// <param name="paging"></param>
         /// <returns></returns>
-        Task<RServiceResult<(PaginationMetadata PagingMeta, PDFPageCommentViewModel[] Items)>> GetPDFBookCommentsAsync(int pdfBookId, PagingParameterModel paging);
+        Task<RServiceResult<(PaginationMetadata PagingMeta, PDFPageCommentViewModel[] Items)>> GetRecentPDFPageCommentsAsync(int? pdfBookId, PagingParameterModel paging);
 
         /// <summary>
         /// delete a page comment - own author always, others need pdfcomment:moderate

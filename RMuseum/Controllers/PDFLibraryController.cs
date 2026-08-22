@@ -875,11 +875,11 @@ namespace RMuseum.Controllers
         }
 
         /// <summary>
-        /// every published comment across every page of a book, paginated - the book-wide
-        /// comment hub. Public, no login required, same reasoning as
+        /// every published comment across every page of one specific book, paginated - that
+        /// book's own comment hub. Public, no login required, same reasoning as
         /// GetPDFPageCommentsAsync (MyComment isn't populated here - see
-        /// GetPDFBookCommentsAsync's own doc comment - so there's nothing auth-dependent in
-        /// this response to justify requiring it)
+        /// GetRecentPDFPageCommentsAsync's own doc comment - so there's nothing
+        /// auth-dependent in this response to justify requiring it)
         /// </summary>
         /// <param name="pdfBookId"></param>
         /// <param name="paging"></param>
@@ -890,7 +890,30 @@ namespace RMuseum.Controllers
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
         public async Task<IActionResult> GetPDFBookCommentsAsync(int pdfBookId, [FromQuery] PagingParameterModel paging)
         {
-            var res = await _pdfService.GetPDFBookCommentsAsync(pdfBookId, paging);
+            var res = await _pdfService.GetRecentPDFPageCommentsAsync(pdfBookId, paging);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
+
+            return Ok(res.Result.Items);
+        }
+
+        /// <summary>
+        /// every published comment across every book, paginated - the site-wide comment hub.
+        /// Same query as GetPDFBookCommentsAsync above, just without a book filter - see
+        /// GetRecentPDFPageCommentsAsync's own doc comment. Public, no login required, same
+        /// reasoning as that method.
+        /// </summary>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("comments/recent")]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFPageCommentViewModel>))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetRecentPDFPageCommentsAsync([FromQuery] PagingParameterModel paging)
+        {
+            var res = await _pdfService.GetRecentPDFPageCommentsAsync(null, paging);
             if (!string.IsNullOrEmpty(res.ExceptionString))
                 return BadRequest(res.ExceptionString);
 

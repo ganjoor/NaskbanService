@@ -66,10 +66,23 @@ namespace RMuseum.Models.PDFLibrary.ViewModels
         /// <summary>
         /// the page's own page number within its book - not needed by the page-scoped
         /// GetPDFPageCommentsAsync (the caller already knows which page they asked for), but
-        /// needed by the book-wide hub (GetPDFBookCommentsAsync), so it can link each comment
-        /// back to the page it's on
+        /// needed by the per-book and site-wide hubs (GetRecentPDFPageCommentsAsync), so they
+        /// can link each comment back to the page it's on
         /// </summary>
         public int PageNumber { get; set; }
+
+        /// <summary>
+        /// the book this comment's page belongs to - same reasoning as PageNumber: not needed
+        /// where the caller already knows which book (a single page's own comments, or a
+        /// specific book's hub), but needed for the site-wide hub, where a comment could
+        /// belong to any book
+        /// </summary>
+        public int PDFBookId { get; set; }
+
+        /// <summary>
+        /// see PDFBookId
+        /// </summary>
+        public string BookTitle { get; set; }
 
         /// <summary>
         /// commenting user's id

@@ -189,11 +189,20 @@ namespace RMuseum.Services.Implementation
                     .OrderBy(c => c.CreatedAt)
                     .ToArrayAsync();
 
+                // every comment here is on the same book (the caller already told us which
+                // one), so this is a single lookup, not a per-comment one
+                var bookTitle = await _context.PDFBooks.AsNoTracking()
+                    .Where(b => b.Id == pdfBookId)
+                    .Select(b => b.Title)
+                    .SingleOrDefaultAsync();
+
                 var result = comments.Select(c => new PDFPageCommentViewModel()
                 {
                     Id = c.Id,
                     PDFPageId = c.PDFPageId,
                     PageNumber = c.PDFPage.PageNumber,
+                    PDFBookId = pdfBookId,
+                    BookTitle = bookTitle,
                     UserId = c.UserId,
                     UserName = c.User.NickName,
                     Text = c.Text,
@@ -243,12 +252,19 @@ namespace RMuseum.Services.Implementation
         }
 
         /// <summary>
-        /// every published comment across every page of a book, paginated, newest first - the
-        /// book-wide comment hub. Same flat (not nested) shape and same reasoning as
-        /// GetPDFPageCommentsAsync for why ImageUrl is built in memory after materializing
-        /// rather than inside the translated query.
+        /// every published comment, newest first, paginated - one query serving two hubs.
+        /// [pdfBookId] null → the site-wide comment hub, across every book; a real value → one
+        /// book's own comment hub. Matches the sibling Ganjoor project's own GetRecentComments,
+        /// which does the same double duty (a public feed and a per-poem-ish view) with one
+        /// query and an optional filter, rather than two near-duplicate methods.
+        ///
+        /// Book titles are batch-fetched for the distinct PDFBookIds actually present in this
+        /// page of results (one extra query, not one per comment) - for the per-book hub
+        /// that's always exactly one id, but the site-wide hub can span many books in a single
+        /// page of results, so this can't assume a single lookup the way
+        /// GetPDFPageCommentsAsync does.
         /// </summary>
-        public async Task<RServiceResult<(PaginationMetadata PagingMeta, PDFPageCommentViewModel[] Items)>> GetPDFBookCommentsAsync(int pdfBookId, PagingParameterModel paging)
+        public async Task<RServiceResult<(PaginationMetadata PagingMeta, PDFPageCommentViewModel[] Items)>> GetRecentPDFPageCommentsAsync(int? pdfBookId, PagingParameterModel paging)
         {
             try
             {
@@ -256,17 +272,25 @@ namespace RMuseum.Services.Implementation
                     .Include(c => c.User)
                     .Include(c => c.Image)
                     .Include(c => c.PDFPage)
-                    .Where(c => c.PDFPage.PDFBookId == pdfBookId && c.Status == PublishStatus.Published)
+                    .Where(c => (pdfBookId == null || c.PDFPage.PDFBookId == pdfBookId.Value) && c.Status == PublishStatus.Published)
                     .OrderByDescending(c => c.CreatedAt);
 
                 (PaginationMetadata PagingMeta, PDFPageComment[] Items) paginatedResult =
                     await QueryablePaginator<PDFPageComment>.Paginate(source, paging);
+
+                var bookIds = paginatedResult.Items.Select(c => c.PDFPage.PDFBookId).Distinct().ToArray();
+                var bookTitles = await _context.PDFBooks.AsNoTracking()
+                    .Where(b => bookIds.Contains(b.Id))
+                    .Select(b => new { b.Id, b.Title })
+                    .ToDictionaryAsync(b => b.Id, b => b.Title);
 
                 var items = paginatedResult.Items.Select(c => new PDFPageCommentViewModel()
                 {
                     Id = c.Id,
                     PDFPageId = c.PDFPageId,
                     PageNumber = c.PDFPage.PageNumber,
+                    PDFBookId = c.PDFPage.PDFBookId,
+                    BookTitle = bookTitles.TryGetValue(c.PDFPage.PDFBookId, out var title) ? title : null,
                     UserId = c.UserId,
                     UserName = c.User.NickName,
                     Text = c.Text,

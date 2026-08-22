@@ -355,24 +355,63 @@
             <param name="model"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Controllers.PDFLibraryController.SubmitPDFPageCommentAsync(System.Int32)">
+        <member name="M:RMuseum.Controllers.PDFLibraryController.SubmitPDFPageCommentAsync(System.Int32,System.Int32)">
             <summary>
             submit a page comment or reply - any authenticated user. Multipart form (not JSON)
             since Phase 2 needs to accept an optional image file alongside the text fields -
             read directly from Request.Form, matching the sibling Ganjoor project's own mixed
             file+field upload convention (e.g. GanjoorController's Request.Form["bookName"]).
+            Keyed by (pdfBookId, pageNumber), not the internal PDFPage.Id - see
+            SubmitPDFPageCommentAsync's own doc comment on why.
             </summary>
-            <param name="pdfPageId"></param>
+            <param name="pdfBookId"></param>
+            <param name="pageNumber"></param>
             <returns>id of the new comment</returns>
         </member>
-        <member name="M:RMuseum.Controllers.PDFLibraryController.GetPDFPageCommentsAsync(System.Int32)">
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetPDFPageCommentsAsync(System.Int32,System.Int32)">
             <summary>
             every published comment on a page - public, no login required, though a logged-in
             caller's own comments come back with MyComment set (no [Authorize] here so
             anonymous visitors can still read comments; the auth middleware still populates
-            User.Claims when a valid token is sent regardless of whether the action requires it)
+            User.Claims when a valid token is sent regardless of whether the action requires it).
+            Keyed by (pdfBookId, pageNumber), not the internal PDFPage.Id - see
+            GetPDFPageCommentsAsync's own doc comment on why.
             </summary>
-            <param name="pdfPageId"></param>
+            <param name="pdfBookId"></param>
+            <param name="pageNumber"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetPDFPageCommentCountAsync(System.Int32,System.Int32)">
+            <summary>
+            count of published comments on a single page - public, no login required. Keyed by
+            (pdfBookId, pageNumber) rather than PDFPageId - see
+            GetPDFPageCommentCountAsync's own doc comment on why. Meant to be cheap enough to
+            call on every page turn for a comment-count badge.
+            </summary>
+            <param name="pdfBookId"></param>
+            <param name="pageNumber"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetPDFBookCommentsAsync(System.Int32,RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            every published comment across every page of one specific book, paginated - that
+            book's own comment hub. Public, no login required, same reasoning as
+            GetPDFPageCommentsAsync (MyComment isn't populated here - see
+            GetRecentPDFPageCommentsAsync's own doc comment - so there's nothing
+            auth-dependent in this response to justify requiring it)
+            </summary>
+            <param name="pdfBookId"></param>
+            <param name="paging"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetRecentPDFPageCommentsAsync(RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            every published comment across every book, paginated - the site-wide comment hub.
+            Same query as GetPDFBookCommentsAsync above, just without a book filter - see
+            GetRecentPDFPageCommentsAsync's own doc comment. Public, no login required, same
+            reasoning as that method.
+            </summary>
+            <param name="paging"></param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.DeletePDFPageCommentAsync(System.Guid)">
@@ -12266,6 +12305,27 @@
             the page this comment is on
             </summary>
         </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.PageNumber">
+            <summary>
+            the page's own page number within its book - not needed by the page-scoped
+            GetPDFPageCommentsAsync (the caller already knows which page they asked for), but
+            needed by the per-book and site-wide hubs (GetRecentPDFPageCommentsAsync), so they
+            can link each comment back to the page it's on
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.PDFBookId">
+            <summary>
+            the book this comment's page belongs to - same reasoning as PageNumber: not needed
+            where the caller already knows which book (a single page's own comments, or a
+            specific book's hub), but needed for the site-wide hub, where a comment could
+            belong to any book
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.BookTitle">
+            <summary>
+            see PDFBookId
+            </summary>
+        </member>
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.UserId">
             <summary>
             commenting user's id
@@ -13262,20 +13322,56 @@
             this author, not asking anyone to re-decide whether they wanted that author pinned.
             </summary>
         </member>
-        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.SubmitPDFPageCommentAsync(System.Guid,System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel,Microsoft.AspNetCore.Http.IFormFile)">
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.SubmitPDFPageCommentAsync(System.Guid,System.Int32,System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel,Microsoft.AspNetCore.Http.IFormFile)">
+             <summary>
+             submit a page comment, or a reply to one - Phase 1 fields (Text/InReplyToId) plus
+             Phase 2's optional highlighted region (image + fractional coordinates, see
+             PDFPageComment's own doc comment). Any authenticated user.
+            
+             Keyed by (pdfBookId, pageNumber), not the internal PDFPage.Id - a caller always
+             already has book id + page number in hand and shouldn't need a separate round-trip
+             just to resolve an internal id first before it can even submit a comment. Internally
+             this still resolves to a PDFPage row and still uses its Id for the actual
+             PDFPageComment.PDFPageId foreign key - only the public-facing identifier changes,
+             not the underlying schema.
+             </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetPDFPageCommentsAsync(System.Int32,System.Int32,System.Nullable{System.Guid})">
+             <summary>
+             every published comment on a page, flat (not nested - see
+             PDFPageCommentViewModel's own doc comment on why), oldest first so replies
+             naturally read in order under whatever a client groups them by. [requestingUserId]
+             is optional (anonymous visitors can read comments) and only affects MyComment.
+            
+             Keyed by (pdfBookId, pageNumber), not the internal PDFPage.Id - same reasoning as
+             SubmitPDFPageCommentAsync's own doc comment.
+             </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetPDFPageCommentCountAsync(System.Int32,System.Int32)">
             <summary>
-            submit a page comment, or a reply to one - Phase 1 fields (Text/InReplyToId) plus
-            Phase 2's optional highlighted region (image + fractional coordinates, see
-            PDFPageComment's own doc comment). Any authenticated user.
+            count of published comments on a single page - deliberately keyed by
+            (pdfBookId, pageNumber) rather than the resolved PDFPageId, since a client walking
+            through pages (to show a comment-count badge as the reader turns pages) always
+            already has book id + page number in hand and would otherwise need an extra
+            round-trip just to resolve the PDFPageId first before it could even ask for a count.
+            Meant to be cheap and safe to call on every page turn - no Include, no projection
+            beyond a plain count.
             </summary>
         </member>
-        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetPDFPageCommentsAsync(System.Int32,System.Nullable{System.Guid})">
-            <summary>
-            every published comment on a page, flat (not nested - see
-            PDFPageCommentViewModel's own doc comment on why), oldest first so replies
-            naturally read in order under whatever a client groups them by. [requestingUserId]
-            is optional (anonymous visitors can read comments) and only affects MyComment.
-            </summary>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetRecentPDFPageCommentsAsync(System.Nullable{System.Int32},RSecurityBackend.Models.Generic.PagingParameterModel)">
+             <summary>
+             every published comment, newest first, paginated - one query serving two hubs.
+             [pdfBookId] null → the site-wide comment hub, across every book; a real value → one
+             book's own comment hub. Matches the sibling Ganjoor project's own GetRecentComments,
+             which does the same double duty (a public feed and a per-poem-ish view) with one
+             query and an optional filter, rather than two near-duplicate methods.
+            
+             Book titles are batch-fetched for the distinct PDFBookIds actually present in this
+             page of results (one extra query, not one per comment) - for the per-book hub
+             that's always exactly one id, but the site-wide hub can span many books in a single
+             page of results, so this can't assume a single lookup the way
+             GetPDFPageCommentsAsync does.
+             </summary>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService._BuildRImageUrl(RSecurityBackend.Models.Image.RImage)">
             <summary>
@@ -14779,23 +14875,43 @@
             <param name="response"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Services.IPDFLibraryService.SubmitPDFPageCommentAsync(System.Guid,System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel,Microsoft.AspNetCore.Http.IFormFile)">
+        <member name="M:RMuseum.Services.IPDFLibraryService.SubmitPDFPageCommentAsync(System.Guid,System.Int32,System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel,Microsoft.AspNetCore.Http.IFormFile)">
             <summary>
             submit a page comment or reply - see PDFLibraryService-Comment.cs's own doc
             comments on this and the two methods below
             </summary>
             <param name="userId"></param>
-            <param name="pdfPageId"></param>
+            <param name="pdfBookId"></param>
+            <param name="pageNumber"></param>
             <param name="model"></param>
             <param name="image">Phase 2: optional highlighted-region snippet - required together with model's HighlightX/Y/Width/Height, omitted for a plain page-level comment</param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Services.IPDFLibraryService.GetPDFPageCommentsAsync(System.Int32,System.Nullable{System.Guid})">
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetPDFPageCommentsAsync(System.Int32,System.Int32,System.Nullable{System.Guid})">
             <summary>
             every published comment on a page, flat
             </summary>
-            <param name="pdfPageId"></param>
+            <param name="pdfBookId"></param>
+            <param name="pageNumber"></param>
             <param name="requestingUserId">optional - only affects MyComment</param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetPDFPageCommentCountAsync(System.Int32,System.Int32)">
+            <summary>
+            count of published comments on a single page - keyed by (pdfBookId, pageNumber),
+            see GetPDFPageCommentCountAsync's own doc comment on why
+            </summary>
+            <param name="pdfBookId"></param>
+            <param name="pageNumber"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetRecentPDFPageCommentsAsync(System.Nullable{System.Int32},RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            every published comment, newest first, paginated - one query serving both the
+            site-wide comment hub (pdfBookId null) and a single book's own hub (pdfBookId set)
+            </summary>
+            <param name="pdfBookId">null for the site-wide hub, or a specific book's id</param>
+            <param name="paging"></param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.DeletePDFPageCommentAsync(System.Guid,System.Guid)">
