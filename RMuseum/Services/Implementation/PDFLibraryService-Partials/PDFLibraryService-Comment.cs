@@ -253,11 +253,16 @@ namespace RMuseum.Services.Implementation
         }
 
         /// <summary>
-        /// every published comment, newest first, paginated - one query serving two hubs.
-        /// [pdfBookId] null → the site-wide comment hub, across every book; a real value → one
-        /// book's own comment hub. Matches the sibling Ganjoor project's own GetRecentComments,
-        /// which does the same double duty (a public feed and a per-poem-ish view) with one
-        /// query and an optional filter, rather than two near-duplicate methods.
+        /// every published comment, newest first, paginated - one query serving three views.
+        /// [pdfBookId] null → the site-wide comment hub / a specific book's own hub.
+        /// [filterUserId] null → any author; a real value → only that user's own comments
+        /// (the "my comments" view). Matches the sibling Ganjoor project's own
+        /// GetRecentComments, which reuses one query the same three ways (a public feed, a
+        /// per-poem-ish view, a "my comments" view) rather than near-duplicate methods.
+        /// [requestingUserId] is independent of [filterUserId] - it only controls MyComment on
+        /// the returned items (so a viewer's own comments show as editable/deletable even in
+        /// the site-wide or per-book views, not just the "my comments" one); for the "my
+        /// comments" view itself, callers pass the same id for both.
         ///
         /// Book titles are batch-fetched for the distinct PDFBookIds actually present in this
         /// page of results (one extra query, not one per comment) - for the per-book hub
@@ -265,7 +270,7 @@ namespace RMuseum.Services.Implementation
         /// page of results, so this can't assume a single lookup the way
         /// GetPDFPageCommentsAsync does.
         /// </summary>
-        public async Task<RServiceResult<(PaginationMetadata PagingMeta, PDFPageCommentViewModel[] Items)>> GetRecentPDFPageCommentsAsync(int? pdfBookId, PagingParameterModel paging)
+        public async Task<RServiceResult<(PaginationMetadata PagingMeta, PDFPageCommentViewModel[] Items)>> GetRecentPDFPageCommentsAsync(int? pdfBookId, Guid? filterUserId, Guid? requestingUserId, PagingParameterModel paging)
         {
             try
             {
@@ -273,7 +278,9 @@ namespace RMuseum.Services.Implementation
                     .Include(c => c.User)
                     .Include(c => c.Image)
                     .Include(c => c.PDFPage)
-                    .Where(c => (pdfBookId == null || c.PDFPage.PDFBookId == pdfBookId.Value) && c.Status == PublishStatus.Published)
+                    .Where(c => (pdfBookId == null || c.PDFPage.PDFBookId == pdfBookId.Value)
+                             && (filterUserId == null || c.UserId == filterUserId.Value)
+                             && c.Status == PublishStatus.Published)
                     .OrderByDescending(c => c.CreatedAt);
 
                 (PaginationMetadata PagingMeta, PDFPageComment[] Items) paginatedResult =
@@ -298,7 +305,7 @@ namespace RMuseum.Services.Implementation
                     CreatedAt = c.CreatedAt,
                     EditedAt = c.EditedAt,
                     InReplyToId = c.InReplyToId,
-                    MyComment = false, // the hub doesn't need per-viewer ownership - no delete action there
+                    MyComment = requestingUserId != null && c.UserId == requestingUserId.Value,
                     ImageUrl = c.Image == null ? null : _BuildRImageUrl(c.Image),
                     HighlightX = c.HighlightX,
                     HighlightY = c.HighlightY,

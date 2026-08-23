@@ -890,7 +890,12 @@ namespace RMuseum.Controllers
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
         public async Task<IActionResult> GetPDFBookCommentsAsync(int pdfBookId, [FromQuery] PagingParameterModel paging)
         {
-            var res = await _pdfService.GetRecentPDFPageCommentsAsync(pdfBookId, paging);
+            Guid? userId = null;
+            var claim = User.Claims.FirstOrDefault(c => c.Type == "UserId");
+            if (claim != null)
+                userId = new Guid(claim.Value);
+
+            var res = await _pdfService.GetRecentPDFPageCommentsAsync(pdfBookId, null, userId, paging);
             if (!string.IsNullOrEmpty(res.ExceptionString))
                 return BadRequest(res.ExceptionString);
 
@@ -913,7 +918,38 @@ namespace RMuseum.Controllers
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
         public async Task<IActionResult> GetRecentPDFPageCommentsAsync([FromQuery] PagingParameterModel paging)
         {
-            var res = await _pdfService.GetRecentPDFPageCommentsAsync(null, paging);
+            Guid? userId = null;
+            var claim = User.Claims.FirstOrDefault(c => c.Type == "UserId");
+            if (claim != null)
+                userId = new Guid(claim.Value);
+
+            var res = await _pdfService.GetRecentPDFPageCommentsAsync(null, null, userId, paging);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
+
+            return Ok(res.Result.Items);
+        }
+
+        /// <summary>
+        /// every published comment the caller has ever posted, across every book, paginated -
+        /// the "my comments" view. Deliberately a dedicated, authenticated route rather than a
+        /// query parameter on the public comments/recent endpoint above - filterUserId here
+        /// always comes from the caller's own JWT claim, never a client-supplied value, so
+        /// there's no way to use this endpoint to browse someone else's comment history.
+        /// </summary>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("comments/mine")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFPageCommentViewModel>))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetMyPDFPageCommentsAsync([FromQuery] PagingParameterModel paging)
+        {
+            Guid userId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.GetRecentPDFPageCommentsAsync(null, userId, userId, paging);
             if (!string.IsNullOrEmpty(res.ExceptionString))
                 return BadRequest(res.ExceptionString);
 
