@@ -959,6 +959,40 @@ namespace RMuseum.Controllers
         }
 
         /// <summary>
+        /// every published comment a specific user has ever posted, across every book,
+        /// paginated - lets a client show "all of this person's comments" from tapping their
+        /// name anywhere a comment appears. Public, no login required - unlike comments/mine,
+        /// this is meant to let anyone browse it, and comments are already public content (the
+        /// hubs already show them to anyone), so aggregating them by a specific author isn't a
+        /// new privacy exposure the way accepting an arbitrary userId on an editable "my
+        /// comments"-style view would be. Still reads the caller's own claim if they happen to
+        /// be logged in (not the target userId) for MyComment, so viewing your own comment
+        /// history through this same endpoint still comes back editable/deletable.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("comments/by/{userId}")]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFPageCommentViewModel>))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetPDFPageCommentsByUserAsync(Guid userId, [FromQuery] PagingParameterModel paging)
+        {
+            Guid? requestingUserId = null;
+            var claim = User.Claims.FirstOrDefault(c => c.Type == "UserId");
+            if (claim != null)
+                requestingUserId = new Guid(claim.Value);
+
+            var res = await _pdfService.GetRecentPDFPageCommentsAsync(null, userId, requestingUserId, paging);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
+
+            return Ok(res.Result.Items);
+        }
+
+        /// <summary>
         /// delete a page comment - its own author always can; deleting someone else's needs
         /// pdfcomment:moderate, checked inside the service (not via a policy attribute here -
         /// see DeletePDFPageCommentAsync's own doc comment on why a policy attribute alone
