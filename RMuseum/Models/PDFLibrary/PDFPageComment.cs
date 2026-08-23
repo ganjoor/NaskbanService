@@ -55,6 +55,14 @@ namespace RMuseum.Models.PDFLibrary
         public DateTime CreatedAt { get; set; }
 
         /// <summary>
+        /// when the text was last edited by its own author - null if never edited. Shown to
+        /// other readers as a plain "edited" indicator (not a full revision history) so a
+        /// thread doesn't go silently confusing when someone replied to wording that's since
+        /// changed.
+        /// </summary>
+        public DateTime? EditedAt { get; set; }
+
+        /// <summary>
         /// the comment this one replies to - null for a top-level comment
         /// </summary>
         public Guid? InReplyToId { get; set; }

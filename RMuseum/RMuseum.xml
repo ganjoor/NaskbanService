@@ -424,6 +424,15 @@
             <param name="commentId"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.EditPDFPageCommentAsync(System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentEditViewModel)">
+            <summary>
+            edit a page comment's text - its own author only, no moderator override (see
+            EditPDFPageCommentAsync's own doc comment on why this differs from delete)
+            </summary>
+            <param name="commentId"></param>
+            <param name="model"></param>
+            <returns></returns>
+        </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.DeletePDFBookContributerAsync(System.Int32,System.Int32)">
             <summary>
             delete an existing contribution from pdf book
@@ -11412,6 +11421,14 @@
             when submitted
             </summary>
         </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.EditedAt">
+            <summary>
+            when the text was last edited by its own author - null if never edited. Shown to
+            other readers as a plain "edited" indicator (not a full revision history) so a
+            thread doesn't go silently confusing when someone replied to wording that's since
+            changed.
+            </summary>
+        </member>
         <member name="P:RMuseum.Models.PDFLibrary.PDFPageComment.InReplyToId">
             <summary>
             the comment this one replies to - null for a top-level comment
@@ -12287,6 +12304,18 @@
             see HighlightX
             </summary>
         </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentEditViewModel">
+            <summary>
+            editing an existing comment's text - see PDFLibraryService-Comment.cs's
+            EditPDFPageCommentAsync for the full reasoning (author-only, no moderator override,
+            unlike delete)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentEditViewModel.Text">
+            <summary>
+            the corrected/improved text
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel">
             <summary>
             PDFPageComment, for listing - a flat list, not a nested tree (matches
@@ -12344,6 +12373,11 @@
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.CreatedAt">
             <summary>
             when submitted
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.EditedAt">
+            <summary>
+            when the text was last edited by its own author - null if never edited
             </summary>
         </member>
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentViewModel.InReplyToId">
@@ -13405,6 +13439,21 @@
              anchored to its real parent instead of becoming an orphaned top-level comment.
              GetPDFPageCommentsAsync already filters to Status == Published, so a soft-deleted
              comment simply stops appearing.
+             </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.EditPDFPageCommentAsync(System.Guid,System.Guid,System.String)">
+             <summary>
+             edit a comment's text - its own author only, deliberately no moderator override
+             (unlike delete, which pdfcomment:moderate can also do to anyone's comment).
+             Rewriting someone else's words is a different, more invasive action than removing
+             them - a moderator who finds a comment objectionable can already delete it; letting
+             them silently change what it says risks misrepresenting what the person actually
+             wrote, so this stays strictly author-only regardless of permissions.
+            
+             Sets EditedAt so readers (and the comment's own author, on their next view) can see
+             the text changed since it was first posted - especially relevant once a reply
+             exists, since the reply's own wording may no longer make sense against the edited
+             version, and a silent edit here would leave no way to notice that happened.
              </summary>
         </member>
         <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupMinTitleLengthForFuzzyMatch">
@@ -14920,6 +14969,16 @@
             </summary>
             <param name="requestingUserId"></param>
             <param name="commentId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.EditPDFPageCommentAsync(System.Guid,System.Guid,System.String)">
+            <summary>
+            edit a page comment's text - own author only, no moderator override (see
+            EditPDFPageCommentAsync's own doc comment on why this differs from delete)
+            </summary>
+            <param name="requestingUserId"></param>
+            <param name="commentId"></param>
+            <param name="newText"></param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.AddPDFBookContributerAsync(System.Int32,System.Int32,System.String)">

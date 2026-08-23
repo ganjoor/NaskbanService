@@ -944,6 +944,27 @@ namespace RMuseum.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// edit a page comment's text - its own author only, no moderator override (see
+        /// EditPDFPageCommentAsync's own doc comment on why this differs from delete)
+        /// </summary>
+        /// <param name="commentId"></param>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        [HttpPut]
+        [Route("comment/{commentId}")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> EditPDFPageCommentAsync(Guid commentId, [FromBody] PDFPageCommentEditViewModel model)
+        {
+            Guid userId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.EditPDFPageCommentAsync(userId, commentId, model.Text);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok();
+        }
+
         [HttpPost("pdfbook/{pdfBookId}/contributor")]
         [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.ModifyOperationShortName)]
         [ProducesResponseType((int)HttpStatusCode.OK)]

@@ -46,6 +46,19 @@ namespace RMuseum.Models.PDFLibrary.ViewModels
     }
 
     /// <summary>
+    /// editing an existing comment's text - see PDFLibraryService-Comment.cs's
+    /// EditPDFPageCommentAsync for the full reasoning (author-only, no moderator override,
+    /// unlike delete)
+    /// </summary>
+    public class PDFPageCommentEditViewModel
+    {
+        /// <summary>
+        /// the corrected/improved text
+        /// </summary>
+        public string Text { get; set; }
+    }
+
+    /// <summary>
     /// PDFPageComment, for listing - a flat list, not a nested tree (matches
     /// GanjoorCommentFullViewModel's own convention): each reply carries its parent's
     /// InReplyToId, and the client builds whatever threaded/indented display it wants from
@@ -103,6 +116,11 @@ namespace RMuseum.Models.PDFLibrary.ViewModels
         /// when submitted
         /// </summary>
         public DateTime CreatedAt { get; set; }
+
+        /// <summary>
+        /// when the text was last edited by its own author - null if never edited
+        /// </summary>
+        public DateTime? EditedAt { get; set; }
 
         /// <summary>
         /// null for a top-level comment, otherwise the id of the comment this one replies to

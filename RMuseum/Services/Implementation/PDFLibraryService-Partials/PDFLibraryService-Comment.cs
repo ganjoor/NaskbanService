@@ -207,6 +207,7 @@ namespace RMuseum.Services.Implementation
                     UserName = c.User.NickName,
                     Text = c.Text,
                     CreatedAt = c.CreatedAt,
+                    EditedAt = c.EditedAt,
                     InReplyToId = c.InReplyToId,
                     MyComment = requestingUserId != null && c.UserId == requestingUserId.Value,
                     ImageUrl = c.Image == null ? null : _BuildRImageUrl(c.Image),
@@ -295,6 +296,7 @@ namespace RMuseum.Services.Implementation
                     UserName = c.User.NickName,
                     Text = c.Text,
                     CreatedAt = c.CreatedAt,
+                    EditedAt = c.EditedAt,
                     InReplyToId = c.InReplyToId,
                     MyComment = false, // the hub doesn't need per-viewer ownership - no delete action there
                     ImageUrl = c.Image == null ? null : _BuildRImageUrl(c.Image),
@@ -374,6 +376,55 @@ namespace RMuseum.Services.Implementation
                 }
 
                 comment.Status = PublishStatus.Deleted;
+                _context.Update(comment);
+                await _context.SaveChangesAsync();
+
+                return new RServiceResult<bool>(true);
+            }
+            catch (Exception exp)
+            {
+                return new RServiceResult<bool>(false, exp.ToString());
+            }
+        }
+
+        /// <summary>
+        /// edit a comment's text - its own author only, deliberately no moderator override
+        /// (unlike delete, which pdfcomment:moderate can also do to anyone's comment).
+        /// Rewriting someone else's words is a different, more invasive action than removing
+        /// them - a moderator who finds a comment objectionable can already delete it; letting
+        /// them silently change what it says risks misrepresenting what the person actually
+        /// wrote, so this stays strictly author-only regardless of permissions.
+        ///
+        /// Sets EditedAt so readers (and the comment's own author, on their next view) can see
+        /// the text changed since it was first posted - especially relevant once a reply
+        /// exists, since the reply's own wording may no longer make sense against the edited
+        /// version, and a silent edit here would leave no way to notice that happened.
+        /// </summary>
+        public async Task<RServiceResult<bool>> EditPDFPageCommentAsync(Guid requestingUserId, Guid commentId, string newText)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(newText))
+                {
+                    return new RServiceResult<bool>(false, "متن دیدگاه نمی‌تواند خالی باشد");
+                }
+
+                var comment = await _context.PDFPageComments.Where(c => c.Id == commentId).SingleOrDefaultAsync();
+                if (comment == null)
+                {
+                    return new RServiceResult<bool>(false, $"comment {commentId} not found");
+                }
+                if (comment.Status != PublishStatus.Published)
+                {
+                    return new RServiceResult<bool>(false, "این دیدگاه دیگر در دسترس نیست");
+                }
+                if (comment.UserId != requestingUserId)
+                {
+                    return new RServiceResult<bool>(false, "فقط نویسندهٔ دیدگاه می‌تواند آن را ویرایش کند");
+                }
+
+                comment.Text = newText.Trim();
+                comment.EditedAt = DateTime.Now;
                 _context.Update(comment);
                 await _context.SaveChangesAsync();
 

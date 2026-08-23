@@ -220,6 +220,16 @@ namespace RMuseum.Services
         Task<RServiceResult<bool>> DeletePDFPageCommentAsync(Guid requestingUserId, Guid commentId);
 
         /// <summary>
+        /// edit a page comment's text - own author only, no moderator override (see
+        /// EditPDFPageCommentAsync's own doc comment on why this differs from delete)
+        /// </summary>
+        /// <param name="requestingUserId"></param>
+        /// <param name="commentId"></param>
+        /// <param name="newText"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> EditPDFPageCommentAsync(Guid requestingUserId, Guid commentId, string newText);
+
+        /// <summary>
         /// add pdf book contributer
         /// </summary>
         /// <param name="pdfBookId"></param>
