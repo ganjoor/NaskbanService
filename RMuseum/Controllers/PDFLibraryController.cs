@@ -1035,6 +1035,69 @@ namespace RMuseum.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// submit a report against a page comment (spam, offensive, harassment, or something
+        /// else) - any authenticated user other than the comment's own author
+        /// </summary>
+        /// <param name="commentId"></param>
+        /// <param name="report"></param>
+        /// <returns>id of the new report</returns>
+        [HttpPost]
+        [Route("comment/{commentId}/report")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(Guid))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> SubmitPDFPageCommentReportAsync(Guid commentId, [FromBody] PDFPageCommentReportSubmitViewModel report)
+        {
+            Guid userId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.SubmitPDFPageCommentReportAsync(userId, commentId, report);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok(res.Result);
+        }
+
+        /// <summary>
+        /// paginated list of still-open comment reports
+        /// </summary>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("commentreports/open")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFPageCommentReportEntityShortName + ":" + RMuseumSecurableItem.ModerateOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFPageCommentReportViewModel>))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetOpenPDFPageCommentReportsAsync([FromQuery] PagingParameterModel paging)
+        {
+            var res = await _pdfService.GetOpenPDFPageCommentReportsAsync(paging);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
+
+            return Ok(res.Result.Items);
+        }
+
+        /// <summary>
+        /// resolve a comment report - approving deletes the reported comment as part of closing
+        /// the report; rejecting leaves it alone
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        [HttpPut]
+        [Route("commentreport/{id}/resolve")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFPageCommentReportEntityShortName + ":" + RMuseumSecurableItem.ModerateOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> ResolvePDFPageCommentReportAsync(Guid id, [FromBody] PDFPageCommentReportResolveViewModel model)
+        {
+            Guid userId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.ResolvePDFPageCommentReportAsync(userId, id, model.Approved, model.Response);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok();
+        }
+
         [HttpPost("pdfbook/{pdfBookId}/contributor")]
         [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.ModifyOperationShortName)]
         [ProducesResponseType((int)HttpStatusCode.OK)]

@@ -232,6 +232,33 @@ namespace RMuseum.Services
         Task<RServiceResult<bool>> EditPDFPageCommentAsync(Guid requestingUserId, Guid commentId, string newText);
 
         /// <summary>
+        /// submit a report against a page comment - see SubmitPDFPageCommentReportAsync's own
+        /// doc comment
+        /// </summary>
+        /// <param name="reporterId"></param>
+        /// <param name="commentId"></param>
+        /// <param name="model"></param>
+        /// <returns>id of the new report</returns>
+        Task<RServiceResult<Guid>> SubmitPDFPageCommentReportAsync(Guid reporterId, Guid commentId, PDFPageCommentReportSubmitViewModel model);
+
+        /// <summary>
+        /// paginated list of still-open comment reports, for reviewers
+        /// </summary>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        Task<RServiceResult<(PaginationMetadata PagingMeta, PDFPageCommentReportViewModel[] Items)>> GetOpenPDFPageCommentReportsAsync(PagingParameterModel paging);
+
+        /// <summary>
+        /// resolve a comment report - see ResolvePDFPageCommentReportAsync's own doc comment
+        /// </summary>
+        /// <param name="reviewerId"></param>
+        /// <param name="reportId"></param>
+        /// <param name="approved"></param>
+        /// <param name="response"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> ResolvePDFPageCommentReportAsync(Guid reviewerId, Guid reportId, bool approved, string response);
+
+        /// <summary>
         /// add pdf book contributer
         /// </summary>
         /// <param name="pdfBookId"></param>

@@ -604,6 +604,11 @@ namespace RMuseum.DbContext
         /// </summary>
         public DbSet<PDFPageComment> PDFPageComments { get; set; }
 
+        /// <summary>
+        /// user reports against page comments (spam, offensive, harassment, other)
+        /// </summary>
+        public DbSet<PDFPageCommentReport> PDFPageCommentReports { get; set; }
+
 
         /// <summary>
         /// ganjoor-poem match findings

@@ -414,6 +414,33 @@
             <param name="paging"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetMyPDFPageCommentsAsync(RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            every published comment the caller has ever posted, across every book, paginated -
+            the "my comments" view. Deliberately a dedicated, authenticated route rather than a
+            query parameter on the public comments/recent endpoint above - filterUserId here
+            always comes from the caller's own JWT claim, never a client-supplied value, so
+            there's no way to use this endpoint to browse someone else's comment history.
+            </summary>
+            <param name="paging"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetPDFPageCommentsByUserAsync(System.Guid,RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            every published comment a specific user has ever posted, across every book,
+            paginated - lets a client show "all of this person's comments" from tapping their
+            name anywhere a comment appears. Public, no login required - unlike comments/mine,
+            this is meant to let anyone browse it, and comments are already public content (the
+            hubs already show them to anyone), so aggregating them by a specific author isn't a
+            new privacy exposure the way accepting an arbitrary userId on an editable "my
+            comments"-style view would be. Still reads the caller's own claim if they happen to
+            be logged in (not the target userId) for MyComment, so viewing your own comment
+            history through this same endpoint still comes back editable/deletable.
+            </summary>
+            <param name="userId"></param>
+            <param name="paging"></param>
+            <returns></returns>
+        </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.DeletePDFPageCommentAsync(System.Guid)">
             <summary>
             delete a page comment - its own author always can; deleting someone else's needs
@@ -430,6 +457,31 @@
             EditPDFPageCommentAsync's own doc comment on why this differs from delete)
             </summary>
             <param name="commentId"></param>
+            <param name="model"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.SubmitPDFPageCommentReportAsync(System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportSubmitViewModel)">
+            <summary>
+            submit a report against a page comment (spam, offensive, harassment, or something
+            else) - any authenticated user other than the comment's own author
+            </summary>
+            <param name="commentId"></param>
+            <param name="report"></param>
+            <returns>id of the new report</returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetOpenPDFPageCommentReportsAsync(RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            paginated list of still-open comment reports
+            </summary>
+            <param name="paging"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.ResolvePDFPageCommentReportAsync(System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportResolveViewModel)">
+            <summary>
+            resolve a comment report - approving deletes the reported comment as part of closing
+            the report; rejecting leaves it alone
+            </summary>
+            <param name="id"></param>
             <param name="model"></param>
             <returns></returns>
         </member>
@@ -1458,6 +1510,11 @@
             PDFPageComment's own doc comment)
             </summary>
         </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.PDFPageCommentReports">
+            <summary>
+            user reports against page comments (spam, offensive, harassment, other)
+            </summary>
+        </member>
         <member name="P:RMuseum.DbContext.RMuseumDbContext.GanjoorPoemMatchFindings">
             <summary>
             ganjoor-poem match findings
@@ -2008,6 +2065,18 @@
             <inheritdoc />
         </member>
         <member name="M:RMuseum.Migrations.CommentImage.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:RMuseum.Migrations.AddPDFPageCommentEditedAt">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.AddPDFPageCommentEditedAt.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.AddPDFPageCommentEditedAt.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.AddPDFPageCommentEditedAt.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
         <member name="T:RMuseum.Models.Accounting.DonationExpenditure">
@@ -3035,6 +3104,18 @@
             deliberately separate from PDFBookReportEntityShortName, since reviewing book
             reports and moderating comments are different responsibilities. A user can always
             delete their own comment regardless of this permission.
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.Auth.Memory.RMuseumSecurableItem.PDFPageCommentReportEntityShortName">
+            <summary>
+            reviewing user reports against page comments (as opposed to PDFPageCommentEntityShortName,
+            which is unilateral comment moderation with no report attached) - deliberately its own
+            entity, same reasoning as PDFBookReportEntityShortName vs PDFLibraryEntityShortName: a
+            reviewer here doesn't necessarily need (and shouldn't automatically get) blanket
+            comment-delete power, or vice versa. Resolving a report as approved does delete that one
+            specific reported comment as part of the resolution, but that's scoped to the report
+            being reviewed, not a general grant of PDFPageCommentEntityShortName's own moderate
+            operation.
             </summary>
         </member>
         <member name="F:RMuseum.Models.Auth.Memory.RMuseumSecurableItem.QueuedFTPUploadShortName">
@@ -11483,6 +11564,111 @@
             PDFPage.FullResolutionImageHeight
             </summary>
         </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFPageCommentReport">
+            <summary>
+            a registered user's report against a page comment (spam, offensive, harassment, or
+            something else) - modeled after PDFBookReport, which is itself modeled after the
+            sibling Ganjoor project's GanjoorCommentAbuseReport but richer (a written resolution
+            the reporter is notified of, rather than the report just silently disappearing).
+            Resolving a report as approved deletes the reported comment as part of closing the
+            report - see ResolvePDFPageCommentReportAsync's own doc comment.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageCommentReport.Id">
+            <summary>
+            Id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageCommentReport.PDFPageCommentId">
+            <summary>
+            the reported comment
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageCommentReport.PDFPageComment">
+            <summary>
+            the reported comment - callers must be ready for this navigation to point at a
+            soft-deleted comment by the time anyone reads the report back, since resolving a
+            report as approved deletes the comment while the report row itself is kept for
+            history/audit
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageCommentReport.ReporterId">
+            <summary>
+            reporting user
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageCommentReport.Reporter">
+            <summary>
+            reporting user
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageCommentReport.Category">
+            <summary>
+            one of a fixed set of category strings the client hardcodes and sends verbatim:
+            "Spam", "Offensive", "Harassment", "Other" - a plain string rather than a C# enum,
+            matching PDFBookReport.Category's own convention, so a new category can be added
+            later without a migration.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageCommentReport.Description">
+            <summary>
+            free text explanation provided by the reporter
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageCommentReport.Status">
+            <summary>
+            Open until a reviewer resolves it
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageCommentReport.Approved">
+            <summary>
+            null while still Open; true if the reviewer approved the report (comment deleted),
+            false if rejected (comment left alone)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageCommentReport.CreatedAt">
+            <summary>
+            when the report was submitted
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageCommentReport.ReviewerId">
+            <summary>
+            user who resolved this report - null while still Open
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageCommentReport.Reviewer">
+            <summary>
+            user who resolved this report - null while still Open
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageCommentReport.ReviewerResponse">
+            <summary>
+            the reviewer's optional written note on the resolution - unlike
+            PDFBookReport.ReviewerResponse, this is genuinely optional: the outcome (deleted or
+            not) is usually self-explanatory for a comment report, and requiring a written
+            justification for every obvious spam removal would just add friction
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFPageCommentReport.ReviewedAt">
+            <summary>
+            when the report was resolved - null while still Open
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFPageCommentReportStatus">
+            <summary>
+            PDFPageCommentReport status
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.PDFLibrary.PDFPageCommentReportStatus.Open">
+            <summary>
+            submitted, not yet reviewed
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.PDFLibrary.PDFPageCommentReportStatus.Closed">
+            <summary>
+            reviewed and resolved (see PDFPageCommentReport.Approved for the outcome)
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.PDFLibrary.PDFPageUnrevisedText">
             <summary>
             backup for ai chanegs
@@ -12260,6 +12446,135 @@
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFGanjoorLinkSuggestion.SuggestedByMachine">
             <summary>
             suggested by a machine
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportSubmitViewModel">
+            <summary>
+            submitting a report against a comment
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportSubmitViewModel.Category">
+            <summary>
+            one of a fixed set the client hardcodes: "Spam", "Offensive", "Harassment", "Other"
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportSubmitViewModel.Description">
+            <summary>
+            explanatory text provided by the reporter
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportResolveViewModel">
+            <summary>
+            a reviewer's resolution of a report
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportResolveViewModel.Approved">
+            <summary>
+            true → the report was valid, the reported comment is deleted as part of this call;
+            false → rejected, the comment is left alone
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportResolveViewModel.Response">
+            <summary>
+            optional written note on the resolution - see PDFPageCommentReport.ReviewerResponse's
+            own doc comment on why this is optional, unlike the equivalent field on PDFBookReport
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel">
+            <summary>
+            PDFPageCommentReport, for listing to reviewers - carries enough of the reported
+            comment's own context (text, book, page) that the review screen doesn't need a
+            follow-up call just to show what's actually being reported, matching
+            PDFBookReportViewModel's own PDFBookTitle convention.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.Id">
+            <summary>
+            id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.PDFPageCommentId">
+            <summary>
+            the reported comment's id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.CommentStillExists">
+            <summary>
+            false if the comment has already been deleted by the time this report is being
+            looked at (moderated directly, deleted by its own author, or already resolved by
+            another reviewer who got to it first) - CommentText/CommentAuthorName below are
+            null in that case, and the review screen should say so rather than show blank text
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.CommentText">
+            <summary>
+            the reported comment's own text - null if CommentStillExists is false
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.CommentAuthorName">
+            <summary>
+            the reported comment's author's display name - null if CommentStillExists is false
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.PDFBookId">
+            <summary>
+            the book the reported comment's page belongs to
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.BookTitle">
+            <summary>
+            see PDFBookId
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.PageNumber">
+            <summary>
+            the page number the reported comment is on
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.ReporterId">
+            <summary>
+            reporting user's id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.ReporterName">
+            <summary>
+            reporting user's display name
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.Category">
+            <summary>
+            "Spam", "Offensive", "Harassment", or "Other"
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.Description">
+            <summary>
+            explanatory text provided by the reporter
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.Status">
+            <summary>
+            Open or Closed
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.Approved">
+            <summary>
+            null while still Open; true if approved (comment deleted), false if rejected
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.CreatedAt">
+            <summary>
+            when submitted
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.ReviewerResponse">
+            <summary>
+            the reviewer's optional written note - null while still Open, or if the reviewer
+            left it blank
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.ReviewedAt">
+            <summary>
+            when resolved - null while still Open
             </summary>
         </member>
         <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel">
@@ -13392,13 +13707,18 @@
             beyond a plain count.
             </summary>
         </member>
-        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetRecentPDFPageCommentsAsync(System.Nullable{System.Int32},RSecurityBackend.Models.Generic.PagingParameterModel)">
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetRecentPDFPageCommentsAsync(System.Nullable{System.Int32},System.Nullable{System.Guid},System.Nullable{System.Guid},RSecurityBackend.Models.Generic.PagingParameterModel)">
              <summary>
-             every published comment, newest first, paginated - one query serving two hubs.
-             [pdfBookId] null → the site-wide comment hub, across every book; a real value → one
-             book's own comment hub. Matches the sibling Ganjoor project's own GetRecentComments,
-             which does the same double duty (a public feed and a per-poem-ish view) with one
-             query and an optional filter, rather than two near-duplicate methods.
+             every published comment, newest first, paginated - one query serving three views.
+             [pdfBookId] null → the site-wide comment hub / a specific book's own hub.
+             [filterUserId] null → any author; a real value → only that user's own comments
+             (the "my comments" view). Matches the sibling Ganjoor project's own
+             GetRecentComments, which reuses one query the same three ways (a public feed, a
+             per-poem-ish view, a "my comments" view) rather than near-duplicate methods.
+             [requestingUserId] is independent of [filterUserId] - it only controls MyComment on
+             the returned items (so a viewer's own comments show as editable/deletable even in
+             the site-wide or per-book views, not just the "my comments" one); for the "my
+             comments" view itself, callers pass the same id for both.
             
              Book titles are batch-fetched for the distinct PDFBookIds actually present in this
              page of results (one extra query, not one per comment) - for the per-book hub
@@ -13455,6 +13775,37 @@
              exists, since the reply's own wording may no longer make sense against the edited
              version, and a silent edit here would leave no way to notice that happened.
              </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.SubmitPDFPageCommentReportAsync(System.Guid,System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportSubmitViewModel)">
+            <summary>
+            submit a report against a page comment (spam, offensive, harassment, or something
+            else) - any authenticated user other than the comment's own author (if you want your
+            own comment gone, delete it directly - no report needed). Same notify-every-moderator
+            pattern as SubmitPDFBookReportAsync - save first, then look up every user holding
+            PDFPageCommentReportEntityShortName:ModerateOperationShortName and notify each; a
+            failure in that step is swallowed rather than failing the submission itself.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetOpenPDFPageCommentReportsAsync(RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            paginated list of still-open comment reports, for reviewers - includes enough of the
+            reported comment's own context (text, book, page) to review without a follow-up call,
+            and gracefully covers a report whose comment is already gone by the time it's looked
+            at (moderated directly, deleted by its own author, or resolved by another reviewer
+            who got to it first) via CommentStillExists, rather than erroring or showing blanks.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.ResolvePDFPageCommentReportAsync(System.Guid,System.Guid,System.Boolean,System.String)">
+            <summary>
+            resolve a comment report - approving it deletes the reported comment (soft-delete,
+            same as DeletePDFPageCommentAsync) as part of closing the report; rejecting it leaves
+            the comment untouched. Either way the reporter is notified with the outcome and the
+            reviewer's optional note - a resolution nobody sees defeats the point of writing one,
+            same reasoning as ClosePDFBookReportAsync. Safe to call even if the comment has
+            already been deleted by some other means since the report was filed (moderated
+            directly, deleted by its own author, or already resolved via a duplicate report) -
+            approving in that case is a no-op on the comment itself, not an error.
+            </summary>
         </member>
         <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupMinTitleLengthForFuzzyMatch">
             <summary>
@@ -14954,12 +15305,14 @@
             <param name="pageNumber"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Services.IPDFLibraryService.GetRecentPDFPageCommentsAsync(System.Nullable{System.Int32},RSecurityBackend.Models.Generic.PagingParameterModel)">
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetRecentPDFPageCommentsAsync(System.Nullable{System.Int32},System.Nullable{System.Guid},System.Nullable{System.Guid},RSecurityBackend.Models.Generic.PagingParameterModel)">
             <summary>
-            every published comment, newest first, paginated - one query serving both the
-            site-wide comment hub (pdfBookId null) and a single book's own hub (pdfBookId set)
+            every published comment, newest first, paginated - one query serving three views:
+            the site-wide hub, a single book's own hub, and a "my comments" view
             </summary>
-            <param name="pdfBookId">null for the site-wide hub, or a specific book's id</param>
+            <param name="pdfBookId">null for site-wide, or a specific book's id</param>
+            <param name="filterUserId">null for any author, or a specific user's id (the "my comments" view)</param>
+            <param name="requestingUserId">independent of filterUserId - only controls MyComment on the results</param>
             <param name="paging"></param>
             <returns></returns>
         </member>
@@ -14979,6 +15332,33 @@
             <param name="requestingUserId"></param>
             <param name="commentId"></param>
             <param name="newText"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.SubmitPDFPageCommentReportAsync(System.Guid,System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportSubmitViewModel)">
+            <summary>
+            submit a report against a page comment - see SubmitPDFPageCommentReportAsync's own
+            doc comment
+            </summary>
+            <param name="reporterId"></param>
+            <param name="commentId"></param>
+            <param name="model"></param>
+            <returns>id of the new report</returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetOpenPDFPageCommentReportsAsync(RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            paginated list of still-open comment reports, for reviewers
+            </summary>
+            <param name="paging"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.ResolvePDFPageCommentReportAsync(System.Guid,System.Guid,System.Boolean,System.String)">
+            <summary>
+            resolve a comment report - see ResolvePDFPageCommentReportAsync's own doc comment
+            </summary>
+            <param name="reviewerId"></param>
+            <param name="reportId"></param>
+            <param name="approved"></param>
+            <param name="response"></param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.AddPDFBookContributerAsync(System.Int32,System.Int32,System.String)">

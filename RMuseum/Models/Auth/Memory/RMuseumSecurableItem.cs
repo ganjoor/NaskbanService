@@ -129,6 +129,18 @@ namespace RMuseum.Models.Auth.Memory
         public const string PDFPageCommentEntityShortName = "pdfcomment";
 
         /// <summary>
+        /// reviewing user reports against page comments (as opposed to PDFPageCommentEntityShortName,
+        /// which is unilateral comment moderation with no report attached) - deliberately its own
+        /// entity, same reasoning as PDFBookReportEntityShortName vs PDFLibraryEntityShortName: a
+        /// reviewer here doesn't necessarily need (and shouldn't automatically get) blanket
+        /// comment-delete power, or vice versa. Resolving a report as approved does delete that one
+        /// specific reported comment as part of the resolution, but that's scoped to the report
+        /// being reviewed, not a general grant of PDFPageCommentEntityShortName's own moderate
+        /// operation.
+        /// </summary>
+        public const string PDFPageCommentReportEntityShortName = "pdfcommentreport";
+
+        /// <summary>
         /// ftp
         /// </summary>
         public const string QueuedFTPUploadShortName = "ftp";
@@ -252,6 +264,15 @@ namespace RMuseum.Models.Auth.Memory
                         Operations = new SecurableItemOperation[]
                         {
                             new SecurableItemOperation(ModerateOperationShortName, "حذف دیدگاه دیگر کاربران", false),
+                        }
+                    },
+                    new SecurableItem()
+                    {
+                        ShortName = PDFPageCommentReportEntityShortName,
+                        Description = "گزارش‌های کاربران دربارهٔ دیدگاه‌ها",
+                        Operations = new SecurableItemOperation[]
+                        {
+                            new SecurableItemOperation(ModerateOperationShortName, "بررسی و پاسخ به گزارش‌های دیدگاه", false),
                         }
                     },
                     new SecurableItem()
