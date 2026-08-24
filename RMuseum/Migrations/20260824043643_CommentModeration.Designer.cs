@@ -12,7 +12,7 @@ using RMuseum.DbContext;
 namespace RMuseum.Migrations
 {
     [DbContext(typeof(RMuseumDbContext))]
-    [Migration("20260824042127_CommentModeration")]
+    [Migration("20260824043643_CommentModeration")]
     partial class CommentModeration
     {
         /// <inheritdoc />
@@ -5964,7 +5964,7 @@ namespace RMuseum.Migrations
                     b.HasOne("RMuseum.Models.PDFLibrary.PDFPageComment", "PDFPageComment")
                         .WithMany()
                         .HasForeignKey("PDFPageCommentId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("RSecurityBackend.Models.Auth.Db.RAppUser", "Reporter")

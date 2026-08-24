@@ -5961,7 +5961,7 @@ namespace RMuseum.Migrations
                     b.HasOne("RMuseum.Models.PDFLibrary.PDFPageComment", "PDFPageComment")
                         .WithMany()
                         .HasForeignKey("PDFPageCommentId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("RSecurityBackend.Models.Auth.Db.RAppUser", "Reporter")

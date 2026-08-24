@@ -199,6 +199,22 @@ namespace RMuseum.DbContext
 
             builder.Entity<PDFVisitRecord>()
                 .HasIndex(v => new { v.RAppUserId, v.PDFBookId });
+
+            // SQL Server rejects this without an explicit override: AspNetUsers can reach
+            // PDFPageCommentReports two ways otherwise - directly via ReporterId (cascade,
+            // EF Core's default for a required FK), and indirectly via
+            // PDFPageComments.UserId -> PDFPageComments -> PDFPageCommentReports (also
+            // cascade by default) - two cascade paths to the same table, which SQL Server
+            // flags as a possible multiple-cascade-paths/cycle risk and refuses to create.
+            // Breaking the PDFPageComment link specifically (rather than ReporterId) is the
+            // right one to give up - this app only ever soft-deletes comments (see
+            // PDFPageComment's own doc comment on Status), so a hard delete cascading from a
+            // comment down to its reports was never something this app relied on anyway.
+            builder.Entity<PDFPageCommentReport>()
+                .HasOne(r => r.PDFPageComment)
+                .WithMany()
+                .HasForeignKey(r => r.PDFPageCommentId)
+                .OnDelete(DeleteBehavior.NoAction);
         }
 
 

@@ -45,8 +45,7 @@ namespace RMuseum.Migrations
                         name: "FK_PDFPageCommentReports_PDFPageComments_PDFPageCommentId",
                         column: x => x.PDFPageCommentId,
                         principalTable: "PDFPageComments",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateIndex(
