@@ -166,10 +166,12 @@ namespace RMuseum.Services.Implementation
                     return new RServiceResult<bool>(false, "این گزارش پیش‌تر بررسی شده است");
                 }
 
+                bool actuallyDeleted = false;
                 if (approved && report.PDFPageComment != null && report.PDFPageComment.Status == PublishStatus.Published)
                 {
                     report.PDFPageComment.Status = PublishStatus.Deleted;
                     _context.Update(report.PDFPageComment);
+                    actuallyDeleted = true;
                 }
 
                 report.Status = PDFPageCommentReportStatus.Closed;
@@ -190,11 +192,43 @@ namespace RMuseum.Services.Implementation
                                     (string.IsNullOrWhiteSpace(response) ? "" : $"{Environment.NewLine}پاسخ بررسی‌کننده: {response}")
                                 );
 
+                // the comment's own author is told it was removed and why - deliberately at
+                // category level, not the reporter's own free-text description or identity;
+                // showing the raw complaint or who filed it risks retaliation against the
+                // reporter, which is exactly what report anonymity is meant to prevent
+                if (actuallyDeleted)
+                {
+                    await _notificationService.PushNotification
+                                    (
+                                        report.PDFPageComment.UserId,
+                                        "حذف یکی از دیدگاه‌های شما",
+                                        $"یکی از دیدگاه‌های شما به دلیل «{_CommentReportCategoryLabel(report.Category)}» و پس از بررسی حذف شد." +
+                                        (string.IsNullOrWhiteSpace(response) ? "" : $"{Environment.NewLine}پاسخ بررسی‌کننده: {response}")
+                                    );
+                }
+
                 return new RServiceResult<bool>(true);
             }
             catch (Exception exp)
             {
                 return new RServiceResult<bool>(false, exp.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Persian label for a report category - same fixed set as the Flutter client's own
+        /// kCommentReportCategories map, kept in sync manually since the category itself is a
+        /// plain string on both ends rather than a shared enum (see
+        /// PDFPageCommentReport.Category's own doc comment on why)
+        /// </summary>
+        private static string _CommentReportCategoryLabel(string category)
+        {
+            switch (category)
+            {
+                case "Spam": return "هرزنامه";
+                case "Offensive": return "توهین‌آمیز";
+                case "Harassment": return "آزار و اذیت";
+                default: return "سایر";
             }
         }
     }
