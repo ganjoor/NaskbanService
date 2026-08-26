@@ -68,6 +68,15 @@ namespace RMuseum.Models.PDFLibrary.ViewModels
         public string CommentText { get; set; }
 
         /// <summary>
+        /// the reported comment's author's user id - unlike CommentText/CommentAuthorName,
+        /// this is always populated regardless of CommentStillExists: the author's own account
+        /// isn't "deleted content" the way the comment's text is, and a moderator reviewing a
+        /// report may still want to act on the account (view their other comments, kick them
+        /// out) even when this specific comment is already gone
+        /// </summary>
+        public Guid CommentAuthorId { get; set; }
+
+        /// <summary>
         /// the reported comment's author's display name - null if CommentStillExists is false
         /// </summary>
         public string CommentAuthorName { get; set; }

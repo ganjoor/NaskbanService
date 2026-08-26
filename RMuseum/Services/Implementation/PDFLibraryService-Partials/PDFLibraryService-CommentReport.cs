@@ -118,6 +118,7 @@ namespace RMuseum.Services.Implementation
                         PDFPageCommentId = r.PDFPageCommentId,
                         CommentStillExists = commentStillExists,
                         CommentText = commentStillExists ? r.PDFPageComment.Text : null,
+                        CommentAuthorId = r.PDFPageComment.UserId,
                         CommentAuthorName = commentStillExists ? r.PDFPageComment.User.NickName : null,
                         PDFBookId = bookId,
                         BookTitle = bookTitles.TryGetValue(bookId, out var title) ? title : null,
