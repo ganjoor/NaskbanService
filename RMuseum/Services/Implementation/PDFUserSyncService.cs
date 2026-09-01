@@ -45,6 +45,14 @@ namespace RMuseum.Services.Implementation
             }
         }
 
+        /// <summary>
+        /// The convenience "default" shelf both clients auto-create on first use - kept in
+        /// sync with the Flutter client's own ShelfService.uncategorizedShelfName. See the
+        /// duplicate-shelf guard in ApplyShelfChangesAsync below for why this constant exists
+        /// server-side at all.
+        /// </summary>
+        private const string DefaultShelfName = "پیش‌فرض";
+
         public async Task<RServiceResult<bool>> ApplyShelfChangesAsync(Guid userId, PDFShelfSyncItemViewModel[] items)
         {
             try
@@ -68,6 +76,29 @@ namespace RMuseum.Services.Implementation
                     {
                         if (item.IsDeleted)
                             continue; // nothing to delete, no tombstone needed for a shelf that never existed
+
+                        // Backstop against duplicate "پیش‌فرض" shelves - the actual fix is
+                        // client-side (ShelfService._runFirstRunSetupIfNeeded checks the
+                        // server before creating one locally), but this catches whatever that
+                        // client-side fix can't: older app versions still in the wild, and the
+                        // "used the app anonymously, then logged into an account that already
+                        // has a default shelf from another device" case, where the client's
+                        // own pre-check has no way to know about the other device's shelf yet.
+                        // Deliberately just skips the row rather than fully remapping the
+                        // client's local id to the existing shelf's id (which would need a
+                        // response shape this method doesn't have) - any shelf-books in this
+                        // same push that reference the skipped id won't apply, but that's a
+                        // narrow, recoverable edge case (the next sync pulls the real shelf
+                        // down, and the person can re-add anything that didn't make it) next
+                        // to the alternative this guard exists to prevent: permanent, growing
+                        // duplicate shelves.
+                        if (item.Name == DefaultShelfName)
+                        {
+                            var alreadyHasDefault = await _context.PDFShelves
+                                .AnyAsync(s => s.RAppUserId == userId && s.Name == DefaultShelfName && !s.IsDeleted);
+                            if (alreadyHasDefault)
+                                continue;
+                        }
 
                         _context.PDFShelves.Add(new PDFShelf()
                         {
