@@ -1098,6 +1098,222 @@ namespace RMuseum.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// submit a new review for a book - any authenticated user, one per (book, user); see
+        /// SubmitPDFBookReviewAsync's own doc comment
+        /// </summary>
+        /// <param name="bookId"></param>
+        /// <param name="model"></param>
+        /// <returns>id of the new review</returns>
+        [HttpPost]
+        [Route("{bookId}/review")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(Guid))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> SubmitPDFBookReviewAsync(int bookId, [FromBody] PDFBookReviewSubmitViewModel model)
+        {
+            Guid userId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.SubmitPDFBookReviewAsync(userId, bookId, model);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok(res.Result);
+        }
+
+        /// <summary>
+        /// edit an existing review's text and/or rating - own author only
+        /// </summary>
+        /// <param name="reviewId"></param>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        [HttpPut]
+        [Route("review/{reviewId}")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> EditPDFBookReviewAsync(Guid reviewId, [FromBody] PDFBookReviewEditViewModel model)
+        {
+            Guid userId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.EditPDFBookReviewAsync(userId, reviewId, model);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok();
+        }
+
+        /// <summary>
+        /// delete a review - its own author always can; deleting someone else's needs
+        /// pdfbookreview:moderate, checked inside the service (not via a policy attribute here
+        /// - same reasoning as DeletePDFPageCommentAsync)
+        /// </summary>
+        /// <param name="reviewId"></param>
+        /// <returns></returns>
+        [HttpDelete]
+        [Route("review/{reviewId}")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> DeletePDFBookReviewAsync(Guid reviewId)
+        {
+            Guid userId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.DeletePDFBookReviewAsync(userId, reviewId);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok();
+        }
+
+        /// <summary>
+        /// paginated, sortable reviews for a single book - public, no login required, but a
+        /// logged-in caller's own review/votes still come back correctly shaped (same
+        /// optional-auth reasoning as GetPDFPageCommentsAsync). [sort] is "Newest" (default),
+        /// "HighestRated", or "MostLiked" - case-insensitive, falls back to Newest if missing
+        /// or unrecognized rather than rejecting the request.
+        /// </summary>
+        /// <param name="bookId"></param>
+        /// <param name="sort"></param>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("{bookId}/reviews")]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFBookReviewViewModel>))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetPDFBookReviewsAsync(int bookId, [FromQuery] string sort, [FromQuery] PagingParameterModel paging)
+        {
+            Guid? requestingUserId = null;
+            var claim = User.Claims.FirstOrDefault(c => c.Type == "UserId");
+            if (claim != null)
+                requestingUserId = new Guid(claim.Value);
+
+            if (!Enum.TryParse<PDFBookReviewSortMode>(sort, true, out var sortMode))
+                sortMode = PDFBookReviewSortMode.Newest;
+
+            var res = await _pdfService.GetPDFBookReviewsAsync(bookId, requestingUserId, sortMode, paging);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
+
+            return Ok(res.Result.Items);
+        }
+
+        /// <summary>
+        /// every published review across every book, paginated, newest first - the site-wide
+        /// "latest reviews" hub. Public, no login required, same optional-auth reasoning as
+        /// GetPDFBookReviewsAsync above.
+        /// </summary>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("reviews/recent")]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFBookReviewViewModel>))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetRecentPDFBookReviewsAsync([FromQuery] PagingParameterModel paging)
+        {
+            Guid? requestingUserId = null;
+            var claim = User.Claims.FirstOrDefault(c => c.Type == "UserId");
+            if (claim != null)
+                requestingUserId = new Guid(claim.Value);
+
+            var res = await _pdfService.GetRecentPDFBookReviewsAsync(null, requestingUserId, paging);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
+
+            return Ok(res.Result.Items);
+        }
+
+        /// <summary>
+        /// every review the caller has ever posted, across every book, paginated - the "my
+        /// reviews" view. Requires login (the filter always comes from the caller's own JWT
+        /// claim, never a client-supplied value - same reasoning as GetMyPDFPageCommentsAsync).
+        /// </summary>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("reviews/mine")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFBookReviewViewModel>))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetMyPDFBookReviewsAsync([FromQuery] PagingParameterModel paging)
+        {
+            Guid userId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.GetRecentPDFBookReviewsAsync(userId, userId, paging);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
+
+            return Ok(res.Result.Items);
+        }
+
+        /// <summary>
+        /// every review a specific user has ever posted, across every book, paginated. Public,
+        /// no login required - same reasoning as GetPDFPageCommentsByUserAsync: reviews are
+        /// already public content, aggregating them by author isn't a new privacy exposure.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("reviews/by/{userId}")]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFBookReviewViewModel>))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetPDFBookReviewsByUserAsync(Guid userId, [FromQuery] PagingParameterModel paging)
+        {
+            Guid? requestingUserId = null;
+            var claim = User.Claims.FirstOrDefault(c => c.Type == "UserId");
+            if (claim != null)
+                requestingUserId = new Guid(claim.Value);
+
+            var res = await _pdfService.GetRecentPDFBookReviewsAsync(userId, requestingUserId, paging);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
+
+            return Ok(res.Result.Items);
+        }
+
+        /// <summary>
+        /// cast or change a vote on someone else's review - see CastPDFBookReviewVoteAsync's
+        /// own doc comment on why a user can't vote on their own review
+        /// </summary>
+        /// <param name="reviewId"></param>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("review/{reviewId}/vote")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> CastPDFBookReviewVoteAsync(Guid reviewId, [FromBody] PDFBookReviewVoteViewModel model)
+        {
+            Guid userId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.CastPDFBookReviewVoteAsync(userId, reviewId, model.IsLike);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok();
+        }
+
+        /// <summary>
+        /// remove the caller's own vote from a review, if any - a no-op if they hadn't voted
+        /// on it
+        /// </summary>
+        /// <param name="reviewId"></param>
+        /// <returns></returns>
+        [HttpDelete]
+        [Route("review/{reviewId}/vote")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> RemovePDFBookReviewVoteAsync(Guid reviewId)
+        {
+            Guid userId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.RemovePDFBookReviewVoteAsync(userId, reviewId);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok();
+        }
+
         [HttpPost("pdfbook/{pdfBookId}/contributor")]
         [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.ModifyOperationShortName)]
         [ProducesResponseType((int)HttpStatusCode.OK)]

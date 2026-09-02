@@ -259,6 +259,72 @@ namespace RMuseum.Services
         Task<RServiceResult<bool>> ResolvePDFPageCommentReportAsync(Guid reviewerId, Guid reportId, bool approved, string response);
 
         /// <summary>
+        /// submit a new book review - see SubmitPDFBookReviewAsync's own doc comment
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="bookId"></param>
+        /// <param name="model"></param>
+        /// <returns>id of the new review</returns>
+        Task<RServiceResult<Guid>> SubmitPDFBookReviewAsync(Guid userId, int bookId, PDFBookReviewSubmitViewModel model);
+
+        /// <summary>
+        /// edit an existing review - own author only
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="reviewId"></param>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> EditPDFBookReviewAsync(Guid userId, Guid reviewId, PDFBookReviewEditViewModel model);
+
+        /// <summary>
+        /// delete a review - own author always, others need PDFBookReviewEntityShortName's own
+        /// moderate operation, checked inside the service itself (same pattern as
+        /// DeletePDFPageCommentAsync)
+        /// </summary>
+        /// <param name="requestingUserId"></param>
+        /// <param name="reviewId"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> DeletePDFBookReviewAsync(Guid requestingUserId, Guid reviewId);
+
+        /// <summary>
+        /// paginated, sortable reviews for a single book
+        /// </summary>
+        /// <param name="bookId"></param>
+        /// <param name="requestingUserId"></param>
+        /// <param name="sortMode"></param>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        Task<RServiceResult<(PaginationMetadata PagingMeta, PDFBookReviewViewModel[] Items)>> GetPDFBookReviewsAsync(int bookId, Guid? requestingUserId, PDFBookReviewSortMode sortMode, PagingParameterModel paging);
+
+        /// <summary>
+        /// paginated reviews across every book, newest first - see
+        /// GetRecentPDFBookReviewsAsync's own doc comment
+        /// </summary>
+        /// <param name="filterUserId"></param>
+        /// <param name="requestingUserId"></param>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        Task<RServiceResult<(PaginationMetadata PagingMeta, PDFBookReviewViewModel[] Items)>> GetRecentPDFBookReviewsAsync(Guid? filterUserId, Guid? requestingUserId, PagingParameterModel paging);
+
+        /// <summary>
+        /// cast or change a vote on someone else's review - see CastPDFBookReviewVoteAsync's
+        /// own doc comment
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="reviewId"></param>
+        /// <param name="isLike"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> CastPDFBookReviewVoteAsync(Guid userId, Guid reviewId, bool isLike);
+
+        /// <summary>
+        /// remove the caller's own vote from a review, if any
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="reviewId"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> RemovePDFBookReviewVoteAsync(Guid userId, Guid reviewId);
+
+        /// <summary>
         /// add pdf book contributer
         /// </summary>
         /// <param name="pdfBookId"></param>

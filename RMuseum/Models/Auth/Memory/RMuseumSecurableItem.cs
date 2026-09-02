@@ -141,6 +141,15 @@ namespace RMuseum.Models.Auth.Memory
         public const string PDFPageCommentReportEntityShortName = "pdfcommentreport";
 
         /// <summary>
+        /// moderating other users' book reviews (deleting a review that isn't your own) -
+        /// same reasoning as PDFPageCommentEntityShortName: a user can always delete their
+        /// own review regardless of this permission. Review-report reviewing, when that's
+        /// built, will be its own separate entity too, same split as
+        /// PDFPageCommentReportEntityShortName vs PDFPageCommentEntityShortName.
+        /// </summary>
+        public const string PDFBookReviewEntityShortName = "pdfbookreview";
+
+        /// <summary>
         /// ftp
         /// </summary>
         public const string QueuedFTPUploadShortName = "ftp";
@@ -273,6 +282,15 @@ namespace RMuseum.Models.Auth.Memory
                         Operations = new SecurableItemOperation[]
                         {
                             new SecurableItemOperation(ModerateOperationShortName, "بررسی و پاسخ به گزارش‌های دیدگاه", false),
+                        }
+                    },
+                    new SecurableItem()
+                    {
+                        ShortName = PDFBookReviewEntityShortName,
+                        Description = "نقدهای کاربران دربارهٔ کتاب‌ها",
+                        Operations = new SecurableItemOperation[]
+                        {
+                            new SecurableItemOperation(ModerateOperationShortName, "حذف نقد دیگر کاربران", false),
                         }
                     },
                     new SecurableItem()

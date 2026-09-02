@@ -485,6 +485,90 @@
             <param name="model"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.SubmitPDFBookReviewAsync(System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewSubmitViewModel)">
+            <summary>
+            submit a new review for a book - any authenticated user, one per (book, user); see
+            SubmitPDFBookReviewAsync's own doc comment
+            </summary>
+            <param name="bookId"></param>
+            <param name="model"></param>
+            <returns>id of the new review</returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.EditPDFBookReviewAsync(System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewEditViewModel)">
+            <summary>
+            edit an existing review's text and/or rating - own author only
+            </summary>
+            <param name="reviewId"></param>
+            <param name="model"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.DeletePDFBookReviewAsync(System.Guid)">
+            <summary>
+            delete a review - its own author always can; deleting someone else's needs
+            pdfbookreview:moderate, checked inside the service (not via a policy attribute here
+            - same reasoning as DeletePDFPageCommentAsync)
+            </summary>
+            <param name="reviewId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetPDFBookReviewsAsync(System.Int32,System.String,RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            paginated, sortable reviews for a single book - public, no login required, but a
+            logged-in caller's own review/votes still come back correctly shaped (same
+            optional-auth reasoning as GetPDFPageCommentsAsync). [sort] is "Newest" (default),
+            "HighestRated", or "MostLiked" - case-insensitive, falls back to Newest if missing
+            or unrecognized rather than rejecting the request.
+            </summary>
+            <param name="bookId"></param>
+            <param name="sort"></param>
+            <param name="paging"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetRecentPDFBookReviewsAsync(RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            every published review across every book, paginated, newest first - the site-wide
+            "latest reviews" hub. Public, no login required, same optional-auth reasoning as
+            GetPDFBookReviewsAsync above.
+            </summary>
+            <param name="paging"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetMyPDFBookReviewsAsync(RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            every review the caller has ever posted, across every book, paginated - the "my
+            reviews" view. Requires login (the filter always comes from the caller's own JWT
+            claim, never a client-supplied value - same reasoning as GetMyPDFPageCommentsAsync).
+            </summary>
+            <param name="paging"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetPDFBookReviewsByUserAsync(System.Guid,RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            every review a specific user has ever posted, across every book, paginated. Public,
+            no login required - same reasoning as GetPDFPageCommentsByUserAsync: reviews are
+            already public content, aggregating them by author isn't a new privacy exposure.
+            </summary>
+            <param name="userId"></param>
+            <param name="paging"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.CastPDFBookReviewVoteAsync(System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewVoteViewModel)">
+            <summary>
+            cast or change a vote on someone else's review - see CastPDFBookReviewVoteAsync's
+            own doc comment on why a user can't vote on their own review
+            </summary>
+            <param name="reviewId"></param>
+            <param name="model"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.RemovePDFBookReviewVoteAsync(System.Guid)">
+            <summary>
+            remove the caller's own vote from a review, if any - a no-op if they hadn't voted
+            on it
+            </summary>
+            <param name="reviewId"></param>
+            <returns></returns>
+        </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.DeletePDFBookContributerAsync(System.Int32,System.Int32)">
             <summary>
             delete an existing contribution from pdf book
@@ -1515,6 +1599,17 @@
             user reports against page comments (spam, offensive, harassment, other)
             </summary>
         </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.PDFBookReviews">
+            <summary>
+            user reviews of books - text plus an optional rating, one per (book, user) - see
+            PDFBookReview's own doc comment
+            </summary>
+        </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.PDFBookReviewVotes">
+            <summary>
+            likes/dislikes on book reviews - see PDFBookReviewVote's own doc comment
+            </summary>
+        </member>
         <member name="P:RMuseum.DbContext.RMuseumDbContext.GanjoorPoemMatchFindings">
             <summary>
             ganjoor-poem match findings
@@ -2089,6 +2184,18 @@
             <inheritdoc />
         </member>
         <member name="M:RMuseum.Migrations.CommentModeration.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:RMuseum.Migrations.AddBookReviews">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.AddBookReviews.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.AddBookReviews.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.AddBookReviews.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
         <member name="T:RMuseum.Models.Accounting.DonationExpenditure">
@@ -3128,6 +3235,15 @@
             specific reported comment as part of the resolution, but that's scoped to the report
             being reviewed, not a general grant of PDFPageCommentEntityShortName's own moderate
             operation.
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.Auth.Memory.RMuseumSecurableItem.PDFBookReviewEntityShortName">
+            <summary>
+            moderating other users' book reviews (deleting a review that isn't your own) -
+            same reasoning as PDFPageCommentEntityShortName: a user can always delete their
+            own review regardless of this permission. Review-report reviewing, when that's
+            built, will be its own separate entity too, same split as
+            PDFPageCommentReportEntityShortName vs PDFPageCommentEntityShortName.
             </summary>
         </member>
         <member name="F:RMuseum.Models.Auth.Memory.RMuseumSecurableItem.QueuedFTPUploadShortName">
@@ -11102,6 +11218,27 @@
             OCR AI revised
             </summary>
         </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBook.AverageRating">
+            <summary>
+            average of Rating across every published PDFBookReview for this book with a
+            non-null Rating (a review's rating is optional - see PDFBookReview.Rating's own doc
+            comment - so this is not simply an average over every review). Null if no review
+            has a rating yet. Denormalized and kept in sync whenever a review with a rating is
+            submitted, edited, or deleted, rather than computed fresh on every read - a book's
+            aggregate rating needs to be cheap to show anywhere the book itself appears (lists,
+            search results), not just its own detail page, which would otherwise need its own
+            review-table join just to render a star average nobody asked to see reviews for.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBook.RatingCount">
+            <summary>
+            count of published PDFBookReviews with a non-null Rating - see AverageRating's own
+            doc comment. Kept alongside AverageRating rather than just re-deriving a count from
+            it, since "no ratings yet" (0) needs to be distinguishable from "some ratings,
+            coincidentally at a round average" for display purposes (e.g. not showing a star
+            average at all until at least one rating exists).
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate">
             <summary>
             a pair of PDFBook records the duplicate-detection job believes might be the same book,
@@ -11373,6 +11510,154 @@
         <member name="F:RMuseum.Models.PDFLibrary.PDFBookReportStatus.Closed">
             <summary>
             reviewed and responded to
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFBookReview">
+            <summary>
+            a registered user's review of a book - descriptive text plus an optional 1-5 star
+            rating. Modeled after PDFPageComment (same Text/Status/CreatedAt/EditedAt shape, same
+            soft-delete via PublishStatus), but with three deliberate differences: exactly one
+            review per (PDFBookId, UserId) pair, enforced by a unique index rather than just
+            application-level checking (see the migration); no InReplyToId - reviews are not
+            threaded, since "replying to a review" is a different feature (that's what a book's own
+            comments are for, arguably, though this project doesn't have per-book comments either);
+            and LikeCount/DislikeCount, denormalized the same way PDFBook.AverageRating is (see
+            that field's own doc comment for why) - sorting reviews by collective score needs a
+            plain column, not a join-and-aggregate over PDFBookReviewVote on every list request.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReview.Id">
+            <summary>
+            Id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReview.PDFBookId">
+            <summary>
+            the reviewed book
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReview.PDFBook">
+            <summary>
+            the reviewed book
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReview.UserId">
+            <summary>
+            reviewing user
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReview.User">
+            <summary>
+            reviewing user
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReview.Text">
+            <summary>
+            plain text, not HTML - same reasoning as PDFPageComment.Text
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReview.Rating">
+            <summary>
+            1-5 stars, optional - a reviewer may rate without writing much, or write a full
+            review without rating at all. Null means no rating given, not "0 stars" - excluded
+            from PDFBook.AverageRating/RatingCount either way.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReview.CreatedAt">
+            <summary>
+            when submitted
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReview.EditedAt">
+            <summary>
+            when last edited by its own author - null if never edited. Same "edited" indicator
+            reasoning as PDFPageComment.EditedAt, though without threaded replies here the
+            "a reply no longer makes sense against edited wording" case doesn't apply - shown
+            purely for the same general transparency (other readers can see the text changed
+            since first posted).
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReview.Status">
+            <summary>
+            published immediately, no moderation queue - same PublishStatus enum used across
+            this project for soft-delete, same as PDFPageComment.Status
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReview.LikeCount">
+            <summary>
+            denormalized count of PDFBookReviewVote rows with IsLike true for this review - see
+            this class's own doc comment for why this isn't just computed fresh on read
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReview.DislikeCount">
+            <summary>
+            denormalized count of PDFBookReviewVote rows with IsLike false for this review
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFBookReviewSortMode">
+            <summary>
+            sort modes for listing book reviews
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.PDFLibrary.PDFBookReviewSortMode.Newest">
+            <summary>
+            newest first
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.PDFLibrary.PDFBookReviewSortMode.HighestRated">
+            <summary>
+            highest Rating first (reviews with no rating sort last); ties broken by newest
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.PDFLibrary.PDFBookReviewSortMode.MostLiked">
+            <summary>
+            highest (LikeCount - DislikeCount) first; ties broken by newest
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFBookReviewVote">
+            <summary>
+            a registered user's like or dislike of someone else's book review - exactly one vote
+            per (PDFBookReviewId, UserId) pair, enforced by a unique index (see the migration);
+            switching a vote updates this same row rather than creating a second one. A user can't
+            vote on their own review - enforced in PDFLibraryService-BookReview.cs, same principle
+            as not being able to report your own comment.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewVote.Id">
+            <summary>
+            Id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewVote.PDFBookReviewId">
+            <summary>
+            the review this vote is on
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewVote.PDFBookReview">
+            <summary>
+            the review this vote is on
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewVote.UserId">
+            <summary>
+            voting user
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewVote.User">
+            <summary>
+            voting user
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewVote.IsLike">
+            <summary>
+            true = like, false = dislike - a plain bool, not a nullable tri-state, since there
+            is no "neutral" vote: removing a vote deletes this row entirely rather than setting
+            it to some third value.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewVote.CreatedAt">
+            <summary>
+            when this vote was cast or last changed (like to dislike or vice versa)
             </summary>
         </member>
         <member name="T:RMuseum.Models.PDFLibrary.PDFPage">
@@ -12420,6 +12705,127 @@
             when closed - null while still Open
             </summary>
         </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewSubmitViewModel">
+            <summary>
+            submitting a new review - rejected server-side if the caller already has one for this
+            book (see SubmitPDFBookReviewAsync's own doc comment) rather than silently overwriting;
+            editing an existing review is a separate action (PDFBookReviewEditViewModel below).
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewSubmitViewModel.Text">
+            <summary>
+            review text - plain text, not HTML, same as PDFPageComment.Text
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewSubmitViewModel.Rating">
+            <summary>
+            1-5 stars, optional - send null for a text-only review with no rating
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewEditViewModel">
+            <summary>
+            editing an existing review - author-only, no moderator override, same reasoning as
+            PDFPageCommentEditViewModel/EditPDFPageCommentAsync
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewEditViewModel.Text">
+            <summary>
+            the corrected/improved text
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewEditViewModel.Rating">
+            <summary>
+            1-5 stars, optional - send null to remove a previously-given rating, or to keep a
+            review text-only
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewVoteViewModel">
+            <summary>
+            casting or changing a vote on someone else's review - see CastPDFBookReviewVoteAsync's
+            own doc comment on why a user can't vote on their own review
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewVoteViewModel.IsLike">
+            <summary>
+            true = like, false = dislike
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewViewModel">
+            <summary>
+            PDFBookReview, for listing - no threading (see PDFBookReview's own doc comment), so
+            unlike PDFPageCommentViewModel there's no InReplyToId here at all.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewViewModel.Id">
+            <summary>
+            id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewViewModel.PDFBookId">
+            <summary>
+            the reviewed book's id - not needed where the caller already knows which book (a
+            single book's own review list), but needed by the site-wide "latest reviews" hub
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewViewModel.BookTitle">
+            <summary>
+            see PDFBookId
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewViewModel.UserId">
+            <summary>
+            reviewing user's id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewViewModel.UserName">
+            <summary>
+            reviewing user's display name
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewViewModel.Text">
+            <summary>
+            review text
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewViewModel.Rating">
+            <summary>
+            1-5 stars, or null if this review has no rating
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewViewModel.CreatedAt">
+            <summary>
+            when submitted
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewViewModel.EditedAt">
+            <summary>
+            when the text was last edited by its own author - null if never edited
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewViewModel.MyReview">
+            <summary>
+            true when the requesting user is this review's own author - lets the client show
+            edit/delete buttons without a separate ownership check of its own, same convention
+            as PDFPageCommentViewModel.MyComment
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewViewModel.LikeCount">
+            <summary>
+            denormalized like count - see PDFBookReview.LikeCount's own doc comment
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewViewModel.DislikeCount">
+            <summary>
+            denormalized dislike count - see PDFBookReview.DislikeCount's own doc comment
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewViewModel.MyVote">
+            <summary>
+            null if the requesting user hasn't voted on this review (or isn't logged in); true
+            if they liked it, false if they disliked it - lets the client show which vote
+            button, if either, should appear pressed
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFGanjoorLinkSuggestion">
             <summary>
             PDFBook Ganjoor Link Suggestion
@@ -12521,6 +12927,15 @@
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.CommentText">
             <summary>
             the reported comment's own text - null if CommentStillExists is false
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.CommentAuthorId">
+            <summary>
+            the reported comment's author's user id - unlike CommentText/CommentAuthorName,
+            this is always populated regardless of CommentStillExists: the author's own account
+            isn't "deleted content" the way the comment's text is, and a moderator reviewing a
+            report may still want to act on the account (view their other comments, kick them
+            out) even when this specific comment is already gone
             </summary>
         </member>
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentReportViewModel.CommentAuthorName">
@@ -13683,6 +14098,75 @@
             this author, not asking anyone to re-decide whether they wanted that author pinned.
             </summary>
         </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._RecomputeBookRatingAsync(System.Int32)">
+            <summary>
+            recomputes PDFBook.AverageRating/RatingCount from scratch over every published
+            review with a non-null Rating for this book - called after any submit/edit/delete
+            that could change the aggregate. A fresh recompute rather than incremental math
+            (subtract old rating, add new one) - simpler and safer against drift, and ratings
+            change infrequently enough that the extra query per edit is not a real cost.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.SubmitPDFBookReviewAsync(System.Guid,System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewSubmitViewModel)">
+            <summary>
+            submit a new review - rejected if the caller already has one for this book (one
+            review per (book, user), also enforced at the DB level by a unique index - see
+            PDFBookReview's own doc comment); editing an existing review is
+            EditPDFBookReviewAsync, a separate action, not an upsert here.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.EditPDFBookReviewAsync(System.Guid,System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewEditViewModel)">
+            <summary>
+            edit an existing review's text and/or rating - own author only, no moderator
+            override, same reasoning as EditPDFPageCommentAsync
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.DeletePDFBookReviewAsync(System.Guid,System.Guid)">
+            <summary>
+            delete a review - its own author always can; deleting someone else's needs
+            pdfbookreview:moderate, checked here inside the service (not via a controller-level
+            policy attribute or a canModerate parameter passed in) - same pattern as
+            DeletePDFPageCommentAsync, since a policy attribute alone can't express "or it's
+            your own", and keeping the check here (not split between controller and service)
+            means there is exactly one place this rule can be gotten wrong, not two.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetPDFBookReviewsAsync(System.Int32,System.Nullable{System.Guid},RMuseum.Models.PDFLibrary.PDFBookReviewSortMode,RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            paginated reviews for a single book, sortable - MyVote/MyReview are populated from
+            requestingUserId if given (null for an anonymous caller, matching
+            GetPDFPageCommentsAsync's own optional-auth reasoning: the route this backs is
+            public, but a logged-in caller's own review/votes should still come back correctly
+            shaped).
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetRecentPDFBookReviewsAsync(System.Nullable{System.Guid},System.Nullable{System.Guid},RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            paginated reviews across every book, newest first - the site-wide "latest reviews"
+            hub. [filterUserId] null → any author; a real value → only that user's own reviews
+            (a future "my reviews" view, matching GetRecentPDFPageCommentsAsync's own
+            three-way-reuse precedent - included from the start here since it costs nothing
+            extra now and avoids a signature change later). [requestingUserId] is independent
+            of [filterUserId] - it only controls MyReview/MyVote on the results.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.CastPDFBookReviewVoteAsync(System.Guid,System.Guid,System.Boolean)">
+            <summary>
+            cast or change a vote on someone else's review - a user can't vote on their own
+            review, same principle as not being able to report your own comment (trivially
+            inflating your own score otherwise). Upserts: if this user already voted on this
+            review, the existing PDFBookReviewVote row is updated (like to dislike or vice
+            versa) rather than a second row being created - see PDFBookReviewVote's own doc
+            comment. LikeCount/DislikeCount on the review are kept in sync here rather than
+            recomputed by a separate pass.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.RemovePDFBookReviewVoteAsync(System.Guid,System.Guid)">
+            <summary>
+            remove the caller's own vote from a review, if they had one - a no-op (not an
+            error) if they hadn't voted on it at all
+            </summary>
+        </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.SubmitPDFPageCommentAsync(System.Guid,System.Int32,System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel,Microsoft.AspNetCore.Http.IFormFile)">
              <summary>
              submit a page comment, or a reply to one - Phase 1 fields (Text/InReplyToId) plus
@@ -13817,6 +14301,14 @@
             already been deleted by some other means since the report was filed (moderated
             directly, deleted by its own author, or already resolved via a duplicate report) -
             approving in that case is a no-op on the comment itself, not an error.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._CommentReportCategoryLabel(System.String)">
+            <summary>
+            Persian label for a report category - same fixed set as the Flutter client's own
+            kCommentReportCategories map, kept in sync manually since the category itself is a
+            plain string on both ends rather than a shared enum (see
+            PDFPageCommentReport.Category's own doc comment on why)
             </summary>
         </member>
         <member name="F:RMuseum.Services.Implementation.PDFLibraryService.DupMinTitleLengthForFuzzyMatch">
@@ -14848,6 +15340,14 @@
             see IPDFUserSyncService
             </summary>
         </member>
+        <member name="F:RMuseum.Services.Implementation.PDFUserSyncService.DefaultShelfName">
+            <summary>
+            The convenience "default" shelf both clients auto-create on first use - kept in
+            sync with the Flutter client's own ShelfService.uncategorizedShelfName. See the
+            duplicate-shelf guard in ApplyShelfChangesAsync below for why this constant exists
+            server-side at all.
+            </summary>
+        </member>
         <member name="F:RMuseum.Services.Implementation.PDFUserSyncService._context">
             <summary>
             Database Context
@@ -15371,6 +15871,72 @@
             <param name="reportId"></param>
             <param name="approved"></param>
             <param name="response"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.SubmitPDFBookReviewAsync(System.Guid,System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewSubmitViewModel)">
+            <summary>
+            submit a new book review - see SubmitPDFBookReviewAsync's own doc comment
+            </summary>
+            <param name="userId"></param>
+            <param name="bookId"></param>
+            <param name="model"></param>
+            <returns>id of the new review</returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.EditPDFBookReviewAsync(System.Guid,System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewEditViewModel)">
+            <summary>
+            edit an existing review - own author only
+            </summary>
+            <param name="userId"></param>
+            <param name="reviewId"></param>
+            <param name="model"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.DeletePDFBookReviewAsync(System.Guid,System.Guid)">
+            <summary>
+            delete a review - own author always, others need PDFBookReviewEntityShortName's own
+            moderate operation, checked inside the service itself (same pattern as
+            DeletePDFPageCommentAsync)
+            </summary>
+            <param name="requestingUserId"></param>
+            <param name="reviewId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetPDFBookReviewsAsync(System.Int32,System.Nullable{System.Guid},RMuseum.Models.PDFLibrary.PDFBookReviewSortMode,RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            paginated, sortable reviews for a single book
+            </summary>
+            <param name="bookId"></param>
+            <param name="requestingUserId"></param>
+            <param name="sortMode"></param>
+            <param name="paging"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetRecentPDFBookReviewsAsync(System.Nullable{System.Guid},System.Nullable{System.Guid},RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            paginated reviews across every book, newest first - see
+            GetRecentPDFBookReviewsAsync's own doc comment
+            </summary>
+            <param name="filterUserId"></param>
+            <param name="requestingUserId"></param>
+            <param name="paging"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.CastPDFBookReviewVoteAsync(System.Guid,System.Guid,System.Boolean)">
+            <summary>
+            cast or change a vote on someone else's review - see CastPDFBookReviewVoteAsync's
+            own doc comment
+            </summary>
+            <param name="userId"></param>
+            <param name="reviewId"></param>
+            <param name="isLike"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.RemovePDFBookReviewVoteAsync(System.Guid,System.Guid)">
+            <summary>
+            remove the caller's own vote from a review, if any
+            </summary>
+            <param name="userId"></param>
+            <param name="reviewId"></param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.AddPDFBookContributerAsync(System.Int32,System.Int32,System.String)">

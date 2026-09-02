@@ -254,5 +254,26 @@ namespace RMuseum.Models.PDFLibrary
         /// OCR AI revised
         /// </summary>
         public bool AIRevised { get; set; }
+
+        /// <summary>
+        /// average of Rating across every published PDFBookReview for this book with a
+        /// non-null Rating (a review's rating is optional - see PDFBookReview.Rating's own doc
+        /// comment - so this is not simply an average over every review). Null if no review
+        /// has a rating yet. Denormalized and kept in sync whenever a review with a rating is
+        /// submitted, edited, or deleted, rather than computed fresh on every read - a book's
+        /// aggregate rating needs to be cheap to show anywhere the book itself appears (lists,
+        /// search results), not just its own detail page, which would otherwise need its own
+        /// review-table join just to render a star average nobody asked to see reviews for.
+        /// </summary>
+        public double? AverageRating { get; set; }
+
+        /// <summary>
+        /// count of published PDFBookReviews with a non-null Rating - see AverageRating's own
+        /// doc comment. Kept alongside AverageRating rather than just re-deriving a count from
+        /// it, since "no ratings yet" (0) needs to be distinguishable from "some ratings,
+        /// coincidentally at a round average" for display purposes (e.g. not showing a star
+        /// average at all until at least one rating exists).
+        /// </summary>
+        public int RatingCount { get; set; }
     }
 }

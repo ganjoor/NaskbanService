@@ -215,6 +215,29 @@ namespace RMuseum.DbContext
                 .WithMany()
                 .HasForeignKey(r => r.PDFPageCommentId)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            // enforces "exactly one review per (book, user)" at the data layer, not just
+            // application-level checking - see PDFBookReview's own doc comment
+            builder.Entity<PDFBookReview>()
+                .HasIndex(r => new { r.PDFBookId, r.UserId })
+                .IsUnique();
+
+            // enforces "exactly one vote per (review, user)" the same way
+            builder.Entity<PDFBookReviewVote>()
+                .HasIndex(v => new { v.PDFBookReviewId, v.UserId })
+                .IsUnique();
+
+            // Same multiple-cascade-paths problem as PDFPageCommentReport above, same fix,
+            // same reasoning: AspNetUsers can reach PDFBookReviewVotes two ways otherwise -
+            // directly via PDFBookReviewVote.UserId, and indirectly via
+            // PDFBookReview.UserId -> PDFBookReviews -> PDFBookReviewVotes. Breaking the
+            // PDFBookReview link (not the direct user link) is the one to give up, matching
+            // the same choice made there.
+            builder.Entity<PDFBookReviewVote>()
+                .HasOne(v => v.PDFBookReview)
+                .WithMany()
+                .HasForeignKey(v => v.PDFBookReviewId)
+                .OnDelete(DeleteBehavior.NoAction);
         }
 
 
@@ -624,6 +647,17 @@ namespace RMuseum.DbContext
         /// user reports against page comments (spam, offensive, harassment, other)
         /// </summary>
         public DbSet<PDFPageCommentReport> PDFPageCommentReports { get; set; }
+
+        /// <summary>
+        /// user reviews of books - text plus an optional rating, one per (book, user) - see
+        /// PDFBookReview's own doc comment
+        /// </summary>
+        public DbSet<PDFBookReview> PDFBookReviews { get; set; }
+
+        /// <summary>
+        /// likes/dislikes on book reviews - see PDFBookReviewVote's own doc comment
+        /// </summary>
+        public DbSet<PDFBookReviewVote> PDFBookReviewVotes { get; set; }
 
 
         /// <summary>
