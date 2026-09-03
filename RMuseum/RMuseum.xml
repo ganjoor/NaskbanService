@@ -569,6 +569,31 @@
             <param name="reviewId"></param>
             <returns></returns>
         </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.SubmitPDFBookReviewReportAsync(System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportSubmitViewModel)">
+            <summary>
+            submit a report against a book review - any authenticated user other than the
+            review's own author
+            </summary>
+            <param name="reviewId"></param>
+            <param name="report"></param>
+            <returns>id of the new report</returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetOpenPDFBookReviewReportsAsync(RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            paginated list of still-open review reports
+            </summary>
+            <param name="paging"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Controllers.PDFLibraryController.ResolvePDFBookReviewReportAsync(System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportResolveViewModel)">
+            <summary>
+            resolve a review report - approving deletes the reported review as part of closing
+            the report; rejecting leaves it alone
+            </summary>
+            <param name="id"></param>
+            <param name="model"></param>
+            <returns></returns>
+        </member>
         <member name="M:RMuseum.Controllers.PDFLibraryController.DeletePDFBookContributerAsync(System.Int32,System.Int32)">
             <summary>
             delete an existing contribution from pdf book
@@ -1610,6 +1635,11 @@
             likes/dislikes on book reviews - see PDFBookReviewVote's own doc comment
             </summary>
         </member>
+        <member name="P:RMuseum.DbContext.RMuseumDbContext.PDFBookReviewReports">
+            <summary>
+            user reports against book reviews (spam, offensive, harassment, other)
+            </summary>
+        </member>
         <member name="P:RMuseum.DbContext.RMuseumDbContext.GanjoorPoemMatchFindings">
             <summary>
             ganjoor-poem match findings
@@ -2196,6 +2226,18 @@
             <inheritdoc />
         </member>
         <member name="M:RMuseum.Migrations.AddBookReviews.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:RMuseum.Migrations.RevIndexChanged">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.RevIndexChanged.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.RevIndexChanged.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.RevIndexChanged.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
         <member name="T:RMuseum.Models.Accounting.DonationExpenditure">
@@ -3244,6 +3286,15 @@
             own review regardless of this permission. Review-report reviewing, when that's
             built, will be its own separate entity too, same split as
             PDFPageCommentReportEntityShortName vs PDFPageCommentEntityShortName.
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.Auth.Memory.RMuseumSecurableItem.PDFBookReviewReportEntityShortName">
+            <summary>
+            reviewing user reports against book reviews - its own separate entity from
+            PDFBookReviewEntityShortName, same split as PDFPageCommentReportEntityShortName vs
+            PDFPageCommentEntityShortName and for the same reason: a reviewer here doesn't
+            necessarily need (and shouldn't automatically get) blanket review-delete power, or
+            vice versa.
             </summary>
         </member>
         <member name="F:RMuseum.Models.Auth.Memory.RMuseumSecurableItem.QueuedFTPUploadShortName">
@@ -11597,6 +11648,110 @@
             denormalized count of PDFBookReviewVote rows with IsLike false for this review
             </summary>
         </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFBookReviewReport">
+            <summary>
+            a registered user's report against a book review (spam, offensive, harassment, or
+            something else) - mirrors PDFPageCommentReport exactly (same fields, same reasoning
+            throughout - see that class's own doc comment). Resolving a report as approved deletes
+            the reported review as part of closing the report - see
+            ResolvePDFBookReviewReportAsync's own doc comment.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewReport.Id">
+            <summary>
+            Id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewReport.PDFBookReviewId">
+            <summary>
+            the reported review
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewReport.PDFBookReview">
+            <summary>
+            the reported review - callers must be ready for this navigation to point at a
+            soft-deleted review by the time anyone reads the report back, since resolving a
+            report as approved deletes the review while the report row itself is kept for
+            history/audit
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewReport.ReporterId">
+            <summary>
+            reporting user
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewReport.Reporter">
+            <summary>
+            reporting user
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewReport.Category">
+            <summary>
+            one of a fixed set of category strings the client hardcodes and sends verbatim:
+            "Spam", "Offensive", "Harassment", "Other" - same convention as
+            PDFPageCommentReport.Category, a plain string rather than a C# enum so a new
+            category can be added later without a migration.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewReport.Description">
+            <summary>
+            free text explanation provided by the reporter
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewReport.Status">
+            <summary>
+            Open until a reviewer resolves it
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewReport.Approved">
+            <summary>
+            null while still Open; true if the reviewer approved the report (review deleted),
+            false if rejected (review left alone)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewReport.CreatedAt">
+            <summary>
+            when the report was submitted
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewReport.ReviewerId">
+            <summary>
+            user who resolved this report - null while still Open
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewReport.Reviewer">
+            <summary>
+            user who resolved this report - null while still Open
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewReport.ReviewerResponse">
+            <summary>
+            the reviewer's optional written note on the resolution - same reasoning as
+            PDFPageCommentReport.ReviewerResponse: genuinely optional, since the outcome is
+            usually self-explanatory and requiring a written justification for every obvious
+            removal would just add friction
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewReport.ReviewedAt">
+            <summary>
+            when the report was resolved - null while still Open
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFBookReviewReportStatus">
+            <summary>
+            PDFBookReviewReport status
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.PDFLibrary.PDFBookReviewReportStatus.Open">
+            <summary>
+            submitted, not yet reviewed
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.PDFLibrary.PDFBookReviewReportStatus.Closed">
+            <summary>
+            reviewed and resolved (see PDFBookReviewReport.Approved for the outcome)
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.PDFLibrary.PDFBookReviewSortMode">
             <summary>
             sort modes for listing book reviews
@@ -12706,6 +12861,145 @@
         <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReportViewModel.ReviewedAt">
             <summary>
             when closed - null while still Open
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportSubmitViewModel">
+            <summary>
+            submitting a report against a review - mirrors PDFPageCommentReportSubmitViewModel
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportSubmitViewModel.Category">
+            <summary>
+            one of a fixed set the client hardcodes: "Spam", "Offensive", "Harassment", "Other"
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportSubmitViewModel.Description">
+            <summary>
+            explanatory text provided by the reporter
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportResolveViewModel">
+            <summary>
+            a reviewer's resolution of a report - mirrors PDFPageCommentReportResolveViewModel
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportResolveViewModel.Approved">
+            <summary>
+            true → the report was valid, the reported review is deleted as part of this call;
+            false → rejected, the review is left alone
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportResolveViewModel.Response">
+            <summary>
+            optional written note on the resolution - see PDFBookReviewReport.ReviewerResponse's
+            own doc comment on why this is optional
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel">
+            <summary>
+            PDFBookReviewReport, for listing to reviewers - carries enough of the reported review's
+            own context (text, rating, book) that the review screen doesn't need a follow-up call
+            just to show what's actually being reported, matching PDFPageCommentReportViewModel's
+            own convention.
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel.Id">
+            <summary>
+            id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel.PDFBookReviewId">
+            <summary>
+            the reported review's id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel.ReviewStillExists">
+            <summary>
+            false if the review has already been deleted by the time this report is being
+            looked at (moderated directly, deleted by its own author, or already resolved by
+            another reviewer who got to it first) - ReviewText/ReviewRating/ReviewAuthorName
+            below are null in that case, and the review screen should say so rather than show
+            blank text
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel.ReviewText">
+            <summary>
+            the reported review's own text - null if ReviewStillExists is false
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel.ReviewRating">
+            <summary>
+            the reported review's own rating (1-5), if it had one - null if ReviewStillExists is
+            false, or if the review genuinely had no rating (text-only)
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel.ReviewAuthorId">
+            <summary>
+            the reported review's author's user id - unlike ReviewText/ReviewAuthorName, this is
+            always populated regardless of ReviewStillExists: the author's own account isn't
+            "deleted content" the way the review's text is, and a moderator reviewing a report
+            may still want to act on the account even when this specific review is already gone
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel.ReviewAuthorName">
+            <summary>
+            the reported review's author's display name - null if ReviewStillExists is false
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel.PDFBookId">
+            <summary>
+            the reviewed book's id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel.BookTitle">
+            <summary>
+            see PDFBookId
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel.ReporterId">
+            <summary>
+            reporting user's id
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel.ReporterName">
+            <summary>
+            reporting user's display name
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel.Category">
+            <summary>
+            "Spam", "Offensive", "Harassment", or "Other"
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel.Description">
+            <summary>
+            explanatory text provided by the reporter
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel.Status">
+            <summary>
+            Open or Closed
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel.Approved">
+            <summary>
+            null while still Open; true if approved (review deleted), false if rejected
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel.CreatedAt">
+            <summary>
+            when submitted
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel.ReviewerResponse">
+            <summary>
+            the reviewer's optional written note - null while still Open, or if the reviewer
+            left it blank
+            </summary>
+        </member>
+        <member name="P:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportViewModel.ReviewedAt">
+            <summary>
+            when resolved - null while still Open
             </summary>
         </member>
         <member name="T:RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewSubmitViewModel">
@@ -14168,6 +14462,50 @@
             <summary>
             remove the caller's own vote from a review, if they had one - a no-op (not an
             error) if they hadn't voted on it at all
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.SubmitPDFBookReviewReportAsync(System.Guid,System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportSubmitViewModel)">
+            <summary>
+            submit a report against a book review (spam, offensive, harassment, or something
+            else) - any authenticated user other than the review's own author (if you want your
+            own review gone, delete it directly - no report needed). Mirrors
+            SubmitPDFPageCommentReportAsync exactly, including the notify-every-moderator
+            pattern - save first, then look up every user holding
+            PDFBookReviewReportEntityShortName:ModerateOperationShortName and notify each; a
+            failure in that step is swallowed rather than failing the submission itself.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetOpenPDFBookReviewReportsAsync(RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            paginated list of still-open review reports, for reviewers - includes enough of the
+            reported review's own context (text, rating, book) to review without a follow-up
+            call, and gracefully covers a report whose review is already gone by the time it's
+            looked at via ReviewStillExists, rather than erroring or showing blanks. Simpler
+            than GetOpenPDFPageCommentReportsAsync's own book-title lookup: PDFBookReview has a
+            direct PDFBookId/PDFBook, no PDFPage indirection, so a single Include chain reaches
+            the title without a separate batched dictionary lookup.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.ResolvePDFBookReviewReportAsync(System.Guid,System.Guid,System.Boolean,System.String)">
+            <summary>
+            resolve a review report - approving it deletes the reported review (soft-delete,
+            same as DeletePDFBookReviewAsync) as part of closing the report; rejecting it leaves
+            the review untouched. Either way the reporter is notified with the outcome and the
+            reviewer's optional note, and (unlike the comment-report equivalent) the book's own
+            AverageRating/RatingCount are recomputed if the deleted review had a rating - see
+            DeletePDFBookReviewAsync's own doc comment for why that recompute has to happen
+            wherever a rated review can be removed, not just from that one direct-delete path.
+            Safe to call even if the review has already been deleted by some other means since
+            the report was filed - approving in that case is a no-op on the review itself, not
+            an error.
+            </summary>
+        </member>
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService._ReviewReportCategoryLabel(System.String)">
+            <summary>
+            Persian label for a report category - same fixed set as _CommentReportCategoryLabel,
+            kept as a separate method (rather than reusing that one) only because the two report
+            systems are otherwise fully independent - see PDFBookReviewReportEntityShortName's
+            own doc comment on that split.
             </summary>
         </member>
         <member name="M:RMuseum.Services.Implementation.PDFLibraryService.SubmitPDFPageCommentAsync(System.Guid,System.Int32,System.Int32,RMuseum.Models.PDFLibrary.ViewModels.PDFPageCommentPostViewModel,Microsoft.AspNetCore.Http.IFormFile)">
@@ -15940,6 +16278,33 @@
             </summary>
             <param name="userId"></param>
             <param name="reviewId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.SubmitPDFBookReviewReportAsync(System.Guid,System.Guid,RMuseum.Models.PDFLibrary.ViewModels.PDFBookReviewReportSubmitViewModel)">
+            <summary>
+            submit a report against a book review - see SubmitPDFBookReviewReportAsync's own
+            doc comment
+            </summary>
+            <param name="reporterId"></param>
+            <param name="reviewId"></param>
+            <param name="model"></param>
+            <returns>id of the new report</returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetOpenPDFBookReviewReportsAsync(RSecurityBackend.Models.Generic.PagingParameterModel)">
+            <summary>
+            paginated list of still-open review reports, for reviewers
+            </summary>
+            <param name="paging"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RMuseum.Services.IPDFLibraryService.ResolvePDFBookReviewReportAsync(System.Guid,System.Guid,System.Boolean,System.String)">
+            <summary>
+            resolve a review report - see ResolvePDFBookReviewReportAsync's own doc comment
+            </summary>
+            <param name="reviewerId"></param>
+            <param name="reportId"></param>
+            <param name="approved"></param>
+            <param name="response"></param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.AddPDFBookContributerAsync(System.Int32,System.Int32,System.String)">

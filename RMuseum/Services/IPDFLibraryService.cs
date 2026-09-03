@@ -325,6 +325,33 @@ namespace RMuseum.Services
         Task<RServiceResult<bool>> RemovePDFBookReviewVoteAsync(Guid userId, Guid reviewId);
 
         /// <summary>
+        /// submit a report against a book review - see SubmitPDFBookReviewReportAsync's own
+        /// doc comment
+        /// </summary>
+        /// <param name="reporterId"></param>
+        /// <param name="reviewId"></param>
+        /// <param name="model"></param>
+        /// <returns>id of the new report</returns>
+        Task<RServiceResult<Guid>> SubmitPDFBookReviewReportAsync(Guid reporterId, Guid reviewId, PDFBookReviewReportSubmitViewModel model);
+
+        /// <summary>
+        /// paginated list of still-open review reports, for reviewers
+        /// </summary>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        Task<RServiceResult<(PaginationMetadata PagingMeta, PDFBookReviewReportViewModel[] Items)>> GetOpenPDFBookReviewReportsAsync(PagingParameterModel paging);
+
+        /// <summary>
+        /// resolve a review report - see ResolvePDFBookReviewReportAsync's own doc comment
+        /// </summary>
+        /// <param name="reviewerId"></param>
+        /// <param name="reportId"></param>
+        /// <param name="approved"></param>
+        /// <param name="response"></param>
+        /// <returns></returns>
+        Task<RServiceResult<bool>> ResolvePDFBookReviewReportAsync(Guid reviewerId, Guid reportId, bool approved, string response);
+
+        /// <summary>
         /// add pdf book contributer
         /// </summary>
         /// <param name="pdfBookId"></param>

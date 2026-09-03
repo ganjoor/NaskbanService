@@ -1314,6 +1314,69 @@ namespace RMuseum.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// submit a report against a book review - any authenticated user other than the
+        /// review's own author
+        /// </summary>
+        /// <param name="reviewId"></param>
+        /// <param name="report"></param>
+        /// <returns>id of the new report</returns>
+        [HttpPost]
+        [Route("review/{reviewId}/report")]
+        [Authorize]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(Guid))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> SubmitPDFBookReviewReportAsync(Guid reviewId, [FromBody] PDFBookReviewReportSubmitViewModel report)
+        {
+            Guid userId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.SubmitPDFBookReviewReportAsync(userId, reviewId, report);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok(res.Result);
+        }
+
+        /// <summary>
+        /// paginated list of still-open review reports
+        /// </summary>
+        /// <param name="paging"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("reviewreports/open")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFBookReviewReportEntityShortName + ":" + RMuseumSecurableItem.ModerateOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFBookReviewReportViewModel>))]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> GetOpenPDFBookReviewReportsAsync([FromQuery] PagingParameterModel paging)
+        {
+            var res = await _pdfService.GetOpenPDFBookReviewReportsAsync(paging);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+
+            HttpContext.Response.Headers.Append("paging-headers", JsonConvert.SerializeObject(res.Result.PagingMeta));
+
+            return Ok(res.Result.Items);
+        }
+
+        /// <summary>
+        /// resolve a review report - approving deletes the reported review as part of closing
+        /// the report; rejecting leaves it alone
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        [HttpPut]
+        [Route("reviewreport/{id}/resolve")]
+        [Authorize(Policy = RMuseumSecurableItem.PDFBookReviewReportEntityShortName + ":" + RMuseumSecurableItem.ModerateOperationShortName)]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
+        public async Task<IActionResult> ResolvePDFBookReviewReportAsync(Guid id, [FromBody] PDFBookReviewReportResolveViewModel model)
+        {
+            Guid userId = new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value);
+            var res = await _pdfService.ResolvePDFBookReviewReportAsync(userId, id, model.Approved, model.Response);
+            if (!string.IsNullOrEmpty(res.ExceptionString))
+                return BadRequest(res.ExceptionString);
+            return Ok();
+        }
+
         [HttpPost("pdfbook/{pdfBookId}/contributor")]
         [Authorize(Policy = RMuseumSecurableItem.PDFLibraryEntityShortName + ":" + SecurableItem.ModifyOperationShortName)]
         [ProducesResponseType((int)HttpStatusCode.OK)]

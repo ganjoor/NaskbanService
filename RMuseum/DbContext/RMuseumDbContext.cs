@@ -251,6 +251,16 @@ namespace RMuseum.DbContext
                 .WithMany()
                 .HasForeignKey(v => v.PDFBookReviewId)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            // Same multiple-cascade-paths problem as PDFBookReviewVote above, same fix, same
+            // reasoning: AspNetUsers can reach PDFBookReviewReports two ways otherwise -
+            // directly via PDFBookReviewReport.ReporterId, and indirectly via
+            // PDFBookReview.UserId -> PDFBookReviews -> PDFBookReviewReports.
+            builder.Entity<PDFBookReviewReport>()
+                .HasOne(r => r.PDFBookReview)
+                .WithMany()
+                .HasForeignKey(r => r.PDFBookReviewId)
+                .OnDelete(DeleteBehavior.NoAction);
         }
 
 
@@ -671,6 +681,11 @@ namespace RMuseum.DbContext
         /// likes/dislikes on book reviews - see PDFBookReviewVote's own doc comment
         /// </summary>
         public DbSet<PDFBookReviewVote> PDFBookReviewVotes { get; set; }
+
+        /// <summary>
+        /// user reports against book reviews (spam, offensive, harassment, other)
+        /// </summary>
+        public DbSet<PDFBookReviewReport> PDFBookReviewReports { get; set; }
 
 
         /// <summary>
