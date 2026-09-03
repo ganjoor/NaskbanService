@@ -216,11 +216,24 @@ namespace RMuseum.DbContext
                 .HasForeignKey(r => r.PDFPageCommentId)
                 .OnDelete(DeleteBehavior.NoAction);
 
-            // enforces "exactly one review per (book, user)" at the data layer, not just
-            // application-level checking - see PDFBookReview's own doc comment
+            // Enforces "at most one PUBLISHED review per (book, user)" at the data layer -
+            // deliberately a FILTERED unique index, not a plain one, because PDFBookReview
+            // uses soft-delete (Status = Deleted keeps the row, see PDFBookReview's own doc
+            // comment): a plain unique index on (PDFBookId, UserId) would still count a
+            // deleted review's row as occupying that pair, so submitting a brand-new review
+            // after deleting an old one for the same book would hit a duplicate-key error at
+            // the database even though SubmitPDFBookReviewAsync's own "already reviewed" check
+            // already correctly ignores deleted rows (Status == Published only) - this was an
+            // actual, observed bug (SqlException on the unique index after delete-then-resubmit),
+            // not a hypothetical one. The filter mirrors that same Published-only condition so
+            // the database enforces exactly the rule the application layer already intends,
+            // instead of a stricter one it never asked for. 4 is PublishStatus.Published's own
+            // underlying int value (see that enum) - HasFilter takes a raw SQL predicate, not a
+            // C# expression, so the enum name itself can't be referenced here directly.
             builder.Entity<PDFBookReview>()
                 .HasIndex(r => new { r.PDFBookId, r.UserId })
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[Status] = 4");
 
             // enforces "exactly one vote per (review, user)" the same way
             builder.Entity<PDFBookReviewVote>()

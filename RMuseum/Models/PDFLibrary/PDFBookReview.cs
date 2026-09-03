@@ -7,9 +7,12 @@ namespace RMuseum.Models.PDFLibrary
     /// <summary>
     /// a registered user's review of a book - descriptive text plus an optional 1-5 star
     /// rating. Modeled after PDFPageComment (same Text/Status/CreatedAt/EditedAt shape, same
-    /// soft-delete via PublishStatus), but with three deliberate differences: exactly one
-    /// review per (PDFBookId, UserId) pair, enforced by a unique index rather than just
-    /// application-level checking (see the migration); no InReplyToId - reviews are not
+    /// soft-delete via PublishStatus), but with three deliberate differences: at most one
+    /// PUBLISHED review per (PDFBookId, UserId) pair, enforced by a filtered unique index
+    /// (Status = Published only) rather than just application-level checking (see the
+    /// migration and RMuseumDbContext.OnModelCreating's own comment on why the filter matters
+    /// - a plain, unfiltered index would still count a soft-deleted review's row, blocking a
+    /// brand-new one for the same book after the old one was deleted); no InReplyToId - reviews are not
     /// threaded, since "replying to a review" is a different feature (that's what a book's own
     /// comments are for, arguably, though this project doesn't have per-book comments either);
     /// and LikeCount/DislikeCount, denormalized the same way PDFBook.AverageRating is (see
