@@ -281,6 +281,24 @@ namespace RMuseum.Services.Implementation
                             .SingleOrDefaultAsync();
                 if (pdfPage != null)
                 {
+                    // best-effort, deliberately outside the outer try/catch's own concern - a
+                    // failure incrementing this counter must never fail the page fetch itself,
+                    // same philosophy as RecordStudyLogEntryAsync's own comment at the call
+                    // site. Atomic ExecuteUpdateAsync, not load/modify/save - pdfBook above is
+                    // AsNoTracking anyway, and this also means concurrent fetches for the same
+                    // book can't race and lose an increment. See PageFetchCount's own doc
+                    // comment for why this lives here and why it's a single running total, not
+                    // a per-visit row.
+                    try
+                    {
+                        await _context.PDFBooks.Where(b => b.Id == pdfBookId)
+                            .ExecuteUpdateAsync(s => s.SetProperty(b => b.PageFetchCount, b => b.PageFetchCount + 1));
+                    }
+                    catch
+                    {
+                        // swallowed - see comment above
+                    }
+
                     pdfPage.PDFBook = pdfBook;
 
                     List<RArtifactTagViewModel> rArtifactTags = new List<RArtifactTagViewModel>();
@@ -383,7 +401,7 @@ namespace RMuseum.Services.Implementation
         /// <param name="paging"></param>
         /// <param name="statusArray"></param>
         /// <returns></returns>
-        public async Task<RServiceResult<(PaginationMetadata PagingMeta, PDFBook[] Books)>> GetAllPDFBooksAsync(PagingParameterModel paging, PublishStatus[] statusArray)
+        public async Task<RServiceResult<(PaginationMetadata PagingMeta, PDFBook[] Books)>> GetAllPDFBooksAsync(PagingParameterModel paging, PublishStatus[] statusArray, PDFBookSortMode sortMode = PDFBookSortMode.Newest)
         {
             try
             {
@@ -430,9 +448,18 @@ namespace RMuseum.Services.Implementation
                     OCRed = b.OCRed,
                     OCRTime = b.OCRTime,
                     BookText = "",
+                    AverageRating = b.AverageRating,
+                    RatingCount = b.RatingCount,
+                    PageFetchCount = b.PageFetchCount,
                 })
-               .OrderByDescending(t => t.DateTime)
                .AsQueryable();
+
+                source = sortMode switch
+                {
+                    PDFBookSortMode.MostPopular => source.OrderByDescending(t => t.PageFetchCount),
+                    _ => source.OrderByDescending(t => t.DateTime),
+                };
+
                 (PaginationMetadata PagingMeta, PDFBook[] Books) paginatedResult =
                     await QueryablePaginator<PDFBook>.Paginate(source, paging);
                 return new RServiceResult<(PaginationMetadata PagingMeta, PDFBook[] Books)>(paginatedResult);
@@ -2065,6 +2092,9 @@ namespace RMuseum.Services.Implementation
                         OCRed = p.OCRed,
                         OCRTime = p.OCRTime,
                         AIRevised = p.AIRevised,
+                        AverageRating = p.AverageRating,
+                        RatingCount = p.RatingCount,
+                        PageFetchCount = p.PageFetchCount,
                     })
                     .OrderBy(i => i.Title);
 
@@ -2716,6 +2746,9 @@ namespace RMuseum.Services.Implementation
                         OCRed = p.OCRed,
                         OCRTime = p.OCRTime,
                         AIRevised = p.AIRevised,
+                        AverageRating = p.AverageRating,
+                        RatingCount = p.RatingCount,
+                        PageFetchCount = p.PageFetchCount,
                     })
                     .OrderBy(i => i.Title);
 
@@ -2839,6 +2872,9 @@ namespace RMuseum.Services.Implementation
                         OCRed = b.OCRed,
                         OCRTime = b.OCRTime,
                         AIRevised = b.AIRevised,
+                        AverageRating = b.AverageRating,
+                        RatingCount = b.RatingCount,
+                        PageFetchCount = b.PageFetchCount,
                         // BookText intentionally omitted, same as the other two search methods
                     })
                     .ToDictionaryAsync(b => b.Id);

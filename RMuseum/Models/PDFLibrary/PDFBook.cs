@@ -275,5 +275,20 @@ namespace RMuseum.Models.PDFLibrary
         /// average at all until at least one rating exists).
         /// </summary>
         public int RatingCount { get; set; }
+
+        /// <summary>
+        /// popularity signal: total number of times any page of this book has been fetched via
+        /// GetPDFPageAsync, across every reader, logged-in or anonymous - incremented there with
+        /// an atomic ExecuteUpdateAsync (see that method's own comment), never loaded/modified/
+        /// saved as a tracked entity, so concurrent fetches for the same book can't race and
+        /// lose an increment. Deliberately a single running total, not a per-visit log table
+        /// (compare PDFVisitRecord, the older, now-dormant design this replaces for popularity
+        /// purposes - see that entity's own doc comment): one int column added to an existing
+        /// row costs nothing at this database's scale, where a new row per page-view across
+        /// thousands of books would not. This also means it carries no per-user or per-session
+        /// information whatsoever - just a count - so there is nothing here that could expose
+        /// what any individual person read.
+        /// </summary>
+        public int PageFetchCount { get; set; }
     }
 }

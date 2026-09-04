@@ -40,9 +40,12 @@ namespace RMuseum.Controllers
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFBook>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
 
-        public async Task<IActionResult> GetAllPDFBooksAsync([FromQuery] PagingParameterModel paging)
+        public async Task<IActionResult> GetAllPDFBooksAsync([FromQuery] PagingParameterModel paging, [FromQuery] string sort = null)
         {
-            var pdfBooksInfo = await _pdfService.GetAllPDFBooksAsync(paging, [PublishStatus.Published]);
+            if (!Enum.TryParse<PDFBookSortMode>(sort, true, out var sortMode))
+                sortMode = PDFBookSortMode.Newest;
+
+            var pdfBooksInfo = await _pdfService.GetAllPDFBooksAsync(paging, [PublishStatus.Published], sortMode);
             if (!string.IsNullOrEmpty(pdfBooksInfo.ExceptionString))
             {
                 return BadRequest(pdfBooksInfo.ExceptionString);
@@ -77,8 +80,11 @@ namespace RMuseum.Controllers
         [Authorize]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<PDFBook>))]
         [ProducesResponseType((int)HttpStatusCode.BadRequest, Type = typeof(string))]
-        public async Task<IActionResult> GetUserVisiblePDFBooksAsync([FromQuery] PagingParameterModel paging)
+        public async Task<IActionResult> GetUserVisiblePDFBooksAsync([FromQuery] PagingParameterModel paging, [FromQuery] string sort = null)
         {
+            if (!Enum.TryParse<PDFBookSortMode>(sort, true, out var sortMode))
+                sortMode = PDFBookSortMode.Newest;
+
             RServiceResult<PublishStatus[]> v = await _GetUserVisiblePDFBooksStatusSetAsync
                 (
                 new Guid(User.Claims.FirstOrDefault(c => c.Type == "UserId").Value),
@@ -90,10 +96,10 @@ namespace RMuseum.Controllers
 
             if (visibleItems.Length == 1 && visibleItems[0] == PublishStatus.Published) //Caching
             {
-                return await GetAllPDFBooksAsync(paging);
+                return await GetAllPDFBooksAsync(paging, sort);
             }
 
-            RServiceResult<(PaginationMetadata PagingMeta, PDFBook[] Books)> itemsInfo = await _pdfService.GetAllPDFBooksAsync(paging, visibleItems);
+            RServiceResult<(PaginationMetadata PagingMeta, PDFBook[] Books)> itemsInfo = await _pdfService.GetAllPDFBooksAsync(paging, visibleItems, sortMode);
             if (!string.IsNullOrEmpty(itemsInfo.ExceptionString))
             {
                 return BadRequest(itemsInfo.ExceptionString);

@@ -50,8 +50,9 @@ namespace RMuseum.Services
         /// </summary>
         /// <param name="paging"></param>
         /// <param name="statusArray"></param>
+        /// <param name="sortMode"></param>
         /// <returns></returns>
-        Task<RServiceResult<(PaginationMetadata PagingMeta, PDFBook[] Books)>> GetAllPDFBooksAsync(PagingParameterModel paging, PublishStatus[] statusArray);
+        Task<RServiceResult<(PaginationMetadata PagingMeta, PDFBook[] Books)>> GetAllPDFBooksAsync(PagingParameterModel paging, PublishStatus[] statusArray, PDFBookSortMode sortMode = PDFBookSortMode.Newest);
 
         /// <summary>
         /// an incomplete prototype for removing PDF books

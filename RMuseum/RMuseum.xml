@@ -143,14 +143,14 @@
             <param name="notificationService"></param>
             <param name="appUserService"></param>
         </member>
-        <member name="M:RMuseum.Controllers.PDFLibraryController.GetAllPDFBooksAsync(RSecurityBackend.Models.Generic.PagingParameterModel)">
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetAllPDFBooksAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.String)">
              <summary>
             get all published pdfbooks (including CoverImage info but not pages or tagibutes info) - check paging-headers for paging info
              </summary>
              <param name="paging"></param>
              <returns></returns>
         </member>
-        <member name="M:RMuseum.Controllers.PDFLibraryController.GetUserVisiblePDFBooksAsync(RSecurityBackend.Models.Generic.PagingParameterModel)">
+        <member name="M:RMuseum.Controllers.PDFLibraryController.GetUserVisiblePDFBooksAsync(RSecurityBackend.Models.Generic.PagingParameterModel,System.String)">
             <summary>
             get all pdf books visible by user (including CoverImage info but not items info)
             </summary>
@@ -2238,6 +2238,18 @@
             <inheritdoc />
         </member>
         <member name="M:RMuseum.Migrations.RevIndexChanged.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:RMuseum.Migrations.AddReviewModeration">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.AddReviewModeration.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.AddReviewModeration.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:RMuseum.Migrations.AddReviewModeration.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
         <member name="T:RMuseum.Models.Accounting.DonationExpenditure">
@@ -11290,6 +11302,21 @@
             average at all until at least one rating exists).
             </summary>
         </member>
+        <member name="P:RMuseum.Models.PDFLibrary.PDFBook.PageFetchCount">
+            <summary>
+            popularity signal: total number of times any page of this book has been fetched via
+            GetPDFPageAsync, across every reader, logged-in or anonymous - incremented there with
+            an atomic ExecuteUpdateAsync (see that method's own comment), never loaded/modified/
+            saved as a tracked entity, so concurrent fetches for the same book can't race and
+            lose an increment. Deliberately a single running total, not a per-visit log table
+            (compare PDFVisitRecord, the older, now-dormant design this replaces for popularity
+            purposes - see that entity's own doc comment): one int column added to an existing
+            row costs nothing at this database's scale, where a new row per page-view across
+            thousands of books would not. This also means it carries no per-user or per-session
+            information whatsoever - just a count - so there is nothing here that could expose
+            what any individual person read.
+            </summary>
+        </member>
         <member name="T:RMuseum.Models.PDFLibrary.PDFBookDuplicateCandidate">
             <summary>
             a pair of PDFBook records the duplicate-detection job believes might be the same book,
@@ -11816,6 +11843,22 @@
         <member name="P:RMuseum.Models.PDFLibrary.PDFBookReviewVote.CreatedAt">
             <summary>
             when this vote was cast or last changed (like to dislike or vice versa)
+            </summary>
+        </member>
+        <member name="T:RMuseum.Models.PDFLibrary.PDFBookSortMode">
+            <summary>
+            sort modes for GetAllPDFBooksAsync - the main book browse/listing endpoint
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.PDFLibrary.PDFBookSortMode.Newest">
+            <summary>
+            newest first (the pre-existing, default behavior)
+            </summary>
+        </member>
+        <member name="F:RMuseum.Models.PDFLibrary.PDFBookSortMode.MostPopular">
+            <summary>
+            highest PageFetchCount first - see that field's own doc comment on PDFBook for what
+            it measures and why
             </summary>
         </member>
         <member name="T:RMuseum.Models.PDFLibrary.PDFPage">
@@ -15115,7 +15158,7 @@
             <param name="pageNumber"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetAllPDFBooksAsync(RSecurityBackend.Models.Generic.PagingParameterModel,RMuseum.Models.Artifact.PublishStatus[])">
+        <member name="M:RMuseum.Services.Implementation.PDFLibraryService.GetAllPDFBooksAsync(RSecurityBackend.Models.Generic.PagingParameterModel,RMuseum.Models.Artifact.PublishStatus[],RMuseum.Models.PDFLibrary.PDFBookSortMode)">
             <summary>
             get all pdfbooks (including CoverImage info but not pages or tagibutes info)
             </summary>
@@ -16001,12 +16044,13 @@
             <param name="includePageText"></param>
             <returns></returns>
         </member>
-        <member name="M:RMuseum.Services.IPDFLibraryService.GetAllPDFBooksAsync(RSecurityBackend.Models.Generic.PagingParameterModel,RMuseum.Models.Artifact.PublishStatus[])">
+        <member name="M:RMuseum.Services.IPDFLibraryService.GetAllPDFBooksAsync(RSecurityBackend.Models.Generic.PagingParameterModel,RMuseum.Models.Artifact.PublishStatus[],RMuseum.Models.PDFLibrary.PDFBookSortMode)">
             <summary>
             get all pdfbooks (including CoverImage info but not pages or tagibutes info)
             </summary>
             <param name="paging"></param>
             <param name="statusArray"></param>
+            <param name="sortMode"></param>
             <returns></returns>
         </member>
         <member name="M:RMuseum.Services.IPDFLibraryService.RemovePDFBookAsync(System.Int32)">
